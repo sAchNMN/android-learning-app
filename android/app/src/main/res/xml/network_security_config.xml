@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  发布版网络安全策略：全局禁止明文 HTTP。
+  调试版的放行规则在 src/debug/res/xml/network_security_config.xml，
+  同名资源会在 debug 构建中覆盖本文件。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

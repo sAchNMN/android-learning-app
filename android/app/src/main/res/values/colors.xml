@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- 品牌色（青绿）：浅色模式 -->
+    <color name="brand_primary">#0F766E</color>
+    <color name="brand_on_primary">#FFFFFFFF</color>
+    <color name="brand_primary_container">#CCFBF1</color>
+    <color name="brand_on_primary_container">#042F2E</color>
+
+    <!-- 品牌色：深色模式 -->
+    <color name="brand_primary_dark">#5EEAD4</color>
+    <color name="brand_on_primary_dark">#003731</color>
+    <color name="brand_primary_container_dark">#115E59</color>
+    <color name="brand_on_primary_container_dark">#CCFBF1</color>
+
+    <!-- 头像占位底色 -->
+    <color name="avatar_background">#0F766E</color>
+</resources>

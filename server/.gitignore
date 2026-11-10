@@ -1,0 +1,15 @@
+# 若依源码单独 clone 到这里，不入版本控制
+RuoYi-Vue/
+ruoyi-vue-pro/
+
+# 后端构建产物
+target/
+*.jar
+*.war
+
+# 本地覆盖的配置（可能含数据库密码）
+application-local.yml
+
+# IDE
+.idea/
+*.iml

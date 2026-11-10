@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  调试版：允许明文 HTTP，方便直连本机若依后端（模拟器 10.0.2.2 / 真机局域网 IP）。
+  发布版会被 main/res/xml/network_security_config.xml 覆盖为「全局禁止明文」。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

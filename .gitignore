@@ -1,15 +1,37 @@
+# ---------- Android ----------
+android/.gradle/
+android/build/
+android/app/build/
+android/*/build/
+android/*/*/build/
+android/.kotlin/
+android/local.properties
+android/.idea/
+android/captures/
+android/app/release/
+*.apk
+*.aab
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+
+# ---------- 后端 ----------
+server/RuoYi-Vue/
+server/ruoyi-vue-pro/
+server/target/
+server/*/target/
+server/application-local.yml
+
+# ---------- 系统 ----------
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+Thumbs.db
+desktop.ini
+
+# ---------- 编辑器 ----------
+.idea/
+**/.idea/
+.vscode/
+*.swp
+
+# ---------- 项目数据 ----------
+# 保留 memory 便于跨会话交接，其余（截图、临时产物）不入库
+.workbuddy/*
+!.workbuddy/memory/

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">学习助手</string>
+
+    <!-- 登录页 -->
+    <string name="login_title">学习助手</string>
+    <string name="login_subtitle">使用后台账号登录，开始今天的学习</string>
+    <string name="login_username">账号</string>
+    <string name="login_password">密码</string>
+    <string name="login_captcha">验证码</string>
+    <string name="login_captcha_desc">点击刷新验证码</string>
+    <string name="login_action">登录</string>
+    <string name="login_action_loading">登录中…</string>
+    <string name="login_error_username_empty">请输入账号</string>
+    <string name="login_error_password_empty">请输入密码</string>
+    <string name="login_error_captcha_empty">请输入验证码</string>
+    <string name="login_server_hint">接口地址：%1$s</string>
+
+    <!-- 首页 -->
+    <string name="home_account">账号：%1$s</string>
+    <string name="home_logout">退出登录</string>
+    <string name="home_runtime_info">运行信息</string>
+    <string name="home_base_url">baseUrl: %1$s</string>
+    <string name="home_roles">roles: %1$s</string>
+    <string name="home_roles_empty">roles: -</string>
+    <string name="home_logout_confirm">确定要退出登录吗？</string>
+    <string name="home_session_expired">登录已过期，请重新登录</string>
+
+    <!-- 通用 -->
+    <string name="action_confirm">确定</string>
+    <string name="action_cancel">取消</string>
+    <string name="avatar_placeholder">学</string>
+</resources>

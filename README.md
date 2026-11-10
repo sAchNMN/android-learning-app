@@ -1,39 +1,98 @@
-# 安卓学习应用
+# 学习助手
 
-#### 介绍
-{**以下是 Gitee 平台说明，您可以替换此简介**
-Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN）。专为开发者提供稳定、高效、安全的云端软件开发协作平台
-无论是个人、团队、或是企业，都能够用 Gitee 实现代码托管、项目管理、协作开发。企业项目请看 [https://gitee.com/enterprises](https://gitee.com/enterprises)}
+Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层学习类应用。
+仓库按「一个仓管全栈」组织，Android、后端接入、数据库脚本、接口文档各占一层目录。
 
-#### 软件架构
-软件架构说明
+## 技术栈
 
+| 层 | 技术 | 说明 |
+| --- | --- | --- |
+| 客户端 | Kotlin、AGP 9.3、compileSdk 37、minSdk 24 | XML View 体系，MVVM，无 Compose |
+| 网络 | Retrofit 2.11 + OkHttp 4.12 + Gson | 统一信封解析、Bearer 认证、错误码映射 |
+| 状态 | Kotlin Coroutines + StateFlow + DataStore | 无 LiveData、无 Hilt |
+| 后端 | RuoYi-Vue（Spring Boot 3 + MyBatis-Plus） | 独立部署，不在本仓库存源码 |
+| 数据库 | MySQL 8.0 | 字符集 utf8mb4 |
+| 缓存 | Redis 7 | 若依 token 存储，**必须启动** |
 
-#### 安装教程
+## 目录结构
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+```
+.
+├── android/                 Android 客户端（Gradle 根工程）
+│   ├── app/                 壳：Application、依赖容器、登录页、首页
+│   ├── core/
+│   │   ├── common/          结果封装、UI 状态、日志、View 扩展
+│   │   └── network/         Retrofit、拦截器、若依协议适配
+│   └── feature/
+│       └── demo/            贪吃蛇（已从构建摘除，代码保留）
+├── server/                  后端接入层：说明文档 + docker-compose
+├── sql/                     业务表结构与后台菜单脚本
+└── docs/                    接口契约、架构说明
+```
 
-#### 使用说明
+## 快速开始
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+### 1. 启动中间件
 
-#### 参与贡献
+```bash
+cd server
+docker compose up -d
+```
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+MySQL 在 `3306`（root/root，库 `ry-vue`），Redis 在 `6379`。
 
+### 2. 起后端
 
-#### 特技
+后端是独立服务，源码单独 clone（`server/RuoYi-Vue/` 已被 gitignore）：
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+```bash
+cd server
+git clone https://gitee.com/y_project/RuoYi-Vue.git
+cd RuoYi-Vue
+mvn clean package -DskipTests
+java -jar ruoyi-admin/target/ruoyi-admin.jar
+```
+
+建库与导表的完整步骤见 [`server/README.md`](server/README.md)。
+
+### 3. 跑客户端
+
+用 Android Studio 打开 **`android/` 目录**（不是仓库根目录，Gradle 根在这里）。
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+安装后启动即是登录页。默认账号 `admin / admin123`。
+
+## 接口约定
+
+详见 [`docs/api.md`](docs/api.md)。三条容易踩的：
+
+1. 成功码是 **`code == 200`**，不是 0
+2. token 走 **`Authorization: Bearer <token>`**，`Bearer ` 前缀不能省
+3. **登录过期是 HTTP 200 + body `code:401`**，只看 HTTP 状态码会漏判
+
+模拟器访问宿主机后端用 `http://10.0.2.2:8080/`；
+真机改成电脑局域网 IP，并放行防火墙 8080 端口。
+
+## 开发约定
+
+| 项 | 约定 |
+| --- | --- |
+| 包名 | `com.szc.learning`，子模块 `com.szc.learning.core.*` / `.feature.*` |
+| 命名 | 布局 `activity_*` / `fragment_*` / `item_*`，ViewModel 以 `ViewModel` 结尾 |
+| 依赖方向 | `app → feature → core`，`feature` 之间不允许互相依赖 |
+| 异常处理 | 网络层统一返回 `AppResult`，不向上抛异常 |
+| 提交信息 | Conventional Commits，描述用中文，如 `feat: 增加课程列表页` |
+
+架构分层、设计取舍、加新功能的步骤见 [`docs/architecture.md`](docs/architecture.md)。
+
+## 关于 `feature/demo`
+
+贪吃蛇是项目初期的练手模块，包含纯 Kotlin 规则层（8 条单测）与完全自绘的
+`SnakeGameView`（棋盘让开系统栏、蛇头靠近时悬浮信息淡出）。
+
+它已从构建中摘除，`settings.gradle.kts` 里的 `include(":feature:demo")` 是注释状态。
+需要恢复时：取消该行注释，并同步取消 `app/build.gradle.kts` 里对应的依赖注释。
