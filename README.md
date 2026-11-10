@@ -7,25 +7,33 @@ Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层学习类应用。
 
 | 层 | 技术 | 说明 |
 | --- | --- | --- |
-| 客户端 | Kotlin、AGP 9.3、compileSdk 37、minSdk 24 | XML View 体系，MVVM，无 Compose |
+| 移动端 | Kotlin、AGP 9.3、compileSdk 37、minSdk 24 | XML View 体系，MVVM，无 Compose |
 | 网络 | Retrofit 2.11 + OkHttp 4.12 + Gson | 统一信封解析、Bearer 认证、错误码映射 |
 | 状态 | Kotlin Coroutines + StateFlow + DataStore | 无 LiveData、无 Hilt |
-| 后端 | RuoYi-Vue（Spring Boot 3 + MyBatis-Plus） | 独立部署，不在本仓库存源码 |
-| 数据库 | MySQL 8.0 | 字符集 utf8mb4 |
+| 服务端 | RuoYi-Vue 3.9.2（Spring Boot 4.1 + MyBatis-Plus） | 独立部署，不在本仓库存源码 |
+| 管理端 | RuoYi-Vue3 3.9.2（Vue 3.5 + Vite 6 + Element Plus） | 后台运营页面 |
+| 数据库 | MySQL 8.0+ | 字符集 utf8mb4 |
 | 缓存 | Redis 7 | 若依 token 存储，**必须启动** |
 
 ## 目录结构
 
+三端各占一个顶层目录，辅助资源放 `sql/` 与 `docs/`。
+
 ```
 .
-├── android/                 Android 客户端（Gradle 根工程）
+├── android/                 【移动端】Gradle 根工程，Studio 打开这里
 │   ├── app/                 壳：Application、依赖容器、登录页、首页
 │   ├── core/
 │   │   ├── common/          结果封装、UI 状态、日志、View 扩展
 │   │   └── network/         Retrofit、拦截器、若依协议适配
 │   └── feature/
 │       └── demo/            贪吃蛇（已从构建摘除，代码保留）
-├── server/                  后端接入层：说明文档 + docker-compose
+├── server/                  【服务端】RuoYi-Vue 接入说明
+│   ├── RuoYi-Vue/           若依后端源码（独立 clone，不入库）
+│   └── docker-compose.yml   MySQL + Redis（可选）
+├── admin/                   【后台管理端】RuoYi-Vue3
+│   ├── RuoYi-Vue3/          若依 Vue3 前端源码（独立 clone，不入库）
+│   └── README.md            管理端启动说明
 ├── sql/                     业务表结构与后台菜单脚本
 └── docs/                    接口契约、架构说明
 ```
@@ -65,6 +73,17 @@ cd android
 ```
 
 安装后启动即是登录页。默认账号 `admin / admin123`。
+
+### 4. 起后台管理端（可选）
+
+```bash
+cd admin/RuoYi-Vue3
+npm install
+npm run dev
+```
+
+默认 `http://localhost`（dev 端口 80，绑不上就改 `vite.config.js` 的 `server.port`）。
+详见 [`admin/README.md`](admin/README.md)。
 
 ## 接口约定
 

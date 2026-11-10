@@ -1,16 +1,25 @@
-# 后端接入说明（RuoYi-Vue + RuoYi-Vue3）
+# 服务端（RuoYi-Vue）
 
-Android 端不承载业务逻辑，所有数据来自若依。
+Android 与后台管理端的所有数据都来自这里。
 
-本目录存放两个独立仓库的克隆，都不入主仓版本控制（见 `.gitignore`）：
+## 三端划分
 
-| 目录 | 内容 | 版本 | 状态 |
-| --- | --- | --- | --- |
-| `RuoYi-Vue/` | **服务端**（Spring Boot 多模块） | 3.9.2，Spring Boot 4.1.0 | 已克隆，`mvn package` 通过 |
-| `RuoYi-Vue3/` | **后台管理端**（Vue3 + Element Plus） | 3.9.2，Vue 3.5.26 / Vite 6.4.1 | 已克隆，`npm install` 完成 |
+| 目录 | 角色 | 技术栈 |
+| --- | --- | --- |
+| `android/` | 移动端 | Kotlin + Retrofit，包名 `com.szc.learning` |
+| `server/` | **服务端**（本目录） | RuoYi-Vue 3.9.2 / Spring Boot 4.1.0 / JDK 17+ |
+| `admin/` | 后台管理端 | RuoYi-Vue3 3.9.2 / Vue 3.5.26 + Vite 6.4.1 |
 
-> 注意：RuoYi-Vue 从 3.9.x 起**只含后端**，Vue 前端拆到独立仓库 `RuoYi-Vue3`
-> （`https://gitcode.com/yangzongzhuan/RuoYi-Vue3`，不在 gitee 的 y_project 下）。
+本目录内容：
+
+| 路径 | 说明 | 状态 |
+| --- | --- | --- |
+| `RuoYi-Vue/` | 若依服务端源码，独立 clone，不入版本控制 | `mvn package` 通过 |
+| `docker-compose.yml` | MySQL + Redis（可选；本机 3306 已被占用） | — |
+
+> RuoYi-Vue 从 3.9.x 起**只含后端**，Vue 前端拆到独立仓库 `RuoYi-Vue3`
+> （`https://gitcode.com/yangzongzhuan/RuoYi-Vue3`，不在 gitee 的 y_project 下），
+> 已放在仓库根的 `admin/`。管理端的启动说明见 `admin/README.md`。
 
 ## 1. 环境要求
 
@@ -101,7 +110,8 @@ java -jar ruoyi-admin/target/ruoyi-admin.jar
 ### 3.2 后台管理端
 
 ```bash
-cd server/RuoYi-Vue3
+# 从仓库根执行
+cd admin/RuoYi-Vue3
 npm install          # 已装过，可跳过
 npm run dev
 ```

@@ -1,22 +1,10 @@
-# 若依源码单独 clone 到这里，不入版本控制
+# 若依服务端源码，独立 clone，不入版本控制
 RuoYi-Vue/
-RuoYi-Vue3/
-RuoYi-Vue2/
 ruoyi-vue-pro/
-
-# 前端依赖与产物
-node_modules/
-dist/
-dist-ssr/
-*.local
-.env.local
-.env.*.local
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
 # 后端构建产物
 target/
+*/target/
 *.jar
 *.war
 
