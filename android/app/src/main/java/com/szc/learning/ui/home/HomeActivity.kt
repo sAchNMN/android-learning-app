@@ -17,6 +17,8 @@ import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.databinding.ActivityHomeBinding
 import com.szc.learning.ui.login.LoginActivity
+import com.szc.learning.ui.takeout.OrderListActivity
+import com.szc.learning.ui.takeout.ShopListActivity
 import kotlinx.coroutines.launch
 
 /**
@@ -61,6 +63,14 @@ class HomeActivity : AppCompatActivity() {
                 .setNegativeButton(R.string.action_cancel, null)
                 .setPositiveButton(R.string.action_confirm) { _, _ -> viewModel.logout() }
                 .show()
+        }
+
+        binding.shopEntryCard.setOnClickListener {
+            startActivity(Intent(this, ShopListActivity::class.java))
+        }
+
+        binding.orderEntryCard.setOnClickListener {
+            startActivity(Intent(this, OrderListActivity::class.java))
         }
     }
 

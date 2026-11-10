@@ -118,14 +118,31 @@
 
 ## 3. 业务接口
 
-**尚未设计。** 需求确定后再在这里登记。
+### 3.1 外卖点餐
 
-只需遵守两条约定：
+统一用 `/app/**` 前缀，与若依自带的 `/system/**`、`/monitor/**` 隔离。
+用户身份从 token 里取（`SecurityUtils.getUserId()`），**不接受前端传 userId**，避免越权。
 
-1. 统一用 `/app/**` 前缀，与若依自带的 `/system/**`、`/monitor/**` 隔离。
-   后续做权限剥离时，只对 `/app/**` 单独配白名单和角色即可。
-2. 返回值仍用 `AjaxResult` 信封（`code`/`msg`/`data`），分页用 `{total, rows}`。
-   这样 Android 端的统一解包逻辑不用改。
+| 方法 | 路径 | 说明 | 入参 |
+| --- | --- | --- | --- |
+| GET | `/app/shop/list` | 营业中的店铺 | — |
+| GET | `/app/shop/{shopId}` | 店铺详情 + 在售菜品 | — |
+| POST | `/app/order/create` | 下单 | `{shopId, items:[{dishId,quantity}], receiver, phone, address, remark}` |
+| GET | `/app/order/list` | 我的订单（按下单时间倒序） | — |
+| GET | `/app/order/{orderId}` | 订单详情 + 明细 | — |
+| POST | `/app/order/{orderId}/pay` | 模拟支付 | — |
+
+订单状态：`0` 待支付 / `1` 已支付 / `2` 配送中 / `3` 已完成 / `4` 已取消。
+当前只实现了 `0 → 1`（模拟支付），`2/3/4` 留给后台改状态。
+
+下单会做四件事，全在一个事务里：
+校验菜品属于该店铺 → 校验达到起送价 → 插订单与明细（菜名单价快照）→ 累加菜品销量。
+
+### 3.2 约定
+
+1. 返回值统一 `AjaxResult` 信封（`code`/`msg`/`data`），Android 端的统一解包逻辑不用改。
+2. 金额一律后端用 `BigDecimal`、响应体是数字，客户端用 `Double` 接收。
+3. 时间字段在 SQL 里 `date_format` 成 `yyyy-MM-dd HH:mm:ss` 字符串，避免时区与格式歧义。
 
 ## 4. 错误码对照
 

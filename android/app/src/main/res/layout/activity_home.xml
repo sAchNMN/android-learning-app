@@ -59,9 +59,65 @@
             </LinearLayout>
         </LinearLayout>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="10dp"
+            android:text="@string/home_section_entry"
+            android:textAppearance="?attr/textAppearanceTitleSmall"
+            android:alpha="0.6" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/shopEntryCard"
+            style="@style/Widget.Material3.CardView.Filled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/home_shop_entry"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/home_shop_desc"
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:alpha="0.65" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/orderEntryCard"
+            style="@style/Widget.Material3.CardView.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="20dp"
+                android:text="@string/home_order_entry"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+        </com.google.android.material.card.MaterialCardView>
+
         <Space
             android:layout_width="match_parent"
-            android:layout_height="40dp" />
+            android:layout_height="32dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/logoutButton"

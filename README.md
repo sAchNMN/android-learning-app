@@ -3,9 +3,9 @@
 Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程骨架。
 仓库按「一个仓管全栈」组织，三端各占一个顶层目录。
 
-> **业务尚未确定。**
-> 目前只实现了登录链路（登录 → 换 token → 拉用户信息 → 落地首页），
-> 没有任何业务功能，也没有业务表。需求定下来之后再加。
+> **当前业务：外卖点餐最小闭环。**
+> 看店 → 选菜 → 加购物车 → 下单 → 模拟支付 → 看订单。
+> 没有做商家端、骑手端、真实支付，也不追求还原美团的功能量。
 
 ## 技术栈
 
@@ -39,9 +39,25 @@ Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程骨架。
 ├── admin/                   【后台管理端】RuoYi-Vue3
 │   ├── RuoYi-Vue3/          源码（独立 clone，不入库）
 │   └── README.md            管理端启动说明
-├── sql/                     业务表脚本（待需求确定）
+├── sql/                     业务表与初始化数据
 └── docs/                    接口契约、架构说明
 ```
+
+## 业务闭环
+
+```
+App 首页 ──点外卖──> 店铺列表 ──> 店铺详情（菜品 + 购物车）
+                                      │
+                                      └─去结算→ 填收货信息 → 提交订单
+                                                              │
+我的订单 <─────────────────────────────────────────────────────┘
+   └─去支付（模拟）→ 状态 待支付 → 已支付
+```
+
+数据表 4 张：`takeout_shop` / `takeout_dish` / `takeout_order` / `takeout_order_item`。
+订单明细对菜名和单价做快照，菜品改价不影响历史订单。
+
+接口清单见 [`docs/api.md`](docs/api.md) 第 3 节。
 
 ## 快速开始
 
@@ -60,6 +76,8 @@ MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 "$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 "$MYSQL" -uroot -p ry-vue < server/RuoYi-Vue/sql/ry_20260417.sql
 "$MYSQL" -uroot -p ry-vue < server/RuoYi-Vue/sql/quartz.sql
+"$MYSQL" -uroot -p ry-vue < sql/01_takeout_schema.sql
+"$MYSQL" -uroot -p ry-vue < sql/02_takeout_data.sql
 ```
 
 ### 2. 起服务端
