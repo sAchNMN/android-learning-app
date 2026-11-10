@@ -1,9 +1,14 @@
 # MEMORY.md — 学习助手项目长期约定
 
-## 仓库结构（monorepo）
-- `android/` 是 Gradle 根，**Android Studio 必须打开这个目录**，不是仓库根
-- `server/` 只放接入说明 + docker-compose，若依源码 clone 到 `server/RuoYi-Vue/`（已 gitignore）
-- `sql/` 业务表 + 后台菜单；`docs/` 接口契约与架构说明
+## 仓库结构（monorepo，三端各占一个顶层目录）
+```
+android/   移动端    Gradle 根，Android Studio 必须打开这个目录，不是仓库根
+server/    服务端    RuoYi-Vue/ 源码（独立 clone，gitignore）+ docker-compose + README
+admin/     管理端    RuoYi-Vue3/ 源码（独立 clone，gitignore）+ README
+sql/       建表脚本与后台菜单
+docs/      接口契约 api.md、架构 architecture.md
+```
+- 若依源码都是**独立 git 仓**，各自有 .git，被上级 .gitignore 排除，不进主仓
 - 包名统一 `com.szc.learning`，模块前缀 `core.*` / `feature.*`
 
 ## 技术选型（已定型，不要再讨论）
