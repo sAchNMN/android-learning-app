@@ -2,6 +2,19 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+/**
+ * 接口地址，可在命令行覆盖：
+ * ```
+ * ./gradlew assembleDebug -PapiBaseUrl=http://127.0.0.1:8080/
+ * ```
+ *
+ * 默认 10.0.2.2 是 Android 模拟器访问宿主机回环的标准地址。
+ * 但部分机器上 QEMU 的该映射不生效（表现为连接超时、而局域网 IP 可达），
+ * 此时用 `adb reverse tcp:8080 tcp:8080` + `127.0.0.1` 更可靠，不受防火墙和 IP 变动影响。
+ */
+val debugApiBaseUrl: String =
+    providers.gradleProperty("apiBaseUrl").getOrElse("http://10.0.2.2:8080/")
+
 android {
     namespace = "com.szc.learning"
     compileSdk {
@@ -25,9 +38,7 @@ android {
 
     buildTypes {
         debug {
-            // 10.0.2.2 是 Android 模拟器访问宿主机 127.0.0.1 的固定地址，
-            // 端口对应 RuoYi 后端 server.port（默认 8080）。
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+            buildConfigField("String", "BASE_URL", "\"$debugApiBaseUrl\"")
         }
         release {
             // 上线前替换为真实域名，必须是 https。
@@ -61,4 +72,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    // ActivityScenario：仪器测试里直接拉起登录页并驱动 UI
+    androidTestImplementation("androidx.test:core-ktx:1.7.0")
 }
