@@ -28,84 +28,68 @@ Android 与后台管理端的所有数据都来自这里。
 | JDK | 17+（Spring Boot 4 要求） | JDK 21.0.12 ✓ |
 | Maven | 3.8+ | 3.9.16 ✓ |
 | Node.js | 18+（Vite 6） | v22.22.2 ✓ |
-| MySQL | 8.0+ | **26.10 已在 3306 运行**，root 密码未知 |
-| Redis | 5.0+ | **缺失**，必须补上 |
+| MySQL | 8.0+ | 26.10 @3306 ✓ 已建库导表 |
+| Redis | 5.0+ | 便携版 @6379 ✓（`server/redis/`） |
 
 **Redis 是硬依赖**：若依的 token 存在 Redis（`TokenService` → `RedisCache`），
 不起 Redis 后端能启动，但登录必定失败。
 
-## 2. 补齐依赖
+## 2. 环境准备（已完成，换机/重装时照此复现）
 
-### 2.1 MySQL
+### 2.1 数据库
 
-两种用法，选一种。
-
-**A. 复用在跑的 MySQL 26.10（推荐，省资源）**
-
-需要 root 密码。导入脚本（在 `server/` 目录下执行）：
+建库并导入四份脚本，顺序不能反（业务表依赖若依的 `sys_*`）：
 
 ```bash
 MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 
-# 建库
-"$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_general_ci;"
+"$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-# 若依基础表（文件名随版本变化，以实际为准）
-"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20260417.sql
-"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/quartz.sql
-
-# 本项目业务表
-"$MYSQL" -uroot -p ry-vue < ../sql/01_biz_schema.sql
-"$MYSQL" -uroot -p ry-vue < ../sql/02_biz_menu.sql
+"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20260417.sql   # 若依基础表
+"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/quartz.sql         # 定时任务表
+"$MYSQL" -uroot -p ry-vue < ../sql/01_biz_schema.sql         # 业务表
+"$MYSQL" -uroot -p ry-vue < ../sql/02_biz_menu.sql           # 后台菜单
 ```
 
-然后把 `RuoYi-Vue/ruoyi-admin/src/main/resources/application-druid.yml`
-里的 `password` 改成你的真实密码（当前是占位值 `password`）。
+当前结果：**31 张若依表 + 5 张 biz 表 + 19 条菜单**。
 
-**B. 用 Docker（需先装 Docker Desktop）**
-
-本机 3306 已被占用，必须改端口：
-
-```bash
-cd server
-# 把 docker-compose.yml 的 "3306:3306" 改成 "3307:3306"
-docker compose up -d
-```
-
-再同步把 `application-druid.yml` 的 url 端口改为 3307。
+数据库密码已写入 `RuoYi-Vue/ruoyi-admin/src/main/resources/application-druid.yml`。
+该文件属于 gitignore 的第三方源码，密码不进主仓。
 
 ### 2.2 Redis
 
-三个选项，任选：
+WSL 里 `sudo` 需要交互密码装不了，Docker 也没装，所以用了 **Windows 便携版**：
+`server/redis/`（tporadowski/redis 5.0.14.1，解压即用，已 gitignore）。
 
-```bash
-# 选项 1：WSL2 Ubuntu（本机已有 WSL，最省事，推荐）
-wsl -d Ubuntu -- sudo apt update
-wsl -d Ubuntu -- sudo apt install -y redis-server
-wsl -d Ubuntu -- sudo service redis-server start
+不需要安装、不需要管理员权限。启动方式见下一节。
 
-# 选项 2：Windows 原生（Memurai 或 Redis for Windows 的 msi 安装包）
+验证：`netstat -ano | findstr :6379` 能看到 LISTENING，或 `redis-cli ping` 返回 PONG。
 
-# 选项 3：Docker
-docker run -d --name ruoyi-redis -p 6379:6379 redis:7-alpine
-```
-
-本机 `.wslconfig` 是 `networkingMode=mirrored` + `hostAddressLoopback=true`，
-WSL 里监听的 6379 在 Windows 侧 `localhost:6379` **直接可达**，不需要端口转发。
-
-验证：`netstat -ano | findstr :6379` 能看到 LISTENING 才算好。
-
-## 3. 启动
+## 3. 启动（顺序不能反）
 
 ### 3.1 服务端
 
 ```bash
-cd server/RuoYi-Vue
-mvn clean package -DskipTests
-java -jar ruoyi-admin/target/ruoyi-admin.jar
+# 1) Redis，占用一个终端窗口
+./server/start-redis.sh
+
+# 2) 服务端，另开一个终端
+./server/start-backend.sh
 ```
 
-默认端口 **8080**，`context-path` 为 `/`，接口直接挂在根路径。
+**必须用 `start-backend.sh`，不要直接 `java -jar`。**
+本机环境会把端口顶到 **8066**（被 WorkBuddy 服务占用），只靠 `application.yml`
+里的 `server.port: 8080` 会启动失败。脚本里显式带 `--server.port=8080`，
+命令行参数优先级最高，能压过那个外部覆盖源。
+
+首次启动约 25 秒。验证：
+
+```bash
+curl --noproxy '*' http://localhost:8080/captchaImage
+# 期望: {"msg":"操作成功","captchaEnabled":true,"uuid":"...","img":"..."}
+```
+
+`--noproxy '*'` 不能省：本机代理会拦截 localhost 请求，导致看到 502 却以为服务没起。
 
 ### 3.2 后台管理端
 

@@ -2,6 +2,9 @@
 RuoYi-Vue/
 ruoyi-vue-pro/
 
+# Windows 便携版 Redis（二进制，13MB，用 start-redis.sh 启动）
+redis/
+
 # 后端构建产物
 target/
 */target/
