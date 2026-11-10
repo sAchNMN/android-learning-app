@@ -38,20 +38,19 @@ Android 与后台管理端的所有数据都来自这里。
 
 ### 2.1 数据库
 
-建库并导入四份脚本，顺序不能反（业务表依赖若依的 `sys_*`）：
+建库并导入若依自带的两份脚本：
 
 ```bash
 MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 
 "$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20260417.sql   # 若依基础表
+"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20260417.sql   # 系统表
 "$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/quartz.sql         # 定时任务表
-"$MYSQL" -uroot -p ry-vue < ../sql/01_biz_schema.sql         # 业务表
-"$MYSQL" -uroot -p ry-vue < ../sql/02_biz_menu.sql           # 后台菜单
 ```
 
-当前结果：**31 张若依表 + 5 张 biz 表 + 19 条菜单**。
+当前结果：**31 张若依表，无业务表**。
+业务表等需求确定后再加到仓库根的 `sql/`，见那里的 README。
 
 数据库密码已写入 `RuoYi-Vue/ruoyi-admin/src/main/resources/application-druid.yml`。
 该文件属于 gitignore 的第三方源码，密码不进主仓。
@@ -140,7 +139,7 @@ Android 端会自动隐藏验证码框。
 **方案 A（课设/演示，够用）**：直接用 `sys_user` 登录，建一个受限角色 `app_user`，
 只授予必要权限。Android 端零改动。
 
-**方案 B（正式项目，推荐）**：在 `ruoyi-system` 里加 `biz_app_user` 表（SQL 已备好），
+**方案 B（正式项目，推荐）**：在 `ruoyi-system` 里加一张会员表（表名自定，如 `app_user`），
 写 `AppAuthController`，复用 `TokenService.createToken(LoginUser)` 签发 token。
 这样 token 仍是若依的 Redis token，Android 端拦截器和 401 处理全不用改，
 只需把 `/login`、`/getInfo` 换成 `/app/login`、`/app/getInfo`。

@@ -13,7 +13,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.szc.learning.AppContainer
-import com.szc.learning.BuildConfig
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.databinding.ActivityHomeBinding
@@ -21,10 +20,10 @@ import com.szc.learning.ui.login.LoginActivity
 import kotlinx.coroutines.launch
 
 /**
- * 首页：展示当前登录用户与运行环境，提供退出登录。
+ * 首页：展示当前登录用户，提供退出登录。
  *
- * 业务功能（课程、题目、学习记录）后续按 feature 模块接进来，
- * 首页只负责入口聚合，不承载具体逻辑。
+ * 目前没有业务功能，只作为登录成功后的落地页。
+ * 具体业务按需拆成 feature 模块再接进来，首页只做入口聚合。
  */
 class HomeActivity : AppCompatActivity() {
 
@@ -45,8 +44,6 @@ class HomeActivity : AppCompatActivity() {
         applyWindowInsets()
         bindActions()
         observeState()
-
-        binding.baseUrlText.text = getString(R.string.home_base_url, BuildConfig.BASE_URL)
     }
 
     private fun applyWindowInsets() {
@@ -77,12 +74,6 @@ class HomeActivity : AppCompatActivity() {
 
                     binding.accountText.isVisible = state.account.isNotBlank()
                     binding.accountText.text = getString(R.string.home_account, state.account)
-
-                    binding.roleText.text = if (state.roles.isEmpty()) {
-                        getString(R.string.home_roles_empty)
-                    } else {
-                        getString(R.string.home_roles, state.roles.joinToString(", "))
-                    }
 
                     binding.logoutButton.isEnabled = !state.loggingOut
 

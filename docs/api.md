@@ -116,21 +116,16 @@
 
 服务端会删除 Redis 中的 token。客户端无论成功失败都应清本地会话。
 
-## 3. 业务接口（待实现）
+## 3. 业务接口
 
-后端需要在 `ruoyi-admin` 或新建业务模块里实现，参考 `sql/01_biz_schema.sql` 的表结构。
+**尚未设计。** 需求确定后再在这里登记。
 
-| 方法 | 路径 | 说明 | 权限 |
-| --- | --- | --- | --- |
-| GET | `/app/course/list` | 课程列表（分页） | `learning:course:list` |
-| GET | `/app/course/{courseId}` | 课程详情（含章节） | `learning:course:query` |
-| GET | `/app/chapter/{chapterId}` | 章节正文 | `learning:chapter:query` |
-| GET | `/app/question/list?chapterId=` | 章节题目 | `learning:question:list` |
-| POST | `/app/record/save` | 上报学习进度 | 登录即可 |
-| GET | `/app/record/my` | 我的学习记录 | 登录即可 |
+只需遵守两条约定：
 
-统一用 `/app/**` 前缀，与若依自带的管理端接口 `/system/**`、`/monitor/**` 隔离。
-好处是后续做权限剥离时，只需要对 `/app/**` 单独配置白名单和角色。
+1. 统一用 `/app/**` 前缀，与若依自带的 `/system/**`、`/monitor/**` 隔离。
+   后续做权限剥离时，只对 `/app/**` 单独配白名单和角色即可。
+2. 返回值仍用 `AjaxResult` 信封（`code`/`msg`/`data`），分页用 `{total, rows}`。
+   这样 Android 端的统一解包逻辑不用改。
 
 ## 4. 错误码对照
 

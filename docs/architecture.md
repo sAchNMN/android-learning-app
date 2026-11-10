@@ -116,15 +116,15 @@ release 包天然拒绝 `http://`，防止把测试地址和明文流量带到�
 
 ## 5. 加一个新功能的完整步骤
 
-以「课程列表」为例：
+以「某个列表接口」为例，`Xxx` 替换成实际业务名：
 
 1. **契约**：在 `docs/api.md` 补接口，确定字段名
-2. **DTO**：`core/network/CourseDto.kt`，字段加 `@SerializedName`
-3. **接口**：`core/network/CourseApi.kt`，`@GET("app/course/list")`
-4. **仓库**：`core/network/CourseRepository.kt`，返回 `AppResult<List<Course>>`
-5. **接线**：`ApiClient` 加 `val courseApi`，`AppContainer` 加 `courseRepository`
-6. **页面**：新建 `feature/course/` 模块或直接在 `app/ui/course/` 下写
-7. **验证**：单测规则层，真机跑通列表 → 详情 → 返回
+2. **DTO**：`core/network/XxxDto.kt`，字段加 `@SerializedName`
+3. **接口**：`core/network/XxxApi.kt`，例如 `@GET("app/xxx/list")`
+4. **仓库**：`core/network/XxxRepository.kt`，返回 `AppResult<List<Xxx>>`
+5. **接线**：`ApiClient` 加 `val xxxApi`，`AppContainer` 加 `xxxRepository`
+6. **页面**：新建 `feature/xxx/` 模块或直接在 `app/ui/xxx/` 下写
+7. **验证**：单测规则层，仪器测试跑通列表 → 详情 → 返回
 
 ## 6. 已知约束
 
