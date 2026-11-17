@@ -5,6 +5,7 @@ import com.szc.learning.core.network.ApiClient
 import com.szc.learning.core.network.AuthRepository
 import com.szc.learning.core.network.SessionStore
 import com.szc.learning.core.network.takeout.AddressRepository
+import com.szc.learning.core.network.takeout.ShopRepository
 import com.szc.learning.core.network.takeout.TakeoutRepository
 
 /**
@@ -28,4 +29,6 @@ class AppContainer(context: Context) {
     val takeoutRepository: TakeoutRepository = TakeoutRepository(apiClient.takeoutApi)
 
     val addressRepository: AddressRepository = AddressRepository(apiClient.addressApi)
+
+    val shopRepository: ShopRepository = ShopRepository(apiClient.shopApi)
 }

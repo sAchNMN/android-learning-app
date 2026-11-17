@@ -2,9 +2,11 @@ package com.szc.learning.ui.takeout
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.szc.learning.R
 import com.szc.learning.core.network.takeout.Shop
 import com.szc.learning.databinding.ItemShopBinding
 
@@ -27,13 +29,36 @@ class ShopAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(shop: Shop) {
+            val context = binding.root.context
+
             binding.shopName.text = shop.shopName
-            binding.shopMeta.text = buildString {
-                shop.category?.let { append(it).append(" · ") }
-                append(shop.ratingText).append(" 分 · ")
-                append(shop.deliveryTime).append(" 分钟送达")
+
+            // 「分类 · 4.8 分 · 月售 1286 单 · 休息中」，空项自动省略
+            binding.shopMeta.text = buildList {
+                shop.category?.takeIf { it.isNotBlank() }?.let(::add)
+                add(context.getString(R.string.shop_rating_score, shop.ratingText))
+                if (shop.monthSales > 0) {
+                    add(context.getString(R.string.shop_month_sales, shop.monthSales))
+                }
+                if (!shop.isOpen) {
+                    add(context.getString(R.string.shop_closed))
+                }
+            }.joinToString(" · ")
+
+            binding.shopFee.text = context.getString(
+                R.string.shop_fee_detail,
+                formatMoney(shop.minAmount),
+                formatMoney(shop.deliveryFee),
+                shop.deliveryTime,
+            )
+
+            binding.shopOpenTime.isVisible = !shop.openTime.isNullOrBlank()
+            binding.shopOpenTime.text = shop.openTime?.let {
+                context.getString(R.string.shop_open_time, it)
             }
-            binding.shopFee.text = "起送 ¥${formatMoney(shop.minAmount)} · 配送 ¥${formatMoney(shop.deliveryFee)}"
+
+            // 休息中的店铺仍然可点进详情，但不能下单（服务端会拦）
+            binding.root.alpha = if (shop.isOpen) 1f else 0.55f
             binding.root.setOnClickListener { onClick(shop) }
         }
     }

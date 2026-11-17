@@ -4,6 +4,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.service.TakeoutService;
+import com.ruoyi.takeout.service.TakeoutShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,16 +27,19 @@ public class AppTakeoutController {
     @Autowired
     private TakeoutService takeoutService;
 
-    /** 营业中的店铺列表。 */
+    @Autowired
+    private TakeoutShopService takeoutShopService;
+
+    /** 营业中的店铺列表。已废弃，客户端改用 /app/shop/page。 */
     @GetMapping("/shop/list")
     public AjaxResult shopList() {
-        return AjaxResult.success(takeoutService.listShops());
+        return AjaxResult.success(takeoutShopService.listShops());
     }
 
     /** 店铺详情，含在售菜品。 */
     @GetMapping("/shop/{shopId}")
     public AjaxResult shopDetail(@PathVariable("shopId") Long shopId) {
-        return AjaxResult.success(takeoutService.shopDetail(shopId));
+        return AjaxResult.success(takeoutShopService.shopDetail(shopId));
     }
 
     /** 下单。 */

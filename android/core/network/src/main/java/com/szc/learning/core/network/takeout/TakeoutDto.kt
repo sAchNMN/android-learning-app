@@ -2,23 +2,6 @@ package com.szc.learning.core.network.takeout
 
 import com.google.gson.annotations.SerializedName
 
-/** 店铺。金额用 Double，后端是 BigDecimal，Gson 直接转。 */
-data class Shop(
-    @SerializedName("shopId") val shopId: Long = 0,
-    @SerializedName("shopName") val shopName: String = "",
-    @SerializedName("description") val description: String? = null,
-    @SerializedName("category") val category: String? = null,
-    @SerializedName("address") val address: String? = null,
-    @SerializedName("phone") val phone: String? = null,
-    @SerializedName("deliveryFee") val deliveryFee: Double = 0.0,
-    @SerializedName("minAmount") val minAmount: Double = 0.0,
-    @SerializedName("deliveryTime") val deliveryTime: Int = 0,
-    @SerializedName("rating") val rating: Double = 0.0,
-) {
-    /** 评分展示成一位小数。 */
-    val ratingText: String get() = String.format("%.1f", rating)
-}
-
 /** 菜品。 */
 data class Dish(
     @SerializedName("dishId") val dishId: Long = 0,

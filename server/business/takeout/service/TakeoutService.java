@@ -3,7 +3,6 @@ package com.ruoyi.takeout.service;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.domain.OrderDetail;
-import com.ruoyi.takeout.domain.ShopDetail;
 import com.ruoyi.takeout.domain.TakeoutDish;
 import com.ruoyi.takeout.domain.TakeoutOrder;
 import com.ruoyi.takeout.domain.TakeoutOrderItem;
@@ -24,9 +23,9 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 外卖业务逻辑。
+ * 订单域业务逻辑：下单、支付、我的订单、订单详情。
  *
- * 只做 App 端需要的读与写，管理端的 CRUD 后续再补。
+ * 店铺与分类的读写已拆到 TakeoutShopService。
  * 金额一律用 BigDecimal，不用 double，避免累加出现 0.01 的误差。
  */
 @Service
@@ -43,18 +42,6 @@ public class TakeoutService {
 
     @Autowired
     private TakeoutOrderItemMapper orderItemMapper;
-
-    public List<TakeoutShop> listShops() {
-        return shopMapper.selectOpenShops();
-    }
-
-    public ShopDetail shopDetail(Long shopId) {
-        TakeoutShop shop = shopMapper.selectById(shopId);
-        if (shop == null) {
-            throw new ServiceException("店铺不存在");
-        }
-        return new ShopDetail(shop, dishMapper.selectByShop(shopId));
-    }
 
     /**
      * 下单。整个过程放在一个事务里：插订单 → 插明细 → 累加销量。

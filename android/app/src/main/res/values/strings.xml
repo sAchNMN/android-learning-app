@@ -25,6 +25,20 @@
     <!-- 外卖 -->
     <string name="shop_list_title">点外卖</string>
     <string name="shop_list_empty">暂无营业中的店铺</string>
+    <string name="shop_list_empty_category">这个分类还没有店铺</string>
+    <string name="shop_list_see_all">看看全部</string>
+    <string name="shop_category_all">全部</string>
+    <string name="shop_sort_default">综合</string>
+    <string name="shop_sort_rating">评分</string>
+    <string name="shop_sort_fast">送达最快</string>
+    <string name="shop_sort_cheap">起送最低</string>
+    <string name="shop_rating_score">%1$s 分</string>
+    <string name="shop_month_sales">月售 %1$d 单</string>
+    <string name="shop_closed">休息中</string>
+    <string name="shop_open_time">营业时间 %1$s</string>
+    <string name="shop_fee_detail">起送 ¥%1$s · 配送 ¥%2$s · 约 %3$d 分钟</string>
+    <string name="list_loading_more">加载中…</string>
+    <string name="list_load_more_failed">加载失败，点击重试</string>
     <string name="shop_checkout">去结算</string>
     <string name="shop_min_hint">还差 ¥%1$s 起送</string>
     <string name="dish_add">＋</string>
