@@ -11,6 +11,8 @@ class ShopRepository(
 
     suspend fun categories(): AppResult<List<ShopCategory>> = callData { api.categories() }
 
+    suspend fun homeIndex(): AppResult<HomeIndex> = callData { api.homeIndex() }
+
     suspend fun detail(shopId: Long): AppResult<ShopDetail> = callData { api.detail(shopId) }
 
     suspend fun favorite(shopId: Long): AppResult<Unit> = callUnit { api.favorite(shopId) }

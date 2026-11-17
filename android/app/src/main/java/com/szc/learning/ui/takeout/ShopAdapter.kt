@@ -30,38 +30,7 @@ class ShopAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(shop: Shop) {
-            val context = binding.root.context
-
-            binding.shopName.text = shop.shopName
-
-            // 「分类 · 4.8 分 · 月售 1286 单 · 休息中」，空项自动省略
-            binding.shopMeta.text = buildList {
-                shop.category?.takeIf { it.isNotBlank() }?.let(::add)
-                add(context.getString(R.string.shop_rating_score, shop.ratingText))
-                if (shop.monthSales > 0) {
-                    add(context.getString(R.string.shop_month_sales, shop.monthSales))
-                }
-                if (!shop.isOpen) {
-                    add(context.getString(R.string.shop_closed))
-                }
-            }.joinToString(" · ")
-
-            binding.shopFee.text = context.getString(
-                R.string.shop_fee_detail,
-                formatMoney(shop.minAmount),
-                formatMoney(shop.deliveryFee),
-                shop.deliveryTime,
-            )
-
-            binding.shopOpenTime.isVisible = !shop.openTime.isNullOrBlank()
-            binding.shopOpenTime.text = shop.openTime?.let {
-                context.getString(R.string.shop_open_time, it)
-            }
-
-            // 休息中的店铺仍然可点进详情，但不能下单（服务端会拦）
-            binding.root.alpha = if (shop.isOpen) 1f else 0.55f
-            binding.root.setOnClickListener { onClick(shop) }
-
+            binding.bindShop(shop) { onClick(shop) }
             if (onLongClick != null) {
                 binding.root.setOnLongClickListener {
                     onLongClick.invoke(shop)
@@ -80,6 +49,45 @@ class ShopAdapter(
             override fun areContentsTheSame(oldItem: Shop, newItem: Shop) = oldItem == newItem
         }
     }
+}
+
+/**
+ * 店铺卡片绑定逻辑。
+ *
+ * 列表与首页推荐位共用一份，避免两处各写一遍「分类 · 评分 · 月售」的拼接。
+ */
+internal fun ItemShopBinding.bindShop(shop: Shop, onClick: () -> Unit) {
+    val context = root.context
+
+    shopName.text = shop.shopName
+
+    // 「分类 · 4.8 分 · 月售 1286 单 · 休息中」，空项自动省略
+    shopMeta.text = buildList {
+        shop.category?.takeIf { it.isNotBlank() }?.let(::add)
+        add(context.getString(R.string.shop_rating_score, shop.ratingText))
+        if (shop.monthSales > 0) {
+            add(context.getString(R.string.shop_month_sales, shop.monthSales))
+        }
+        if (!shop.isOpen) {
+            add(context.getString(R.string.shop_closed))
+        }
+    }.joinToString(" · ")
+
+    shopFee.text = context.getString(
+        R.string.shop_fee_detail,
+        formatMoney(shop.minAmount),
+        formatMoney(shop.deliveryFee),
+        shop.deliveryTime,
+    )
+
+    shopOpenTime.isVisible = !shop.openTime.isNullOrBlank()
+    shopOpenTime.text = shop.openTime?.let {
+        context.getString(R.string.shop_open_time, it)
+    }
+
+    // 休息中的店铺仍然可点进详情，但不能下单（服务端会拦）
+    root.alpha = if (shop.isOpen) 1f else 0.55f
+    root.setOnClickListener { onClick() }
 }
 
 /** 金额统一两位小数。 */

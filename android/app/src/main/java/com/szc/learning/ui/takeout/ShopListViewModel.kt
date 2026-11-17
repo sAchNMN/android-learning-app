@@ -46,9 +46,12 @@ data class ShopListState(
  */
 class ShopListViewModel(
     private val repository: ShopRepository,
+    initialCategoryId: Long = 0L,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ShopListState())
+    private val _state = MutableStateFlow(
+        ShopListState(selectedCategoryId = if (initialCategoryId > 0) initialCategoryId else 0L),
+    )
     val state: StateFlow<ShopListState> = _state.asStateFlow()
 
     private var pageJob: Job? = null
@@ -154,8 +157,11 @@ class ShopListViewModel(
     }
 
     companion object {
-        fun factory(repository: ShopRepository): ViewModelProvider.Factory = viewModelFactory {
-            initializer { ShopListViewModel(repository) }
+        fun factory(
+            repository: ShopRepository,
+            initialCategoryId: Long = 0L,
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer { ShopListViewModel(repository, initialCategoryId) }
         }
     }
 }

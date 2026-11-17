@@ -12,6 +12,10 @@ import retrofit2.http.Query
  */
 interface ShopApi {
 
+    /** 首页聚合：分类 + 推荐店铺 + 热搜词。 */
+    @GET("app/home/index")
+    suspend fun homeIndex(): AjaxResult<HomeIndex>
+
     @GET("app/shop/category/list")
     suspend fun categories(): AjaxResult<List<ShopCategory>>
 

@@ -41,6 +41,13 @@ data class ShopPage(
     @SerializedName("rows") val rows: List<Shop> = emptyList(),
 )
 
+/** 首页聚合数据：分类 + 推荐店铺 + 热搜词。 */
+data class HomeIndex(
+    @SerializedName("categories") val categories: List<ShopCategory> = emptyList(),
+    @SerializedName("shops") val shops: List<Shop> = emptyList(),
+    @SerializedName("hotKeywords") val hotKeywords: List<String> = emptyList(),
+)
+
 /** 菜品。 */
 data class Dish(
     @SerializedName("dishId") val dishId: Long = 0,

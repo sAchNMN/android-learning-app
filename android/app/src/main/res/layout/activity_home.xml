@@ -13,165 +13,120 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="20dp"
-        android:paddingTop="32dp"
+        android:paddingTop="16dp"
         android:paddingBottom="24dp">
 
-        <!-- 用户信息卡 -->
+        <!-- 定位 + 我的 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/avatarText"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:background="@drawable/bg_avatar"
-                android:gravity="center"
-                android:text="@string/avatar_placeholder"
-                android:textColor="@color/white"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
+                android:id="@+id/locationText"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="@string/home_location"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                tools:text="郑州市金水区" />
 
-                <TextView
-                    android:id="@+id/nicknameText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
-                    tools:text="管理员" />
-
-                <TextView
-                    android:id="@+id/accountText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:alpha="0.6"
-                    tools:text="账号：admin" />
-            </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/mineButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:text="@string/home_mine_entry" />
         </LinearLayout>
 
         <TextView
-            android:layout_width="wrap_content"
+            android:id="@+id/greetingText"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:layout_marginBottom="10dp"
-            android:text="@string/home_section_entry"
-            android:textAppearance="?attr/textAppearanceTitleSmall"
-            android:alpha="0.6" />
+            android:layout_marginTop="2dp"
+            android:alpha="0.65"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            tools:text="早上好，管理员" />
 
+        <!-- 搜索入口（只做跳转，不在这里输入） -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/shopEntryCard"
+            android:id="@+id/searchBar"
             style="@style/Widget.Material3.CardView.Filled"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:clickable="true"
-            android:focusable="true">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/home_shop_entry"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/home_shop_desc"
-                    android:textAppearance="?attr/textAppearanceBodySmall"
-                    android:alpha="0.65" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/orderEntryCard"
-            style="@style/Widget.Material3.CardView.Outlined"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="16dp"
             android:clickable="true"
             android:focusable="true">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="20dp"
-                android:text="@string/home_order_entry"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:alpha="0.6"
+                android:padding="16dp"
+                android:text="@string/home_search_placeholder"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
         </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/addressEntryCard"
-            style="@style/Widget.Material3.CardView.Outlined"
+        <!-- 金刚区：分类 -->
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_marginTop="20dp"
+            android:alpha="0.7"
+            android:text="@string/home_section_category"
+            android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/home_address_entry"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:alpha="0.65"
-                    android:text="@string/home_address_desc"
-                    android:textAppearance="?attr/textAppearanceBodySmall" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/favoriteEntryCard"
-            style="@style/Widget.Material3.CardView.Outlined"
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/categoryGroup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_marginTop="8dp"
+            app:chipSpacingHorizontal="8dp" />
+
+        <!-- 推荐店铺 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:padding="20dp"
-                android:text="@string/home_favorite_entry"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
-        </com.google.android.material.card.MaterialCardView>
+                android:layout_weight="1"
+                android:alpha="0.7"
+                android:text="@string/home_section_recommend"
+                android:textAppearance="?attr/textAppearanceLabelLarge" />
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="32dp" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/allShopsButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:text="@string/home_all_shops" />
+        </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/logoutButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+        <LinearLayout
+            android:id="@+id/recommendContainer"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="@string/home_logout" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical" />
+
+        <ProgressBar
+            android:id="@+id/homeLoadingBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
     </LinearLayout>
 </ScrollView>

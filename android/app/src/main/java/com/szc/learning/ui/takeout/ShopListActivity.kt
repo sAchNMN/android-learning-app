@@ -1,5 +1,7 @@
 package com.szc.learning.ui.takeout
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -34,8 +36,12 @@ class ShopListActivity : AppCompatActivity() {
 
     private val container: AppContainer get() = (application as LearningApp).container
 
+    private val initialCategoryId: Long by lazy {
+        intent.getLongExtra(EXTRA_INITIAL_CATEGORY, 0L)
+    }
+
     private val viewModel: ShopListViewModel by viewModels {
-        ShopListViewModel.factory(container.shopRepository)
+        ShopListViewModel.factory(container.shopRepository, initialCategoryId)
     }
 
     private val adapter = ShopAdapter(
@@ -189,5 +195,14 @@ class ShopListActivity : AppCompatActivity() {
         chip.tag = categoryId
         binding.categoryGroup.addView(chip)
         chip.isChecked = checked
+    }
+
+    companion object {
+        private const val EXTRA_INITIAL_CATEGORY = "extra_initial_category"
+
+        /** [categoryId] 传 0 表示全部分类。 */
+        fun intent(context: Context, categoryId: Long = 0L): Intent =
+            Intent(context, ShopListActivity::class.java)
+                .putExtra(EXTRA_INITIAL_CATEGORY, categoryId)
     }
 }

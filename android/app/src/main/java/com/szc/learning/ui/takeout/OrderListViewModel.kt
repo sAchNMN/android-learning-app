@@ -39,9 +39,10 @@ data class OrderListState(
  */
 class OrderListViewModel(
     private val repository: TakeoutRepository,
+    initialTab: String = TakeoutRepository.TAB_ALL,
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(OrderListState())
+    private val _state = MutableStateFlow(OrderListState(tab = initialTab))
     val state: StateFlow<OrderListState> = _state.asStateFlow()
 
     private var pageJob: Job? = null
@@ -115,8 +116,11 @@ class OrderListViewModel(
     }
 
     companion object {
-        fun factory(repository: TakeoutRepository): ViewModelProvider.Factory = viewModelFactory {
-            initializer { OrderListViewModel(repository) }
+        fun factory(
+            repository: TakeoutRepository,
+            initialTab: String = TakeoutRepository.TAB_ALL,
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer { OrderListViewModel(repository, initialTab) }
         }
     }
 }

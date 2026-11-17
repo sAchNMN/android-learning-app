@@ -1,5 +1,7 @@
 package com.szc.learning.ui.takeout
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -31,8 +33,12 @@ class OrderListActivity : AppCompatActivity() {
 
     private val container: AppContainer get() = (application as LearningApp).container
 
+    private val initialTab: String by lazy {
+        intent.getStringExtra(EXTRA_INITIAL_TAB) ?: TakeoutRepository.TAB_ALL
+    }
+
     private val viewModel: OrderListViewModel by viewModels {
-        OrderListViewModel.factory(container.takeoutRepository)
+        OrderListViewModel.factory(container.takeoutRepository, initialTab)
     }
 
     private val adapter = OrderAdapter(
@@ -88,6 +94,10 @@ class OrderListActivity : AppCompatActivity() {
         binding.refreshLayout.setOnRefreshListener { viewModel.refresh() }
         binding.retryButton.setOnClickListener { viewModel.loadFirstPage() }
         binding.footerGroup.setOnClickListener { viewModel.loadMore() }
+
+        // 先对齐 Tab 再挂监听之外的逻辑：select() 会回调 onTabSelected，
+        // 但此时 ViewModel 已是该 tab，selectTab 会直接返回，不会重复请求
+        binding.tabLayout.getTabAt(tabs.indexOf(initialTab).coerceAtLeast(0))?.select()
 
         observe()
     }
@@ -149,5 +159,15 @@ class OrderListActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        private const val EXTRA_INITIAL_TAB = "extra_initial_tab"
+
+        fun intent(
+            context: Context,
+            tab: String = TakeoutRepository.TAB_ALL,
+        ): Intent = Intent(context, OrderListActivity::class.java)
+            .putExtra(EXTRA_INITIAL_TAB, tab)
     }
 }

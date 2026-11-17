@@ -130,7 +130,26 @@
     <string name="favorite_cancel_title">取消收藏</string>
     <string name="favorite_cancel_msg">不再收藏「%1$s」？</string>
     <string name="favorite_cancelled">已取消收藏</string>
-    <string name="home_favorite_entry">我的收藏</string>
+    <!-- 首页 T1 -->
+    <string name="home_location">郑州市金水区</string>
+    <string name="home_search_placeholder">搜索店铺、美食</string>
+    <string name="home_section_category">吃什么</string>
+    <string name="home_section_recommend">推荐店铺</string>
+    <string name="home_mine_entry">我的</string>
+    <string name="home_all_shops">全部店铺</string>
+    <string name="home_greeting_morning">早上好，%1$s</string>
+    <string name="home_greeting_noon">中午好，%1$s</string>
+    <string name="home_greeting_afternoon">下午好，%1$s</string>
+    <string name="home_greeting_evening">晚上好，%1$s</string>
+    <string name="home_greeting_guest">欢迎回来</string>
+
+    <!-- 我的 T3 -->
+    <string name="mine_title">我的</string>
+    <string name="mine_section_orders">我的订单</string>
+    <string name="mine_order_all">全部订单</string>
+    <string name="mine_section_tools">常用功能</string>
+    <string name="mine_favorite">我的收藏</string>
+    <string name="mine_address">收货地址</string>
     <string name="dish_sales">已售 %1$d</string>
     <string name="dish_selected_spec">已选：%1$s</string>
     <string name="dish_multi_spec">多种规格</string>
@@ -163,12 +182,6 @@
     <string name="checkout_confirm">提交订单</string>
     <string name="checkout_success">下单成功</string>
     <string name="pay_success">支付成功</string>
-    <string name="home_shop_entry">点外卖</string>
-    <string name="home_shop_desc">浏览店铺、下单、查看订单</string>
-    <string name="home_order_entry">我的订单</string>
-    <string name="home_address_entry">收货地址</string>
-    <string name="home_address_desc">管理下单时使用的收货信息</string>
-    <string name="home_section_entry">功能</string>
 
     <!-- 收货地址 -->
     <string name="address_list_title">收货地址</string>

@@ -70,6 +70,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.mine.MineActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.address.AddressListActivity"
             android:exported="false" />
 

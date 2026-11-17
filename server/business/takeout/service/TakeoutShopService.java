@@ -3,6 +3,7 @@ package com.ruoyi.takeout.service;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.takeout.domain.DishGroup;
 import com.ruoyi.takeout.domain.DishSearchRow;
+import com.ruoyi.takeout.domain.HomeIndex;
 import com.ruoyi.takeout.domain.PageData;
 import com.ruoyi.takeout.domain.ShopDetail;
 import com.ruoyi.takeout.domain.TakeoutDish;
@@ -40,6 +41,8 @@ public class TakeoutShopService {
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 50;
     private static final int MAX_KEYWORD_LENGTH = 20;
+    /** 首页推荐位数量。多了首屏信息过载，少了显得空。 */
+    private static final int RECOMMEND_SHOP_COUNT = 5;
 
     @Autowired
     private TakeoutShopMapper shopMapper;
@@ -58,6 +61,19 @@ public class TakeoutShopService {
 
     @Autowired
     private TakeoutHotKeywordMapper hotKeywordMapper;
+
+    // ============================================================
+    // 首页聚合（T1）
+    // ============================================================
+
+    /** 首页首屏：分类 + 推荐店铺 + 热搜词，一次拿全。 */
+    public HomeIndex homeIndex() {
+        HomeIndex index = new HomeIndex();
+        index.setCategories(categories());
+        index.setShops(shopMapper.selectPage(null, null, "rating", 0, RECOMMEND_SHOP_COUNT));
+        index.setHotKeywords(hotKeywords(8));
+        return index;
+    }
 
     // ============================================================
     // 搜索与收藏（L2 / L5）
