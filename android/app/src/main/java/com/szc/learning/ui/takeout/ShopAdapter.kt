@@ -2,11 +2,14 @@ package com.szc.learning.ui.takeout
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.szc.learning.R
 import com.szc.learning.core.network.takeout.Shop
 import com.szc.learning.databinding.ItemShopBinding
+import java.util.Locale
 
 /** 店铺列表适配器。 */
 class ShopAdapter(
@@ -27,13 +30,28 @@ class ShopAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(shop: Shop) {
+            val context = binding.root.context
+
+            // 后端没有店铺图片，用店名首字做头像，比灰色占位块好认
+            binding.shopAvatar.text = shop.shopName.take(1)
             binding.shopName.text = shop.shopName
-            binding.shopMeta.text = buildString {
-                shop.category?.let { append(it).append(" · ") }
-                append(shop.ratingText).append(" 分 · ")
-                append(shop.deliveryTime).append(" 分钟送达")
-            }
-            binding.shopFee.text = "起送 ¥${formatMoney(shop.minAmount)} · 配送 ¥${formatMoney(shop.deliveryFee)}"
+            binding.shopRating.text = context.getString(R.string.shop_rating, shop.ratingText)
+
+            binding.shopMeta.text = listOfNotNull(
+                shop.category,
+                context.getString(R.string.shop_delivery_minutes, shop.deliveryTime),
+                shop.description,
+            ).joinToString(" · ")
+
+            binding.shopFee.text = context.getString(
+                R.string.shop_detail_fee_line,
+                formatMoney(shop.minAmount),
+                formatMoney(shop.deliveryFee),
+            )
+
+            binding.shopAddress.isVisible = !shop.address.isNullOrBlank()
+            binding.shopAddress.text = shop.address.orEmpty()
+
             binding.root.setOnClickListener { onClick(shop) }
         }
     }
@@ -46,5 +64,5 @@ class ShopAdapter(
     }
 }
 
-/** 金额统一两位小数。 */
-fun formatMoney(value: Double): String = String.format("%.2f", value)
+/** 金额统一两位小数。固定 Locale.CHINA，避免小数点跟着系统语言变逗号。 */
+fun formatMoney(value: Double): String = String.format(Locale.CHINA, "%.2f", value)

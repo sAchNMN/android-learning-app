@@ -28,26 +28,55 @@ class ShopDetailViewModel(
     private val shopId: Long,
 ) : ViewModel() {
 
+    /** 购物车里的一行：菜品 + 数量 + 小计。 */
+    data class CartLine(val dish: Dish, val quantity: Int) {
+        val subtotal: Double get() = dish.price * quantity
+    }
+
     data class UiState(
         val loading: Boolean = true,
         val detail: ShopDetail? = null,
         val cart: Map<Long, Int> = emptyMap(),
         val totalAmount: Double = 0.0,
         val submitting: Boolean = false,
-        val errorMessage: String? = null,
+        /** 整页错误：详情没拉到时占满页面并给重试按钮。 */
+        val loadError: String? = null,
+        /** 一次性错误：下单失败之类，toast 一下就清掉。 */
+        val actionError: String? = null,
         val createdOrder: Order? = null,
     ) {
         val itemCount: Int get() = cart.values.sum()
 
+        val minAmount: Double get() = detail?.shop?.minAmount ?: 0.0
+
         /** 达到起送价才能结算。 */
         val canCheckout: Boolean
-            get() {
-                val min = detail?.shop?.minAmount ?: 0.0
-                return itemCount > 0 && totalAmount >= min
-            }
+            get() = itemCount > 0 && totalAmount >= minAmount
 
         val shortOfMin: Double
-            get() = ((detail?.shop?.minAmount ?: 0.0) - totalAmount).coerceAtLeast(0.0)
+            get() = (minAmount - totalAmount).coerceAtLeast(0.0)
+
+        /** 菜单行：按菜品分类分组，分组头带上数量。 */
+        val rows: List<DishRow>
+            get() {
+                val dishes = detail?.dishes.orEmpty()
+                if (dishes.isEmpty()) return emptyList()
+                return buildList {
+                    dishes.groupBy { it.category.orEmpty() }.forEach { (category, group) ->
+                        add(DishRow.Section(category, group.size))
+                        group.forEach { add(DishRow.Item(it, cart[it.dishId] ?: 0)) }
+                    }
+                }
+            }
+
+        /** 购物车明细，顺序跟随菜单顺序，不会因为点菜顺序乱跳。 */
+        val lines: List<CartLine>
+            get() {
+                val dishes = detail?.dishes.orEmpty().associateBy { it.dishId }
+                return cart.mapNotNull { (dishId, quantity) ->
+                    dishes[dishId]?.let { CartLine(it, quantity) }
+                }
+            }
     }
 
     private val _state = MutableStateFlow(UiState())
@@ -59,14 +88,14 @@ class ShopDetailViewModel(
 
     fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, errorMessage = null) }
+            _state.update { it.copy(loading = true, loadError = null) }
             when (val result = repository.shopDetail(shopId)) {
                 is AppResult.Success -> _state.update {
                     it.copy(loading = false, detail = result.data)
                 }
 
                 is AppResult.Failure -> _state.update {
-                    it.copy(loading = false, errorMessage = result.message)
+                    it.copy(loading = false, loadError = result.message)
                 }
             }
         }
@@ -80,6 +109,10 @@ class ShopDetailViewModel(
         }
     }
 
+    fun removeDish(dish: Dish) {
+        removeDish(dish.dishId)
+    }
+
     fun removeDish(dishId: Long) {
         _state.update { current ->
             val cart = current.cart.toMutableMap()
@@ -89,6 +122,10 @@ class ShopDetailViewModel(
         }
     }
 
+    fun clearCart() {
+        _state.update { it.copy(cart = emptyMap(), totalAmount = 0.0) }
+    }
+
     fun checkout(receiver: String, phone: String, address: String) {
         val snapshot = _state.value
         if (snapshot.itemCount == 0 || snapshot.submitting) return
@@ -96,7 +133,7 @@ class ShopDetailViewModel(
         val items = snapshot.cart.map { (dishId, qty) -> OrderCreateBody.Item(dishId, qty) }
 
         viewModelScope.launch {
-            _state.update { it.copy(submitting = true, errorMessage = null) }
+            _state.update { it.copy(submitting = true, actionError = null) }
             val result = repository.createOrder(
                 OrderCreateBody(
                     shopId = shopId,
@@ -117,7 +154,7 @@ class ShopDetailViewModel(
 
                     is AppResult.Failure -> current.copy(
                         submitting = false,
-                        errorMessage = result.message,
+                        actionError = result.message,
                     )
                 }
             }
@@ -128,8 +165,8 @@ class ShopDetailViewModel(
         _state.update { it.copy(createdOrder = null) }
     }
 
-    fun clearError() {
-        _state.update { it.copy(errorMessage = null) }
+    fun clearActionError() {
+        _state.update { it.copy(actionError = null) }
     }
 
     private fun totalOf(cart: Map<Long, Int>, detail: ShopDetail?): Double {
