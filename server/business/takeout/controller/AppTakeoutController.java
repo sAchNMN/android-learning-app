@@ -2,14 +2,17 @@ package com.ruoyi.takeout.controller;
 
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.takeout.domain.OrderCancelBody;
 import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.service.TakeoutService;
+import com.ruoyi.takeout.service.TakeoutShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -26,16 +29,26 @@ public class AppTakeoutController {
     @Autowired
     private TakeoutService takeoutService;
 
-    /** 营业中的店铺列表。 */
+    @Autowired
+    private TakeoutShopService takeoutShopService;
+
+    /** 营业中的店铺列表。已废弃，客户端改用 /app/shop/page。 */
     @GetMapping("/shop/list")
     public AjaxResult shopList() {
-        return AjaxResult.success(takeoutService.listShops());
+        return AjaxResult.success(takeoutShopService.listShops());
     }
 
-    /** 店铺详情，含在售菜品。 */
+    /** 店铺详情，含按分类分组的菜品、规格与收藏状态。 */
     @GetMapping("/shop/{shopId}")
     public AjaxResult shopDetail(@PathVariable("shopId") Long shopId) {
-        return AjaxResult.success(takeoutService.shopDetail(shopId));
+        return AjaxResult.success(
+                takeoutShopService.shopDetail(shopId, SecurityUtils.getUserId()));
+    }
+
+    /** 结算预览：金额、起送差额、默认地址、配送时间档位。 */
+    @PostMapping("/order/preview")
+    public AjaxResult preview(@RequestBody OrderCreateBody body) {
+        return AjaxResult.success(takeoutService.preview(SecurityUtils.getUserId(), body));
     }
 
     /** 下单。 */
@@ -44,10 +57,23 @@ public class AppTakeoutController {
         return AjaxResult.success(takeoutService.createOrder(SecurityUtils.getUserId(), body));
     }
 
-    /** 我的订单列表。 */
+    /** 我的订单列表（不分页，保留兼容；客户端已改用 /app/order/page）。 */
     @GetMapping("/order/list")
     public AjaxResult myOrders() {
         return AjaxResult.success(takeoutService.myOrders(SecurityUtils.getUserId()));
+    }
+
+    /**
+     * 订单分页。
+     *
+     * @param status all（默认）/ unpaid / ongoing / done
+     */
+    @GetMapping("/order/page")
+    public AjaxResult page(@RequestParam(value = "status", required = false) String status,
+                           @RequestParam(value = "pageNum", required = false) Integer pageNum,
+                           @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return AjaxResult.success(
+                takeoutService.page(SecurityUtils.getUserId(), status, pageNum, pageSize));
     }
 
     /** 订单详情。 */
@@ -61,5 +87,21 @@ public class AppTakeoutController {
     public AjaxResult pay(@PathVariable("orderId") Long orderId) {
         takeoutService.pay(orderId, SecurityUtils.getUserId());
         return AjaxResult.success("支付成功");
+    }
+
+    /** 取消订单。已支付但商家已接单的不能自助取消。 */
+    @PostMapping("/order/{orderId}/cancel")
+    public AjaxResult cancel(@PathVariable("orderId") Long orderId,
+                             @RequestBody(required = false) OrderCancelBody body) {
+        takeoutService.cancel(orderId, SecurityUtils.getUserId(),
+                body == null ? null : body.getReason());
+        return AjaxResult.success("已取消");
+    }
+
+    /** 确认收货。 */
+    @PostMapping("/order/{orderId}/confirm")
+    public AjaxResult confirm(@PathVariable("orderId") Long orderId) {
+        takeoutService.confirm(orderId, SecurityUtils.getUserId());
+        return AjaxResult.success("已确认收货");
     }
 }

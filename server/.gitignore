@@ -17,3 +17,6 @@ application-local.yml
 # IDE
 .idea/
 *.iml
+
+# 后端语法自检的临时产物
+.verify-stub/
