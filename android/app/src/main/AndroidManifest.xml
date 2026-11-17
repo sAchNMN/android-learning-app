@@ -38,6 +38,45 @@
             android:name=".ui.takeout.ShopDetailActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.takeout.ShopListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.takeout.OrderListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.takeout.CheckoutActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.takeout.PayActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.takeout.OrderDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.takeout.SearchActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.takeout.FavoriteListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.address.AddressListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.address.AddressEditActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

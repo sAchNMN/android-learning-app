@@ -1,5 +1,7 @@
 package com.szc.learning.core.network
 
+import com.szc.learning.core.network.takeout.AddressApi
+import com.szc.learning.core.network.takeout.ShopApi
 import com.szc.learning.core.network.takeout.TakeoutApi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -13,7 +15,8 @@ import java.util.concurrent.TimeUnit
  * 只暴露 [authApi]，后续按业务加 `CourseApi`、`StudyApi` 等，
  * 都在这里 `retrofit.create(...)` 一次即可，共用连接池和拦截器。
  *
- * @param baseUrl 必须以 `/` 结尾，例如 `http://10.0.2.2:8080/`。
+ * @param baseUrl 必须以 `/` 结尾，例如 `http://127.0.0.1:8080/`
+ *                （本机调试走 `adb reverse`，见 `app/build.gradle.kts` 的 adbReverse 任务）。
  * @param tokenProvider 同步返回当前 token，由 SessionStore 提供。
  * @param debug 是否打开 OkHttp 日志。使用 HEADERS 级别，
  *              避免把登录密码和响应体写进 Logcat。
@@ -52,6 +55,10 @@ class ApiClient(
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 
     val takeoutApi: TakeoutApi = retrofit.create(TakeoutApi::class.java)
+
+    val addressApi: AddressApi = retrofit.create(AddressApi::class.java)
+
+    val shopApi: ShopApi = retrofit.create(ShopApi::class.java)
 
     private companion object {
         const val CONNECT_TIMEOUT_SECONDS = 15L

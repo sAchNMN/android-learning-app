@@ -5,98 +5,88 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.szc.learning.cart.CartItem
-import com.szc.learning.cart.CartStore
 import com.szc.learning.core.common.AppResult
 import com.szc.learning.core.network.takeout.Dish
-import com.szc.learning.core.network.takeout.Order
-import com.szc.learning.core.network.takeout.OrderCreateBody
+import com.szc.learning.core.network.takeout.DishSpecOption
 import com.szc.learning.core.network.takeout.ShopDetail
-import com.szc.learning.core.network.takeout.TakeoutRepository
+import com.szc.learning.core.network.takeout.ShopRepository
+import com.szc.learning.data.CartStore
+import com.szc.learning.data.ShopCart
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * 店铺详情 + 购物车。
+ * 店铺详情状态。
  *
- * 购物车数据不归本 ViewModel 独占，而是写入全局 [CartStore]：
- * 退出店铺页后购物车 tab 与底部角标读到的是同一份。
- * 这里只把「本店那一份」映射进 UI 状态，别家的商品不显示。
+ * [cart] 来自 CartStore，不在页面自己的加载流程里 ——
+ * 进店时购物车可能已经有东西，不能等接口返回才显示。
+ */
+data class ShopDetailState(
+    val loading: Boolean = false,
+    val detail: ShopDetail? = null,
+    val cart: ShopCart = ShopCart(),
+    val favorited: Boolean = false,
+    val favoriteBusy: Boolean = false,
+    val loadError: String? = null,
+    val actionError: String? = null,
+) {
+    val shopName: String get() = detail?.shop?.shopName.orEmpty()
+
+    val minAmount: Double get() = detail?.shop?.minAmount ?: 0.0
+
+    val deliveryFee: Double get() = detail?.shop?.deliveryFee ?: 0.0
+
+    val shopOpen: Boolean get() = detail?.shop?.isOpen ?: false
+
+    /** 还差多少起送，0 表示已达标。 */
+    val shortOfMin: Double get() = (minAmount - cart.totalAmount).coerceAtLeast(0.0)
+
+    val canCheckout: Boolean
+        get() = shopOpen && cart.itemCount > 0 && shortOfMin <= 0.0
+}
+
+/**
+ * 店铺详情 + 购物车编排。
+ *
+ * 购物车实体在 [CartStore]（全局单例、可按 shopId 共存），
+ * ViewModel 只负责把当前店铺的那一份映射成 UI 状态。
  */
 class ShopDetailViewModel(
-    private val repository: TakeoutRepository,
+    private val repository: ShopRepository,
     private val cartStore: CartStore,
     private val shopId: Long,
 ) : ViewModel() {
 
-    data class UiState(
-        val loading: Boolean = true,
-        val detail: ShopDetail? = null,
-        /** dishId → 数量，喂给菜单行做加减态。 */
-        val cart: Map<Long, Int> = emptyMap(),
-        /** 购物车明细，喂给底表。 */
-        val cartItems: List<CartItem> = emptyList(),
-        val totalAmount: Double = 0.0,
-        val submitting: Boolean = false,
-        /** 整页错误：详情没拉到时占满页面并给重试按钮。 */
-        val loadError: String? = null,
-        /** 一次性错误：下单失败之类，toast 一下就清掉。 */
-        val actionError: String? = null,
-        val createdOrder: Order? = null,
-    ) {
-        val itemCount: Int get() = cart.values.sum()
-
-        val minAmount: Double get() = detail?.shop?.minAmount ?: 0.0
-
-        /** 达到起送价才能结算。 */
-        val canCheckout: Boolean
-            get() = itemCount > 0 && totalAmount >= minAmount
-
-        val shortOfMin: Double
-            get() = (minAmount - totalAmount).coerceAtLeast(0.0)
-
-        /** 菜单行：按菜品分类分组，分组头带上数量。 */
-        val rows: List<DishRow>
-            get() {
-                val dishes = detail?.dishes.orEmpty()
-                if (dishes.isEmpty()) return emptyList()
-                return buildList {
-                    dishes.groupBy { it.category.orEmpty() }.forEach { (category, group) ->
-                        add(DishRow.Section(category, group.size))
-                        group.forEach { add(DishRow.Item(it, cart[it.dishId] ?: 0)) }
-                    }
-                }
-            }
-    }
-
-    private val _state = MutableStateFlow(UiState())
-    val state: StateFlow<UiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(ShopDetailState())
+    val state: StateFlow<ShopDetailState> = _state.asStateFlow()
 
     init {
         load()
+        observeCart()
+    }
+
+    private fun observeCart() {
         viewModelScope.launch {
-            cartStore.state.collect { cart ->
-                val mine = cart.takeIf { it.shopId == shopId }
-                _state.update { current ->
-                    current.copy(
-                        cart = mine?.items?.associate { it.dishId to it.quantity }.orEmpty(),
-                        cartItems = mine?.items.orEmpty(),
-                        totalAmount = mine?.totalAmount ?: 0.0,
-                    )
-                }
-            }
+            cartStore.carts
+                .map { carts -> carts[shopId] ?: ShopCart(shopId = shopId) }
+                .collect { cart -> _state.update { it.copy(cart = cart) } }
         }
     }
 
     fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, loadError = null) }
-            when (val result = repository.shopDetail(shopId)) {
+            _state.update { it.copy(loading = it.detail == null, loadError = null) }
+            when (val result = repository.detail(shopId)) {
                 is AppResult.Success -> _state.update {
-                    it.copy(loading = false, detail = result.data)
+                    it.copy(
+                        loading = false,
+                        detail = result.data,
+                        favorited = result.data.favorited,
+                    )
                 }
 
                 is AppResult.Failure -> _state.update {
@@ -106,79 +96,59 @@ class ShopDetailViewModel(
         }
     }
 
-    fun addDish(dish: Dish) {
-        val shop = _state.value.detail?.shop ?: return
-        cartStore.add(dish, shop.shopId, shop.shopName, shop.minAmount, shop.deliveryFee)
+    fun add(dish: Dish, options: List<DishSpecOption>) {
+        cartStore.add(shopId, state.value.shopName, dish, options)
     }
 
-    fun increaseDish(dishId: Long) {
-        cartStore.increase(dishId)
-    }
+    fun increase(lineKey: String) = cartStore.increase(shopId, lineKey)
 
-    fun removeDish(dish: Dish) {
-        cartStore.decrease(dish.dishId)
-    }
+    fun decrease(lineKey: String) = cartStore.decrease(shopId, lineKey)
 
-    fun removeDish(dishId: Long) {
-        cartStore.decrease(dishId)
-    }
+    fun decreaseDish(dish: Dish) = cartStore.decreaseByDish(shopId, dish.dishId)
 
-    fun clearCart() {
-        cartStore.clear()
-    }
+    fun clearCart() = cartStore.clear(shopId)
 
-    fun checkout(receiver: String, phone: String, address: String) {
+    /** 别的店还有菜时，加购前必须提示，否则结算会混单。 */
+    fun hasOtherShopCart(): Boolean =
+        cartStore.carts.value.any { (id, cart) -> id != shopId && !cart.isEmpty }
+
+    fun clearOtherCarts() = cartStore.clearOthers(shopId)
+
+    fun toggleFavorite() {
         val snapshot = _state.value
-        if (snapshot.itemCount == 0 || snapshot.submitting) return
+        if (snapshot.favoriteBusy || snapshot.detail == null) return
 
-        val items = snapshot.cart.map { (dishId, qty) -> OrderCreateBody.Item(dishId, qty) }
-
+        val target = !snapshot.favorited
         viewModelScope.launch {
-            _state.update { it.copy(submitting = true, actionError = null) }
-            val result = repository.createOrder(
-                OrderCreateBody(
-                    shopId = shopId,
-                    items = items,
-                    receiver = receiver,
-                    phone = phone,
-                    address = address,
-                ),
-            )
-            if (result is AppResult.Success) {
-                cartStore.clearFor(shopId)
+            _state.update { it.copy(favoriteBusy = true) }
+            val result = if (target) {
+                repository.favorite(shopId)
+            } else {
+                repository.unfavorite(shopId)
             }
-            _state.update { current ->
-                when (result) {
-                    is AppResult.Success -> current.copy(
-                        submitting = false,
-                        createdOrder = result.data.order,
-                    )
+            when (result) {
+                is AppResult.Success -> _state.update {
+                    it.copy(favoriteBusy = false, favorited = target)
+                }
 
-                    is AppResult.Failure -> current.copy(
-                        submitting = false,
-                        actionError = result.message,
-                    )
+                is AppResult.Failure -> _state.update {
+                    it.copy(favoriteBusy = false, actionError = result.message)
                 }
             }
         }
     }
 
-    fun consumeCreatedOrder() {
-        _state.update { it.copy(createdOrder = null) }
-    }
-
-    fun clearActionError() {
+    fun consumeError() {
         _state.update { it.copy(actionError = null) }
     }
 
     companion object {
         fun factory(
-            repository: TakeoutRepository,
+            repository: ShopRepository,
             cartStore: CartStore,
             shopId: Long,
-        ): ViewModelProvider.Factory =
-            viewModelFactory {
-                initializer { ShopDetailViewModel(repository, cartStore, shopId) }
-            }
+        ): ViewModelProvider.Factory = viewModelFactory {
+            initializer { ShopDetailViewModel(repository, cartStore, shopId) }
+        }
     }
 }

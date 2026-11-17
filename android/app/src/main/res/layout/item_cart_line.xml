@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 购物车明细行 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -15,53 +15,63 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/cartDishName"
+            android:id="@+id/lineName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
             tools:text="红烧牛肉面" />
 
         <TextView
-            android:id="@+id/cartSubtotal"
+            android:id="@+id/lineSpec"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:alpha="0.6"
             android:textAppearance="?attr/textAppearanceBodySmall"
-            tools:text="¥44.00" />
+            android:visibility="gone"
+            tools:text="大份/微辣"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/lineSubtotal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorPrimary"
+            tools:text="¥26.00" />
     </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/cartMinus"
+        android:id="@+id/minusButton"
         style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:insetTop="0dp"
         android:insetBottom="0dp"
-        android:minWidth="0dp"
+        android:minWidth="30dp"
         android:padding="0dp"
-        android:text="@string/dish_remove"
-        android:textSize="15sp" />
+        android:text="@string/dish_decrease"
+        android:textSize="14sp"
+        app:cornerRadius="15dp" />
 
     <TextView
-        android:id="@+id/cartQty"
-        android:layout_width="wrap_content"
+        android:id="@+id/qtyText"
+        android:layout_width="28dp"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:minWidth="28dp"
         android:textAppearance="?attr/textAppearanceTitleSmall"
         tools:text="2" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/cartPlus"
+        android:id="@+id/plusButton"
         style="@style/Widget.Material3.Button.TonalButton"
-        android:layout_width="34dp"
-        android:layout_height="34dp"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:insetTop="0dp"
         android:insetBottom="0dp"
-        android:minWidth="0dp"
+        android:minWidth="30dp"
         android:padding="0dp"
         android:text="@string/dish_add"
-        android:textSize="15sp" />
+        android:textSize="14sp"
+        app:cornerRadius="15dp" />
 </LinearLayout>

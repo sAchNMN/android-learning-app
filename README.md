@@ -105,10 +105,14 @@ npm run dev
 
 ```bash
 cd android
-./gradlew :app:assembleDebug
+./gradlew :app:installDebug
 ```
 
-登录账号 `admin / admin123`。
+`installDebug` 会自动先跑 `adbReverse` 任务建好 `adb reverse tcp:8080 tcp:8080`，
+再把包装进设备，所以一条命令即可。登录账号 `admin / admin123`。
+
+> 改了代码想只看编译结果就 `assembleDebug`，但它**不装包** —— 模拟器跑的还是旧 APK。
+> 判断依据：登录页底部的「接口地址」文字。
 
 ## 接口约定
 
@@ -118,9 +122,13 @@ cd android
 2. token 走 **`Authorization: Bearer <token>`**，`Bearer ` 前缀不能省
 3. **登录过期是 HTTP 200 + body `code:401`**，只看 HTTP 状态码会漏判
 
-模拟器访问后端：默认 `http://10.0.2.2:8080/`。
-本机 QEMU 的该映射不生效，改用 `adb reverse tcp:8080 tcp:8080`
-并以 `-PapiBaseUrl=http://127.0.0.1:8080/` 构建；真机用电脑局域网 IP。
+接口地址：debug 默认 `http://127.0.0.1:8080/`，配套 `adb reverse tcp:8080 tcp:8080`
+（`installDebug` 自动执行）。**不要用 `10.0.2.2`** —— 本机 QEMU 的该映射不生效，
+表现为 OkHttp 连 15 秒超时、而宿主机 `curl 127.0.0.1:8080` 一切正常。
+
+真机/无线调试连不上 adb 时，改用电脑局域网 IP 覆盖：
+`./gradlew :app:installDebug -PapiBaseUrl=http://192.168.1.10:8080/`，
+并放行 Windows 防火墙 8080。
 
 ## 开发约定
 

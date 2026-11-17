@@ -2,96 +2,70 @@ package com.szc.learning.ui.takeout
 
 import android.content.Context
 import android.view.LayoutInflater
-import android.view.ViewGroup
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szc.learning.R
-import com.szc.learning.cart.CartItem
+import com.szc.learning.data.ShopCart
 import com.szc.learning.databinding.ItemCartLineBinding
 import com.szc.learning.databinding.SheetCartBinding
 
 /**
- * 店铺页内的购物车明细底表。
+ * 购物车弹层：逐行增减、清空。
  *
- * 数据直接来自全局 [com.szc.learning.cart.CartStore]，只负责展示与回调；
- * 增删都往外抛，宿主 Activity 调 ViewModel，再经 StateFlow 回灌 [submit]。
+ * 购物车行数很少（同一家店的菜品组合），用 LinearLayout 动态添加，
+ * 不上 RecyclerView —— 省一个 Adapter，且没有嵌套滚动问题。
  */
 class CartSheetDialog(
     context: Context,
-    private val onIncrease: (Long) -> Unit,
-    private val onDecrease: (Long) -> Unit,
+    cart: ShopCart,
+    private val onIncrease: (String) -> Unit,
+    private val onDecrease: (String) -> Unit,
     private val onClear: () -> Unit,
 ) : BottomSheetDialog(context) {
 
     private val binding = SheetCartBinding.inflate(LayoutInflater.from(context))
 
-    private val adapter = CartLineAdapter(
-        onIncrease = onIncrease,
-        onDecrease = onDecrease,
-    )
-
     init {
         setContentView(binding.root)
-        binding.cartRecycler.layoutManager = LinearLayoutManager(context)
-        binding.cartRecycler.adapter = adapter
-        binding.clearButton.setOnClickListener { onClear() }
+        binding.clearButton.setOnClickListener { confirmClear() }
+        render(cart)
     }
 
-    fun submit(items: List<CartItem>) {
-        adapter.submitList(items)
-        val empty = items.isEmpty()
-        binding.sheetEmpty.isVisible = empty
-        binding.cartRecycler.isVisible = !empty
-        binding.clearButton.isEnabled = !empty
-        binding.sheetTitle.text = context.getString(
-            R.string.cart_sheet_title,
-            items.sumOf { it.quantity },
-        )
+    /** 购物车变化时由 Activity 调用，避免弹层与底部栏数据不一致。 */
+    fun render(cart: ShopCart) {
+        binding.lineContainer.removeAllViews()
+
+        if (cart.isEmpty) {
+            dismiss()
+            return
+        }
+
+        cart.lines.forEach { line ->
+            val row = ItemCartLineBinding.inflate(
+                LayoutInflater.from(context),
+                binding.lineContainer,
+                false,
+            )
+            row.lineName.text = line.dishName
+            row.lineSpec.isVisible = line.specText.isNotBlank()
+            row.lineSpec.text = line.specText
+            row.lineSubtotal.text = context.getString(R.string.money_amount, formatMoney(line.subtotal))
+            row.qtyText.text = line.quantity.toString()
+            row.plusButton.setOnClickListener { onIncrease(line.key) }
+            row.minusButton.setOnClickListener { onDecrease(line.key) }
+            binding.lineContainer.addView(row.root)
+        }
     }
 
-    private class CartLineAdapter(
-        private val onIncrease: (Long) -> Unit,
-        private val onDecrease: (Long) -> Unit,
-    ) : ListAdapter<CartItem, CartLineAdapter.ViewHolder>(DIFF) {
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            val binding =
-                ItemCartLineBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return ViewHolder(binding)
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(getItem(position))
-        }
-
-        inner class ViewHolder(
-            private val binding: ItemCartLineBinding,
-        ) : RecyclerView.ViewHolder(binding.root) {
-
-            fun bind(item: CartItem) {
-                binding.cartDishName.text = item.dishName
-                binding.cartQty.text = item.quantity.toString()
-                binding.cartSubtotal.text = binding.root.context.getString(
-                    R.string.money_format,
-                    formatMoney(item.subtotal),
-                )
-                binding.cartMinus.setOnClickListener { onDecrease(item.dishId) }
-                binding.cartPlus.setOnClickListener { onIncrease(item.dishId) }
+    private fun confirmClear() {
+        MaterialAlertDialogBuilder(context)
+            .setMessage(R.string.cart_clear_confirm)
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_confirm) { _, _ ->
+                onClear()
+                dismiss()
             }
-        }
-
-        private companion object {
-            val DIFF = object : DiffUtil.ItemCallback<CartItem>() {
-                override fun areItemsTheSame(oldItem: CartItem, newItem: CartItem) =
-                    oldItem.dishId == newItem.dishId
-
-                override fun areContentsTheSame(oldItem: CartItem, newItem: CartItem) =
-                    oldItem == newItem
-            }
-        }
+            .show()
     }
 }

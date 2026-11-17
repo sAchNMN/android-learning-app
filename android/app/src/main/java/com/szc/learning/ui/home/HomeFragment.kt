@@ -20,9 +20,9 @@ import com.szc.learning.AppContainer
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.databinding.FragmentHomeBinding
+import com.szc.learning.ui.takeout.LegacyShopListViewModel
 import com.szc.learning.ui.takeout.ShopAdapter
 import com.szc.learning.ui.takeout.ShopDetailActivity
-import com.szc.learning.ui.takeout.ShopListViewModel
 import com.szc.learning.ui.takeout.ShopSort
 import kotlinx.coroutines.launch
 
@@ -41,14 +41,16 @@ class HomeFragment : Fragment() {
     private val container: AppContainer
         get() = (requireActivity().application as LearningApp).container
 
-    private lateinit var viewModel: ShopListViewModel
+    private lateinit var viewModel: LegacyShopListViewModel
 
-    private val adapter = ShopAdapter { shop ->
-        startActivity(
-            Intent(requireContext(), ShopDetailActivity::class.java)
-                .putExtra(ShopDetailActivity.EXTRA_SHOP_ID, shop.shopId),
-        )
-    }
+    private val adapter = ShopAdapter(
+        onClick = { shop ->
+            startActivity(
+                Intent(requireContext(), ShopDetailActivity::class.java)
+                    .putExtra(ShopDetailActivity.EXTRA_SHOP_ID, shop.shopId),
+            )
+        },
+    )
 
     /** 上次渲染的分类集合，用来判断要不要重建芯片，避免每次刷新都闪一下。 */
     private var renderedCategories: List<String>? = null
@@ -66,8 +68,8 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(
             this,
-            ShopListViewModel.factory(container.takeoutRepository),
-        )[ShopListViewModel::class.java]
+            LegacyShopListViewModel.legacyFactory(container.shopRepository),
+        )[LegacyShopListViewModel::class.java]
 
         binding.shopRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.shopRecycler.adapter = adapter
@@ -163,7 +165,7 @@ class HomeFragment : Fragment() {
         ShopSort.MIN_AMOUNT -> R.string.shop_sort_min
     }
 
-    private fun renderEmptyState(state: ShopListViewModel.UiState, empty: Boolean) {
+    private fun renderEmptyState(state: LegacyShopListViewModel.UiState, empty: Boolean) {
         binding.emptyGroup.isVisible = empty && !state.loading
         if (!binding.emptyGroup.isVisible) return
 

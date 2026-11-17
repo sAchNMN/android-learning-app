@@ -162,7 +162,8 @@
 
 1. 浏览器直接访问 `http://localhost:8080/captchaImage` 有没有 JSON 返回？
    - 没有 → 后端没起来，或端口不是 8080
-2. 模拟器里 `10.0.2.2` 能不能通？真机要用电脑局域网 IP，不能用 `localhost`
+2. App 侧 `BASE_URL` 对不对？debug 默认 `http://127.0.0.1:8080/`，需要 `adb reverse tcp:8080 tcp:8080`
+   （`./gradlew :app:installDebug` 会自动执行）。别用 `10.0.2.2`，本机该映射不通
 3. 登录返回 200 但 token 为空 → 请求打到了别的服务，检查 `BASE_URL`
 4. 登录成功但 `/getInfo` 返回 401 → 拦截器没带 `Bearer ` 前缀
 5. 首页一直显示「网络连接失败」→ 真机没把电脑 IP 加进防火墙白名单

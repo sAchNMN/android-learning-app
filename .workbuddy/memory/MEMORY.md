@@ -34,6 +34,12 @@ docs/      接口契约 api.md、架构 architecture.md
 - 恢复方式：取消该行 + 取消 `app/build.gradle.kts` 里对应依赖注释
 - `SnakeRules` 是重写版（原文件被误删），行为以 `SnakeRulesTest` 的 8 条用例为准
 
+## 本机联调（已定型）
+- 默认账号 `admin` / `admin123`（若依超管）
+- **`10.0.2.2:8080` 在本机连不通**（App 侧 15s connect timeout，宿主机 curl 正常）。
+  稳定走法：`-PapiBaseUrl=http://127.0.0.1:8080/` 打包 + `adb reverse tcp:8080 tcp:8080`
+- `assembleDebug` 不装包，改完必须 `adb install -r`
+
 ## 操作纪律（本机特有）
 - `adb` server 活不过一次 Bash 调用，安装/截图必须写在**同一个脚本**里跑完
 - `MSYS_NO_PATHCONV=1` 时传给 `adb.exe` 的本地路径要用 `C:/` 形式

@@ -20,8 +20,8 @@ import org.junit.runner.RunWith
  * 外卖闭环仪器测试：登录 → 我的 → 首页 → 选店 → 加菜 → 结算 → 订单 tab。
  *
  * 跑之前要保证：
- * 1. 后端在 8080 且可访问（模拟器侧用 `adb reverse tcp:8080 tcp:8080`，
- *    APK 以 `-PapiBaseUrl=http://127.0.0.1:8080/` 构建）
+ * 1. 后端在 8080 且可访问 —— APK 默认 `BASE_URL` 就是 `http://127.0.0.1:8080/`，
+ *    配套的 `adb reverse tcp:8080 tcp:8080` 已由 `installDebug` 自动执行
  * 2. 服务端验证码已关闭（`sys.account.captchaEnabled=false`）
  * 3. 数据库里有 `sql/02_takeout_data.sql` 的店铺与菜品
  */

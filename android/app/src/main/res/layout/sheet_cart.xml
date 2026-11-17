@@ -1,53 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 购物车明细底表 -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingTop="12dp"
-    android:paddingBottom="24dp">
+    android:layout_height="wrap_content">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="20dp">
-
-        <TextView
-            android:id="@+id/sheetTitle"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textAppearance="?attr/textAppearanceTitleMedium"
-            tools:text="已选 2 件" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/clearButton"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minWidth="0dp"
-            android:text="@string/cart_sheet_clear" />
-    </LinearLayout>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/cartRecycler"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:orientation="vertical"
         android:paddingHorizontal="20dp"
-        tools:listitem="@layout/item_cart" />
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp">
 
-    <TextView
-        android:id="@+id/sheetEmpty"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:alpha="0.6"
-        android:gravity="center"
-        android:paddingVertical="28dp"
-        android:text="@string/cart_sheet_empty"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
-        android:visibility="gone" />
-</LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/cart_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/clearButton"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:text="@string/cart_clear"
+                android:textColor="?attr/colorError" />
+        </LinearLayout>
+
+        <!-- 购物车行动态添加。行数很少（同店菜品组合），不用 RecyclerView -->
+        <LinearLayout
+            android:id="@+id/lineContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            tools:ignore="UselessLeaf" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -1,6 +1,5 @@
 package com.szc.learning.ui.cart
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -15,10 +14,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.AppContainer
 import com.szc.learning.LearningApp
 import com.szc.learning.R
-import com.szc.learning.cart.CartState
+import com.szc.learning.data.ShopCart
 import com.szc.learning.databinding.FragmentCartBinding
 import com.szc.learning.ui.main.MainActivity
-import com.szc.learning.ui.takeout.ShopDetailActivity
+import com.szc.learning.ui.takeout.CheckoutActivity
 import com.szc.learning.ui.takeout.formatMoney
 import kotlinx.coroutines.launch
 
@@ -33,9 +32,12 @@ class CartFragment : Fragment() {
 
     private lateinit var viewModel: CartViewModel
 
+    /** 当前展示的店铺，加减行与去结算都要带上它。 */
+    private var activeShopId: Long = 0
+
     private val adapter = CartAdapter(
-        onIncrease = { dishId -> viewModel.increase(dishId) },
-        onDecrease = { dishId -> viewModel.decrease(dishId) },
+        onIncrease = { lineKey -> viewModel.increase(activeShopId, lineKey) },
+        onDecrease = { lineKey -> viewModel.decrease(activeShopId, lineKey) },
     )
 
     override fun onCreateView(
@@ -62,12 +64,8 @@ class CartFragment : Fragment() {
         }
 
         binding.checkoutButton.setOnClickListener {
-            val cart = viewModel.state.value
-            if (cart.shopId <= 0) return@setOnClickListener
-            startActivity(
-                Intent(requireContext(), ShopDetailActivity::class.java)
-                    .putExtra(ShopDetailActivity.EXTRA_SHOP_ID, cart.shopId),
-            )
+            if (activeShopId <= 0) return@setOnClickListener
+            startActivity(CheckoutActivity.intent(requireContext(), activeShopId))
         }
 
         observe()
@@ -76,28 +74,35 @@ class CartFragment : Fragment() {
     private fun observe() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.state.collect(::render)
+                viewModel.carts.collect { carts -> render(viewModel.activeCart(carts)) }
             }
         }
     }
 
-    private fun render(cart: CartState) {
-        adapter.submitList(cart.items)
+    private fun render(cart: ShopCart?) {
+        if (cart == null || cart.isEmpty) {
+            activeShopId = 0
+            adapter.submitList(emptyList())
+            binding.emptyGroup.isVisible = true
+            binding.cartRecycler.isVisible = false
+            binding.bottomBar.isVisible = false
+            binding.shopNameText.isVisible = false
+            return
+        }
 
-        val isEmpty = cart.isEmpty
-        binding.emptyGroup.isVisible = isEmpty
-        binding.cartRecycler.isVisible = !isEmpty
-        binding.bottomBar.isVisible = !isEmpty
-        binding.shopNameText.isVisible = !isEmpty
+        activeShopId = cart.shopId
+        adapter.submitList(cart.lines)
+
+        binding.emptyGroup.isVisible = false
+        binding.cartRecycler.isVisible = true
+        binding.bottomBar.isVisible = true
+        binding.shopNameText.isVisible = true
         binding.shopNameText.text = cart.shopName
 
         binding.totalText.text = getString(R.string.cart_total, formatMoney(cart.totalAmount))
-        binding.hintText.text = if (cart.canCheckout) {
-            getString(R.string.cart_item_total, cart.itemCount)
-        } else {
-            getString(R.string.shop_min_hint, formatMoney(cart.shortOfMin))
-        }
-        binding.checkoutButton.isEnabled = cart.canCheckout
+        binding.hintText.text = getString(R.string.cart_item_total, cart.itemCount)
+        // 起送价由结算页 preview 校验，这里只要有菜就允许进结算
+        binding.checkoutButton.isEnabled = cart.itemCount > 0
     }
 
     override fun onDestroyView() {

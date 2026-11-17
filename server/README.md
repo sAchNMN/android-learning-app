@@ -117,13 +117,14 @@ Windows 上 80 端口可能需要管理员权限，起不来就改 `vite.config.
 
 | 项 | 若依实际值 | 影响 |
 | --- | --- | --- |
-| 端口 | 8080 | 模拟器用 `http://10.0.2.2:8080/`，真机用电脑局域网 IP |
+| 端口 | 8080 | App 默认连 `http://127.0.0.1:8080/` + `adb reverse tcp:8080 tcp:8080`（`installDebug` 自动建隧道） |
 | context-path | `/` | 接口是 `/login` 而不是 `/prod-api/login` |
 | 成功码 | `code == 200` | 不是 0 |
 | 认证头 | `Authorization: Bearer <token>`（`token.header` 配置） | 少了 `Bearer ` 前缀后端查不到 token |
 
-真机调试改 `android/app/build.gradle.kts` 里 debug 的 `BASE_URL` 为电脑局域网 IP，
-例如 `http://192.168.1.10:8080/`，并放行 Windows 防火墙 8080。
+模拟器和 USB 真机都走 `adb reverse`，不用改代码。只有无线调试（adb 连不上）时，
+才用局域网 IP 覆盖：`./gradlew :app:installDebug -PapiBaseUrl=http://192.168.1.10:8080/`，
+并放行 Windows 防火墙 8080。
 
 ## 5. 验证码
 

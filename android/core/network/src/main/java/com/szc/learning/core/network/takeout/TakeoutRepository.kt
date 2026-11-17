@@ -1,62 +1,50 @@
 package com.szc.learning.core.network.takeout
 
 import com.szc.learning.core.common.AppResult
-import com.szc.learning.core.network.AjaxResult
-import com.szc.learning.core.network.toAppFailure
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.szc.learning.core.network.callData
+import com.szc.learning.core.network.callUnit
 
 /**
- * 外卖业务仓库。
+ * 订单域仓库。
  *
- * 和 [com.szc.learning.core.network.AuthRepository] 一样：不抛异常，
- * 统一返回 [AppResult]，让 ViewModel 只关心成功/失败。
+ * 店铺相关的读写已迁到 [ShopRepository]。不抛异常，统一返回 [AppResult]。
  */
 class TakeoutRepository(
     private val api: TakeoutApi,
 ) {
 
-    suspend fun shops(): AppResult<List<Shop>> = callData { api.shopList() }
-
-    suspend fun shopDetail(shopId: Long): AppResult<ShopDetail> = callData { api.shopDetail(shopId) }
+    suspend fun preview(body: OrderCreateBody): AppResult<OrderPreview> =
+        callData { api.preview(body) }
 
     suspend fun createOrder(body: OrderCreateBody): AppResult<OrderDetail> =
         callData { api.createOrder(body) }
 
     suspend fun myOrders(): AppResult<List<Order>> = callData { api.myOrders() }
 
+    suspend fun page(
+        status: String = TAB_ALL,
+        pageNum: Int = 1,
+        pageSize: Int = PAGE_SIZE,
+    ): AppResult<OrderPage> = callData { api.page(status, pageNum, pageSize) }
+
     suspend fun orderDetail(orderId: Long): AppResult<OrderDetail> =
         callData { api.orderDetail(orderId) }
 
-    suspend fun pay(orderId: Long): AppResult<Unit> = withContext(Dispatchers.IO) {
-        try {
-            val response = api.pay(orderId)
-            if (response.isSuccess) {
-                AppResult.Success(Unit)
-            } else {
-                AppResult.Failure(response.msg.ifBlank { "支付失败" }, response.code)
-            }
-        } catch (throwable: Throwable) {
-            throwable.toAppFailure()
-        }
-    }
+    /** 支付只返回 msg，没有 data，用 [callUnit]。 */
+    suspend fun pay(orderId: Long): AppResult<Unit> = callUnit { api.pay(orderId) }
 
-    /** data 为空时视为服务端异常，避免把 null 当成功传给 UI。 */
-    private suspend fun <T : Any> callData(block: suspend () -> AjaxResult<T>): AppResult<T> =
-        withContext(Dispatchers.IO) {
-            try {
-                val response = block()
-                val data = response.data
-                when {
-                    !response.isSuccess -> AppResult.Failure(
-                        response.msg.ifBlank { "请求失败" },
-                        response.code,
-                    )
-                    data == null -> AppResult.Failure("服务端返回数据为空", AppResult.CODE_PARSE)
-                    else -> AppResult.Success(data)
-                }
-            } catch (throwable: Throwable) {
-                throwable.toAppFailure()
-            }
-        }
+    suspend fun cancel(orderId: Long, reason: String?): AppResult<Unit> =
+        callUnit { api.cancel(orderId, OrderCancelBody(reason)) }
+
+    suspend fun confirm(orderId: Long): AppResult<Unit> = callUnit { api.confirm(orderId) }
+
+    companion object {
+        /** 与服务端 statusesOf() 一一对应。 */
+        const val TAB_ALL = "all"
+        const val TAB_UNPAID = "unpaid"
+        const val TAB_ONGOING = "ongoing"
+        const val TAB_DONE = "done"
+
+        const val PAGE_SIZE = 10
+    }
 }

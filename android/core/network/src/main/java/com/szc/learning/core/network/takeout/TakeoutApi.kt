@@ -5,19 +5,18 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
- * 外卖业务接口。
+ * 订单接口。
  *
- * 全部挂在外卖前缀下（app 开头），需要带登录 token。
+ * 店铺相关的接口已迁到 [ShopApi]，这里只管订单。
  */
 interface TakeoutApi {
 
-    @GET("app/shop/list")
-    suspend fun shopList(): AjaxResult<List<Shop>>
-
-    @GET("app/shop/{shopId}")
-    suspend fun shopDetail(@Path("shopId") shopId: Long): AjaxResult<ShopDetail>
+    /** 结算预览：金额、起送差额、默认地址、配送时间档位。 */
+    @POST("app/order/preview")
+    suspend fun preview(@Body body: OrderCreateBody): AjaxResult<OrderPreview>
 
     @POST("app/order/create")
     suspend fun createOrder(@Body body: OrderCreateBody): AjaxResult<OrderDetail>
@@ -25,9 +24,26 @@ interface TakeoutApi {
     @GET("app/order/list")
     suspend fun myOrders(): AjaxResult<List<Order>>
 
+    /** @param status all / unpaid / ongoing / done */
+    @GET("app/order/page")
+    suspend fun page(
+        @Query("status") status: String,
+        @Query("pageNum") pageNum: Int,
+        @Query("pageSize") pageSize: Int,
+    ): AjaxResult<OrderPage>
+
     @GET("app/order/{orderId}")
     suspend fun orderDetail(@Path("orderId") orderId: Long): AjaxResult<OrderDetail>
 
     @POST("app/order/{orderId}/pay")
     suspend fun pay(@Path("orderId") orderId: Long): AjaxResult<Any>
+
+    @POST("app/order/{orderId}/cancel")
+    suspend fun cancel(
+        @Path("orderId") orderId: Long,
+        @Body body: OrderCancelBody,
+    ): AjaxResult<Any>
+
+    @POST("app/order/{orderId}/confirm")
+    suspend fun confirm(@Path("orderId") orderId: Long): AjaxResult<Any>
 }

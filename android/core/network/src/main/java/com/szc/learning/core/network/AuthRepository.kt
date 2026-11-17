@@ -70,8 +70,7 @@ class AuthRepository(
      * 冷启动恢复会话。
      *
      * 返回 `Success(null)` 表示「本地没有有效会话」，属于正常流程；
-     * 只有后端明确返回 401 才清 token。网络异常或服务端 5xx 时返回 `Failure`
-     * 且**不清 token**，避免用户一断网或后端抖动就被登出。
+     * 网络异常时返回 `Failure`，且**不清 token**，避免用户一断网就被登出。
      */
     suspend fun restoreSession(): AppResult<CurrentUser?> = withContext(Dispatchers.IO) {
         val token = sessionStore.restore()
@@ -82,23 +81,13 @@ class AuthRepository(
         try {
             val info = api.getInfo()
             val user = info.user
-            when {
-                info.isSuccess && user != null -> {
-                    sessionStore.updateUser(user)
-                    AppResult.Success(CurrentUser(user, info.roles, info.permissions))
-                }
-
+            if (info.isSuccess && user != null) {
+                sessionStore.updateUser(user)
+                AppResult.Success(CurrentUser(user, info.roles, info.permissions))
+            } else {
                 // token 过期或被踢下线，清掉本地会话
-                info.code == CODE_UNAUTHORIZED -> {
-                    sessionStore.clear()
-                    AppResult.Success(null)
-                }
-
-                // 服务端异常等非认证失败：保留会话，首页继续展示缓存的用户信息
-                else -> AppResult.Failure(
-                    info.msg.ifBlank { "获取用户信息失败" },
-                    info.code,
-                )
+                sessionStore.clear()
+                AppResult.Success(null)
             }
         } catch (throwable: Throwable) {
             throwable.toAppFailure()

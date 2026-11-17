@@ -108,10 +108,11 @@ class MainActivity : AppCompatActivity() {
     private fun observeCartBadge() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                container.cartStore.state.collect { cart ->
+                container.cartStore.carts.collect { carts ->
+                    val count = carts.values.sumOf { it.itemCount }
                     val badge = binding.bottomNav.getOrCreateBadge(R.id.tab_cart)
-                    badge.isVisible = cart.itemCount > 0
-                    badge.number = cart.itemCount
+                    badge.isVisible = count > 0
+                    badge.number = count
                 }
             }
         }

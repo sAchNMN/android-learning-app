@@ -16,9 +16,13 @@ import com.szc.learning.AppContainer
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.core.common.toast
+import com.szc.learning.core.network.takeout.TakeoutRepository
 import com.szc.learning.databinding.FragmentMineBinding
+import com.szc.learning.ui.address.AddressListActivity
 import com.szc.learning.ui.home.HomeViewModel
 import com.szc.learning.ui.login.LoginActivity
+import com.szc.learning.ui.takeout.FavoriteListActivity
+import com.szc.learning.ui.takeout.OrderListActivity
 import kotlinx.coroutines.launch
 
 /** 我的 tab：账号信息与退出登录，逻辑沿用原首页。 */
@@ -45,7 +49,11 @@ class MineFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(
             this,
-            HomeViewModel.factory(container.authRepository, container.sessionStore),
+            HomeViewModel.factory(
+                container.authRepository,
+                container.sessionStore,
+                container.shopRepository,
+            ),
         )[HomeViewModel::class.java]
 
         binding.logoutButton.setOnClickListener {
@@ -55,6 +63,26 @@ class MineFragment : Fragment() {
                 .setPositiveButton(R.string.action_confirm) { _, _ -> viewModel.logout() }
                 .show()
         }
+
+        binding.allOrdersButton.setOnClickListener {
+            startActivity(OrderListActivity.intent(requireContext()))
+        }
+        binding.orderUnpaid.setOnClickListener {
+            startActivity(OrderListActivity.intent(requireContext(), TakeoutRepository.TAB_UNPAID))
+        }
+        binding.orderOngoing.setOnClickListener {
+            startActivity(OrderListActivity.intent(requireContext(), TakeoutRepository.TAB_ONGOING))
+        }
+        binding.orderDone.setOnClickListener {
+            startActivity(OrderListActivity.intent(requireContext(), TakeoutRepository.TAB_DONE))
+        }
+        binding.favoriteEntry.setOnClickListener {
+            startActivity(FavoriteListActivity.intent(requireContext()))
+        }
+        binding.addressEntry.setOnClickListener {
+            startActivity(Intent(requireContext(), AddressListActivity::class.java))
+        }
+
         observe()
     }
 
@@ -77,7 +105,7 @@ class MineFragment : Fragment() {
 
                     if (state.loggedOut) {
                         viewModel.consumeLoggedOut()
-                        container.cartStore.clear()
+                        container.cartStore.clearAll()
                         goLogin()
                     }
                 }

@@ -6,11 +6,13 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.szc.learning.R
 import com.szc.learning.core.network.takeout.Order
 import com.szc.learning.databinding.ItemOrderBinding
 
-/** 订单列表适配器。待支付的订单显示「去支付」。 */
+/** 订单列表适配器。点卡片进详情，待支付的另有「去支付」直达收银台。 */
 class OrderAdapter(
+    private val onClick: (Order) -> Unit,
     private val onPay: (Order) -> Unit,
 ) : ListAdapter<Order, OrderAdapter.ViewHolder>(DIFF) {
 
@@ -28,17 +30,24 @@ class OrderAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(order: Order) {
+            val context = binding.root.context
             binding.orderShop.text = order.shopName
             binding.orderStatus.text = order.statusText
-            binding.orderItems.text = listOfNotNull(
-                order.receiver?.takeIf { it.isNotBlank() },
-                order.address?.takeIf { it.isNotBlank() },
-            ).joinToString(" · ").ifBlank { "—" }
+            // 列表接口不带明细，只给件数；老订单没有 itemCount 就退回显示收货人
+            binding.orderItems.text = if (order.itemCount > 0) {
+                context.getString(R.string.order_items_count, order.itemCount)
+            } else {
+                listOfNotNull(
+                    order.receiver?.takeIf { it.isNotBlank() },
+                    order.address?.takeIf { it.isNotBlank() },
+                ).joinToString(" · ").ifBlank { "—" }
+            }
             binding.orderMeta.text = "${order.orderNo} · ${order.createTime.orEmpty()}"
             binding.orderAmount.text = "实付 ¥${formatMoney(order.payAmount)}"
 
             binding.payButton.isVisible = order.canPay
             binding.payButton.setOnClickListener { onPay(order) }
+            binding.root.setOnClickListener { onClick(order) }
         }
     }
 
