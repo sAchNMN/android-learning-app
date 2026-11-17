@@ -14,12 +14,12 @@ import java.util.List;
  * 一个店铺最多几十个菜品，两条 SQL 足够，且比 join + collection 好调试。
  *
  * required / multi / is_default 在库里是 char(1)，SQL 里转成 0/1 由 MyBatis 映射成 Boolean。
- * 注意 required 的语义是「必选」，所以库里 '0' 才是必选。
+ * 注意两列语义相反：required '0' 表示必选，multi '1' 表示可多选。
  */
 public interface TakeoutDishSpecMapper {
 
     String SPEC_COLS = "spec_id as specId, dish_id as dishId, spec_name as specName, "
-            + "(required = '0') as required, (multi = '0') as multi, sort_no as sortNo";
+            + "(required = '0') as required, (multi = '1') as multi, sort_no as sortNo";
 
     @Select("<script>select " + SPEC_COLS + " from takeout_dish_spec "
             + "where del_flag = '0' and dish_id in "
