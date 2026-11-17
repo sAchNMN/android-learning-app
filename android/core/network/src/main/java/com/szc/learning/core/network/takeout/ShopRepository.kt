@@ -17,6 +17,20 @@ class ShopRepository(
 
     suspend fun unfavorite(shopId: Long): AppResult<Unit> = callUnit { api.unfavorite(shopId) }
 
+    suspend fun favorites(
+        pageNum: Int = 1,
+        pageSize: Int = PAGE_SIZE,
+    ): AppResult<ShopPage> = callData { api.favorites(pageNum, pageSize) }
+
+    suspend fun hotKeywords(limit: Int = 10): AppResult<List<String>> =
+        callData { api.hotKeywords(limit) }
+
+    suspend fun search(
+        keyword: String,
+        pageNum: Int = 1,
+        pageSize: Int = PAGE_SIZE,
+    ): AppResult<ShopPage> = callData { api.search(keyword, "shop", pageNum, pageSize) }
+
     suspend fun page(
         categoryId: Long?,
         keyword: String? = null,

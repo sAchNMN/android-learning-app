@@ -1,6 +1,5 @@
 package com.szc.learning.ui.takeout
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -39,12 +38,11 @@ class ShopListActivity : AppCompatActivity() {
         ShopListViewModel.factory(container.shopRepository)
     }
 
-    private val adapter = ShopAdapter { shop ->
-        startActivity(
-            Intent(this, ShopDetailActivity::class.java)
-                .putExtra(ShopDetailActivity.EXTRA_SHOP_ID, shop.shopId),
-        )
-    }
+    private val adapter = ShopAdapter(
+        onClick = { shop ->
+            startActivity(ShopDetailActivity.intent(this, shop.shopId))
+        },
+    )
 
     /** 分类栏的渲染签名，避免每次状态变化都重建 Chip（会闪、会丢点击）。 */
     private var categorySignature: String = ""
@@ -78,6 +76,9 @@ class ShopListActivity : AppCompatActivity() {
         binding.retryButton.setOnClickListener { viewModel.loadFirstPage() }
         binding.emptyActionButton.setOnClickListener { viewModel.selectCategory(0L) }
         binding.footerGroup.setOnClickListener { viewModel.loadMore() }
+        binding.searchEntry.setOnClickListener {
+            startActivity(SearchActivity.intent(this))
+        }
 
         setupSortGroup()
         observe()

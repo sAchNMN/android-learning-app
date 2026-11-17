@@ -1,5 +1,7 @@
 package com.szc.learning.ui.takeout
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -300,5 +302,10 @@ class ShopDetailActivity : AppCompatActivity() {
 
         const val EXTRA_SHOP_ID = "extra_shop_id"
         const val EXTRA_HIGHLIGHT_DISH_ID = "extra_highlight_dish_id"
+
+        fun intent(context: Context, shopId: Long, highlightDishId: Long = 0L): Intent =
+            Intent(context, ShopDetailActivity::class.java)
+                .putExtra(EXTRA_SHOP_ID, shopId)
+                .putExtra(EXTRA_HIGHLIGHT_DISH_ID, highlightDishId)
     }
 }

@@ -13,6 +13,7 @@ import com.szc.learning.databinding.ItemShopBinding
 /** 店铺列表适配器。 */
 class ShopAdapter(
     private val onClick: (Shop) -> Unit,
+    private val onLongClick: ((Shop) -> Unit)? = null,
 ) : ListAdapter<Shop, ShopAdapter.ViewHolder>(DIFF) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -60,6 +61,16 @@ class ShopAdapter(
             // 休息中的店铺仍然可点进详情，但不能下单（服务端会拦）
             binding.root.alpha = if (shop.isOpen) 1f else 0.55f
             binding.root.setOnClickListener { onClick(shop) }
+
+            if (onLongClick != null) {
+                binding.root.setOnLongClickListener {
+                    onLongClick.invoke(shop)
+                    true
+                }
+            } else {
+                binding.root.setOnLongClickListener(null)
+                binding.root.isLongClickable = false
+            }
         }
     }
 

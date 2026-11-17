@@ -5,9 +5,11 @@ import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.takeout.service.TakeoutShopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -22,6 +24,14 @@ public class AppFavoriteController {
 
     @Autowired
     private TakeoutShopService shopService;
+
+    /** 我收藏的店铺，结构同 /app/shop/page 的 rows。 */
+    @GetMapping("/list")
+    public AjaxResult list(@RequestParam(value = "pageNum", required = false) Integer pageNum,
+                           @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return AjaxResult.success(
+                shopService.favoriteShops(SecurityUtils.getUserId(), pageNum, pageSize));
+    }
 
     @PostMapping("/{shopId}")
     public AjaxResult add(@PathVariable("shopId") Long shopId) {

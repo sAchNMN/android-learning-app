@@ -116,6 +116,21 @@
     <string name="order_tab_ongoing">进行中</string>
     <string name="order_tab_done">已完成</string>
     <string name="order_empty_tab">这个分类下还没有订单</string>
+
+    <!-- 搜索 -->
+    <string name="search_hint">搜店铺</string>
+    <string name="search_action">搜索</string>
+    <string name="search_hot_label">热门搜索</string>
+    <string name="search_empty">没有找到相关店铺</string>
+    <string name="search_input_empty">请输入关键词</string>
+
+    <!-- 收藏 -->
+    <string name="favorite_title">我的收藏</string>
+    <string name="favorite_empty">还没有收藏的店铺</string>
+    <string name="favorite_cancel_title">取消收藏</string>
+    <string name="favorite_cancel_msg">不再收藏「%1$s」？</string>
+    <string name="favorite_cancelled">已取消收藏</string>
+    <string name="home_favorite_entry">我的收藏</string>
     <string name="dish_sales">已售 %1$d</string>
     <string name="dish_selected_spec">已选：%1$s</string>
     <string name="dish_multi_spec">多种规格</string>

@@ -2,6 +2,7 @@ package com.ruoyi.takeout.service;
 
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.takeout.domain.DishGroup;
+import com.ruoyi.takeout.domain.DishSearchRow;
 import com.ruoyi.takeout.domain.PageData;
 import com.ruoyi.takeout.domain.ShopDetail;
 import com.ruoyi.takeout.domain.TakeoutDish;
@@ -11,6 +12,7 @@ import com.ruoyi.takeout.domain.TakeoutShop;
 import com.ruoyi.takeout.domain.TakeoutShopCategory;
 import com.ruoyi.takeout.mapper.TakeoutDishMapper;
 import com.ruoyi.takeout.mapper.TakeoutDishSpecMapper;
+import com.ruoyi.takeout.mapper.TakeoutHotKeywordMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopCategoryMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopFavoriteMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopMapper;
@@ -53,6 +55,52 @@ public class TakeoutShopService {
 
     @Autowired
     private TakeoutShopFavoriteMapper favoriteMapper;
+
+    @Autowired
+    private TakeoutHotKeywordMapper hotKeywordMapper;
+
+    // ============================================================
+    // 搜索与收藏（L2 / L5）
+    // ============================================================
+
+    /** 热搜词。给个上限，别让后台配了 200 条全渲染到搜索页。 */
+    public List<String> hotKeywords(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        return hotKeywordMapper.selectHot(safeLimit);
+    }
+
+    /** 店铺搜索：复用分页逻辑，只是不传分类。 */
+    public PageData<TakeoutShop> searchShops(String keyword, Integer pageNum, Integer pageSize) {
+        return page(null, keyword, "default", pageNum, pageSize);
+    }
+
+    /** 菜品搜索：按菜名匹配，按销量倒序。 */
+    public PageData<DishSearchRow> searchDishes(String keyword, Integer pageNum, Integer pageSize) {
+        String kw = normalizeKeyword(keyword);
+        if (kw == null) {
+            return new PageData<>(0L, List.of());
+        }
+        int num = (pageNum == null || pageNum < 1) ? 1 : pageNum;
+        int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 50);
+
+        int total = dishMapper.countSearch(kw);
+        List<DishSearchRow> rows = total == 0
+                ? List.of()
+                : dishMapper.searchPage(kw, (num - 1) * size, size);
+        return new PageData<>(total, rows);
+    }
+
+    /** 我收藏的店铺。 */
+    public PageData<TakeoutShop> favoriteShops(Long userId, Integer pageNum, Integer pageSize) {
+        int num = (pageNum == null || pageNum < 1) ? 1 : pageNum;
+        int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 50);
+
+        int total = favoriteMapper.countShops(userId);
+        List<TakeoutShop> rows = total == 0
+                ? List.of()
+                : favoriteMapper.selectShopPage(userId, (num - 1) * size, size);
+        return new PageData<>(total, rows);
+    }
 
     public List<TakeoutShopCategory> categories() {
         return categoryMapper.selectEnabled();

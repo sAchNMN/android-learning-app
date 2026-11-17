@@ -7,14 +7,32 @@
     android:background="?android:attr/colorBackground"
     android:orientation="vertical">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
         android:paddingHorizontal="20dp"
         android:paddingTop="20dp"
-        android:paddingBottom="8dp"
-        android:text="@string/shop_list_title"
-        android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/shop_list_title"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/searchEntry"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:text="@string/search_action" />
+    </LinearLayout>
 
     <!-- 分类：横向滚动，内容动态生成 -->
     <HorizontalScrollView

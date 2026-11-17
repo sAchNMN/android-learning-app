@@ -25,6 +25,26 @@ interface ShopApi {
     @DELETE("app/favorite/{shopId}")
     suspend fun unfavorite(@Path("shopId") shopId: Long): AjaxResult<Any>
 
+    /** 我收藏的店铺，结构同 /app/shop/page 的 rows。 */
+    @GET("app/favorite/list")
+    suspend fun favorites(
+        @Query("pageNum") pageNum: Int,
+        @Query("pageSize") pageSize: Int,
+    ): AjaxResult<ShopPage>
+
+    /** 热搜词。 */
+    @GET("app/search/hot")
+    suspend fun hotKeywords(@Query("limit") limit: Int): AjaxResult<List<String>>
+
+    /** 搜索。type=shop 复用 ShopPage；type=dish 结构不同，客户端暂未接入。 */
+    @GET("app/search")
+    suspend fun search(
+        @Query("keyword") keyword: String,
+        @Query("type") type: String,
+        @Query("pageNum") pageNum: Int,
+        @Query("pageSize") pageSize: Int,
+    ): AjaxResult<ShopPage>
+
     /**
      * @param categoryId 传 null 表示全部分类
      * @param keyword 传 null 表示不过滤（Retrofit 会省略该参数）

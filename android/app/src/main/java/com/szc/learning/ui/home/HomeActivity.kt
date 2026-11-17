@@ -18,6 +18,7 @@ import com.szc.learning.R
 import com.szc.learning.databinding.ActivityHomeBinding
 import com.szc.learning.ui.address.AddressListActivity
 import com.szc.learning.ui.login.LoginActivity
+import com.szc.learning.ui.takeout.FavoriteListActivity
 import com.szc.learning.ui.takeout.OrderListActivity
 import com.szc.learning.ui.takeout.ShopListActivity
 import kotlinx.coroutines.launch
@@ -76,6 +77,10 @@ class HomeActivity : AppCompatActivity() {
 
         binding.addressEntryCard.setOnClickListener {
             startActivity(AddressListActivity.manageIntent(this))
+        }
+
+        binding.favoriteEntryCard.setOnClickListener {
+            startActivity(FavoriteListActivity.intent(this))
         }
     }
 

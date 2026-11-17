@@ -61,6 +61,15 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.takeout.SearchActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.takeout.FavoriteListActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.address.AddressListActivity"
             android:exported="false" />
 
