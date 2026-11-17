@@ -49,7 +49,25 @@
     <string name="shop_detail_total">合计 ¥%1$s</string>
     <string name="shop_detail_min_short">差 ¥%1$s 起送</string>
     <string name="shop_detail_fee_hint">另加配送费 ¥%1$s</string>
-    <string name="checkout_todo">结算页正在开发，下一步接入</string>
+    <!-- 结算页 -->
+    <string name="checkout_page_title">确认订单</string>
+    <string name="checkout_address_empty">添加收货地址</string>
+    <string name="checkout_address_hint">点击选择收货地址</string>
+    <string name="checkout_expect_label">配送时间</string>
+    <string name="checkout_expect_title">选择配送时间</string>
+    <string name="checkout_items_label">商品清单</string>
+    <string name="checkout_remark_label">订单备注</string>
+    <string name="checkout_remark_hint">口味、餐具等要求</string>
+    <string name="checkout_summary_total">商品小计</string>
+    <string name="checkout_summary_fee">配送费</string>
+    <string name="checkout_summary_pay">合计</string>
+    <string name="checkout_submit">提交订单</string>
+    <string name="checkout_submitting">提交中…</string>
+    <string name="checkout_short_of_min">还差 ¥%1$s 起送</string>
+    <string name="checkout_need_address">请先选择收货地址</string>
+    <string name="checkout_empty_cart">购物车是空的，请返回重新选菜</string>
+    <string name="checkout_qty">×%1$d</string>
+    <string name="checkout_pay_amount">实付 ¥%1$s</string>
     <string name="dish_sales">已售 %1$d</string>
     <string name="dish_selected_spec">已选：%1$s</string>
     <string name="dish_multi_spec">多种规格</string>
@@ -126,5 +144,6 @@
     <string name="action_confirm">确定</string>
     <string name="action_cancel">取消</string>
     <string name="action_retry">重试</string>
+    <string name="action_back">返回</string>
     <string name="avatar_placeholder">U</string>
 </resources>

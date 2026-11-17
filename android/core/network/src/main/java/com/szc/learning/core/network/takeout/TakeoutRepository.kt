@@ -13,6 +13,9 @@ class TakeoutRepository(
     private val api: TakeoutApi,
 ) {
 
+    suspend fun preview(body: OrderCreateBody): AppResult<OrderPreview> =
+        callData { api.preview(body) }
+
     suspend fun createOrder(body: OrderCreateBody): AppResult<OrderDetail> =
         callData { api.createOrder(body) }
 

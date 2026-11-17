@@ -33,4 +33,12 @@ public interface TakeoutDishSpecMapper {
             + "<foreach collection='specIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>"
             + " order by spec_id, sort_no, option_id</script>")
     List<TakeoutDishSpecOption> selectOptionsBySpecIds(@Param("specIds") List<Long> specIds);
+
+    /** 下单校验：客户端提交了哪些选项就只查哪些，查不到的说明选项已失效。 */
+    @Select("<script>select option_id as optionId, spec_id as specId, option_name as optionName, "
+            + "price_delta as priceDelta, (is_default = '1') as isDefault "
+            + "from takeout_dish_spec_option where del_flag = '0' and status = '0' and option_id in "
+            + "<foreach collection='optionIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>"
+            + "</script>")
+    List<TakeoutDishSpecOption> selectOptionsByIds(@Param("optionIds") List<Long> optionIds);
 }

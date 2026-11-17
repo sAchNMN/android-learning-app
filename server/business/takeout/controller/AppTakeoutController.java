@@ -43,6 +43,12 @@ public class AppTakeoutController {
                 takeoutShopService.shopDetail(shopId, SecurityUtils.getUserId()));
     }
 
+    /** 结算预览：金额、起送差额、默认地址、配送时间档位。 */
+    @PostMapping("/order/preview")
+    public AjaxResult preview(@RequestBody OrderCreateBody body) {
+        return AjaxResult.success(takeoutService.preview(SecurityUtils.getUserId(), body));
+    }
+
     /** 下单。 */
     @PostMapping("/order/create")
     public AjaxResult createOrder(@RequestBody OrderCreateBody body) {

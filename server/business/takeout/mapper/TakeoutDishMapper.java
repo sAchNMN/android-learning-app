@@ -27,6 +27,13 @@ public interface TakeoutDishMapper {
     @Select("select " + COLS + " from takeout_dish where dish_id = #{dishId} and del_flag = '0'")
     TakeoutDish selectById(@Param("dishId") Long dishId);
 
+    /** 下单校验：一次查全，缺哪个菜品由调用方比对数量得出。 */
+    @Select("<script>select " + COLS + " from takeout_dish "
+            + "where del_flag = '0' and status = '0' and dish_id in "
+            + "<foreach collection='dishIds' item='id' open='(' separator=',' close=')'>#{id}</foreach>"
+            + "</script>")
+    List<TakeoutDish> selectByIds(@Param("dishIds") List<Long> dishIds);
+
     @Update("update takeout_dish set sales = sales + #{qty} where dish_id = #{dishId}")
     int increaseSales(@Param("dishId") Long dishId, @Param("qty") int qty);
 }

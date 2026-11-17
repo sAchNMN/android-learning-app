@@ -48,6 +48,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.takeout.CheckoutActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".ui.address.AddressListActivity"
             android:exported="false" />
 

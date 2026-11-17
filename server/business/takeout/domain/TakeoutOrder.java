@@ -16,13 +16,19 @@ public class TakeoutOrder {
     private Long userId;
     private Long shopId;
     private String shopName;
+    /** 收货地址簿 id，可能为 null（老订单）。 */
+    private Long addressId;
     private BigDecimal totalAmount;
     private BigDecimal deliveryFee;
     private BigDecimal payAmount;
+    /** 商品总件数冗余，列表页展示用，下单时写一次。 */
+    private Integer itemCount;
     private String status;
     private String receiver;
     private String phone;
     private String address;
+    /** 期望送达时间，yyyy-MM-dd HH:mm:ss。 */
+    private String expectTime;
     private String remark;
     private String payTime;
     private String finishTime;
@@ -42,6 +48,15 @@ public class TakeoutOrder {
 
     public String getShopName() { return shopName; }
     public void setShopName(String shopName) { this.shopName = shopName; }
+
+    public Long getAddressId() { return addressId; }
+    public void setAddressId(Long addressId) { this.addressId = addressId; }
+
+    public Integer getItemCount() { return itemCount; }
+    public void setItemCount(Integer itemCount) { this.itemCount = itemCount; }
+
+    public String getExpectTime() { return expectTime; }
+    public void setExpectTime(String expectTime) { this.expectTime = expectTime; }
 
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }

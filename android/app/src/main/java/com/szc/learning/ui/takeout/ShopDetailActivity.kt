@@ -114,8 +114,7 @@ class ShopDetailActivity : AppCompatActivity() {
         binding.favoriteButton.setOnClickListener { viewModel.toggleFavorite() }
         binding.cartSummaryGroup.setOnClickListener { showCartSheet() }
         binding.checkoutButton.setOnClickListener {
-            // D2 结算页尚未接入
-            toast(R.string.checkout_todo)
+            startActivity(CheckoutActivity.intent(this, shopId))
         }
     }
 

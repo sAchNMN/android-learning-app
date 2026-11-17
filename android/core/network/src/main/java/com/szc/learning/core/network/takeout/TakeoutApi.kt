@@ -13,6 +13,10 @@ import retrofit2.http.Path
  */
 interface TakeoutApi {
 
+    /** 结算预览：金额、起送差额、默认地址、配送时间档位。 */
+    @POST("app/order/preview")
+    suspend fun preview(@Body body: OrderCreateBody): AjaxResult<OrderPreview>
+
     @POST("app/order/create")
     suspend fun createOrder(@Body body: OrderCreateBody): AjaxResult<OrderDetail>
 
