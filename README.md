@@ -54,10 +54,17 @@ App 首页 ──点外卖──> 店铺列表 ──> 店铺详情（菜品 + �
    └─去支付（模拟）→ 状态 待支付 → 已支付
 ```
 
-数据表 4 张：`takeout_shop` / `takeout_dish` / `takeout_order` / `takeout_order_item`。
-订单明细对菜名和单价做快照，菜品改价不影响历史订单。
+P2 在最小闭环上补齐二级 / 三级页面（地址簿、搜索、收藏、结算页、支付页、订单详情、评价），
+页面地图与逐页交互见 [`docs/page-design.md`](docs/page-design.md)。
 
-接口清单见 [`docs/api.md`](docs/api.md) 第 3 节。
+数据表：P1 的 4 张（`takeout_shop` / `takeout_dish` / `takeout_order` / `takeout_order_item`）
+加上 P2 的 8 张（分类、规格组、规格选项、地址簿、订单状态日志、评价、收藏、热搜词），共 12 张。
+订单明细对菜名、单价、规格做快照，菜品改价或改规格不影响历史订单。
+
+- 页面与交互：[`docs/page-design.md`](docs/page-design.md)
+- 数据模型与取舍：[`docs/data-model.md`](docs/data-model.md)
+- 服务端事务与状态机：[`docs/server-logic.md`](docs/server-logic.md)
+- 接口契约：[`docs/api.md`](docs/api.md)（P1 见 3.1，P2 见 3.3）
 
 ## 快速开始
 
@@ -78,6 +85,11 @@ MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 "$MYSQL" -uroot -p ry-vue < server/RuoYi-Vue/sql/quartz.sql
 "$MYSQL" -uroot -p ry-vue < sql/01_takeout_schema.sql
 "$MYSQL" -uroot -p ry-vue < sql/02_takeout_data.sql
+"$MYSQL" -uroot -p ry-vue < sql/03_takeout_p2_schema.sql   # P2 新表 + 扩字段
+"$MYSQL" -uroot -p ry-vue < sql/04_takeout_p2_data.sql
+```
+
+`03` 的 ALTER 段只能跑一次，重跑会报 `Duplicate column name`。
 ```
 
 ### 2. 起服务端

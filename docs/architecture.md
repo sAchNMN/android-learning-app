@@ -1,5 +1,9 @@
 # 架构说明
 
+页面级设计与交互逻辑见 [`page-design.md`](page-design.md)，数据模型见
+[`data-model.md`](data-model.md)，服务端事务与状态机见 [`server-logic.md`](server-logic.md)。
+本文件只讲分层与技术选型。
+
 ## 1. 三层结构
 
 ```
@@ -27,12 +31,19 @@ Android 端不直连数据库。这是硬约束：直连 MySQL 等于把数据�
 ```
 android/
 ├── app/                  壳工程：Application、依赖容器、登录页、首页
+│   ├── data/             仅 app 级别的状态持有者（如 CartStore）
+│   └── ui/{home,mine,shop,search,address,order,favorite}/   各页面分包
 ├── core/
 │   ├── common/           纯基础设施：结果封装、UI 状态、日志、View 扩展
 │   └── network/          Retrofit + OkHttp + 若依协议适配
 └── feature/
     └── demo/             贪吃蛇（已从构建中摘除，代码保留）
 ```
+
+**P2 的所有页面都在 `app` 模块内分包，不拆 `feature:*`。** 原因见
+[`page-design.md`](page-design.md) 第 8.1 节：结算页要读店铺域的购物车，
+硬拆模块会立刻撞上"feature 之间禁止互相依赖"。包结构暂时承担领域边界，
+规则是 `order` 可以引用 `shop` 的 DTO，反向不行。
 
 依赖方向（单向，不允许反向或循环）：
 

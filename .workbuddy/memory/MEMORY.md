@@ -39,3 +39,16 @@ docs/      接口契约 api.md、架构 architecture.md
 - `MSYS_NO_PATHCONV=1` 时传给 `adb.exe` 的本地路径要用 `C:/` 形式
 - 模拟器默认中文输入法，`adb shell input text` 前先 `ime set` 到 AOSP 键盘
 - **动目录前先 `git status`**：untracked 文件不会被 git 保护，`rm -rf` 直接没
+
+## 外卖 P2 架构红线（2026-11-17 定稿，改前先读 docs 理由）
+
+- 层级判定：一级=底部 Tab，二级=列表/聚合，三级=详情/表单/一次完整业务动作
+- **金额只在服务端算**，create 请求体不含任何金额字段
+- **状态变更用 CAS**：`UPDATE ... WHERE status=原状态`，影响行数 0 → 报「状态已变更」
+- 下单幂等靠 `clientToken` + Redis SETNX 5 分钟，异常时显式删占位
+- 待支付超时用**惰性取消**（查详情/列表时判断），不写定时任务
+- 订单时间轴读 `takeout_order` 的时间戳字段，**不读** status_log（审计流水会重复）
+- 店铺评分**重算** `AVG(review.rating)`，不累加
+- 购物车**不落库**，只存 DataStore；服务端只在 preview/create 时重算
+- P2 **不拆 feature 模块**，UI 全在 `app/ui/*` 分包（结算域要读店铺域购物车）
+- `takeout_shop.category` 文本保留，新增 `category_id`：筛选走 id，展示走文本
