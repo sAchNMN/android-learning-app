@@ -6,6 +6,7 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.szc.learning.R
 import com.szc.learning.core.network.takeout.Order
 import com.szc.learning.databinding.ItemOrderBinding
 
@@ -29,12 +30,18 @@ class OrderAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(order: Order) {
+            val context = binding.root.context
             binding.orderShop.text = order.shopName
             binding.orderStatus.text = order.statusText
-            binding.orderItems.text = listOfNotNull(
-                order.receiver?.takeIf { it.isNotBlank() },
-                order.address?.takeIf { it.isNotBlank() },
-            ).joinToString(" · ").ifBlank { "—" }
+            // 列表接口不带明细，只给件数；老订单没有 itemCount 就退回显示收货人
+            binding.orderItems.text = if (order.itemCount > 0) {
+                context.getString(R.string.order_items_count, order.itemCount)
+            } else {
+                listOfNotNull(
+                    order.receiver?.takeIf { it.isNotBlank() },
+                    order.address?.takeIf { it.isNotBlank() },
+                ).joinToString(" · ").ifBlank { "—" }
+            }
             binding.orderMeta.text = "${order.orderNo} · ${order.createTime.orEmpty()}"
             binding.orderAmount.text = "实付 ¥${formatMoney(order.payAmount)}"
 

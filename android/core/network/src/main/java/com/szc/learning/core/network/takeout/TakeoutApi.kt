@@ -5,6 +5,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /**
  * 订单接口。
@@ -22,6 +23,14 @@ interface TakeoutApi {
 
     @GET("app/order/list")
     suspend fun myOrders(): AjaxResult<List<Order>>
+
+    /** @param status all / unpaid / ongoing / done */
+    @GET("app/order/page")
+    suspend fun page(
+        @Query("status") status: String,
+        @Query("pageNum") pageNum: Int,
+        @Query("pageSize") pageSize: Int,
+    ): AjaxResult<OrderPage>
 
     @GET("app/order/{orderId}")
     suspend fun orderDetail(@Path("orderId") orderId: Long): AjaxResult<OrderDetail>

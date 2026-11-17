@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -56,10 +57,23 @@ public class AppTakeoutController {
         return AjaxResult.success(takeoutService.createOrder(SecurityUtils.getUserId(), body));
     }
 
-    /** 我的订单列表。 */
+    /** 我的订单列表（不分页，保留兼容；客户端已改用 /app/order/page）。 */
     @GetMapping("/order/list")
     public AjaxResult myOrders() {
         return AjaxResult.success(takeoutService.myOrders(SecurityUtils.getUserId()));
+    }
+
+    /**
+     * 订单分页。
+     *
+     * @param status all（默认）/ unpaid / ongoing / done
+     */
+    @GetMapping("/order/page")
+    public AjaxResult page(@RequestParam(value = "status", required = false) String status,
+                           @RequestParam(value = "pageNum", required = false) Integer pageNum,
+                           @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return AjaxResult.success(
+                takeoutService.page(SecurityUtils.getUserId(), status, pageNum, pageSize));
     }
 
     /** 订单详情。 */

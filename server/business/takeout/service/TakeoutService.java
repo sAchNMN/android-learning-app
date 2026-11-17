@@ -5,6 +5,7 @@ import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.domain.OrderDetail;
 import com.ruoyi.takeout.domain.OrderPreview;
 import com.ruoyi.takeout.domain.OrderTimelineNode;
+import com.ruoyi.takeout.domain.PageData;
 import com.ruoyi.takeout.domain.TakeoutAddress;
 import com.ruoyi.takeout.domain.TakeoutDish;
 import com.ruoyi.takeout.domain.TakeoutDishSpec;
@@ -215,14 +216,65 @@ public class TakeoutService {
      */
     public List<TakeoutOrder> myOrders(Long userId) {
         List<TakeoutOrder> orders = orderMapper.selectByUser(userId);
-        for (TakeoutOrder order : orders) {
-            if (TakeoutOrder.STATUS_UNPAID.equals(order.getStatus())
-                    && orderMapper.expireCancel(order.getOrderId()) > 0) {
+        orders.forEach(this::advance);
+        return orders;
+    }
+
+    /**
+     * 订单分页（L4）。
+     *
+     * tab 是给用户看的分类，映射成状态集合后进 SQL；
+     * 客户端传什么字符串都不会污染查询。
+     */
+    public PageData<TakeoutOrder> page(Long userId, String tab,
+                                       Integer pageNum, Integer pageSize) {
+        int num = (pageNum == null || pageNum < 1) ? 1 : pageNum;
+        int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 50);
+        List<String> statuses = statusesOf(tab);
+
+        int total = orderMapper.countPage(userId, statuses);
+        List<TakeoutOrder> rows = total == 0
+                ? List.of()
+                : orderMapper.selectPage(userId, statuses, (num - 1) * size, size);
+
+        // 只对当前页的几十条做惰性推进，不会扫全表
+        rows.forEach(this::advance);
+        return new PageData<>(total, rows);
+    }
+
+    /** tab → 状态集合。未知 tab 当「全部」。 */
+    private List<String> statusesOf(String tab) {
+        if (tab == null) {
+            return List.of();
+        }
+        switch (tab) {
+            case "unpaid":
+                return List.of(TakeoutOrder.STATUS_UNPAID);
+            case "ongoing":
+                return List.of(TakeoutOrder.STATUS_PAID, TakeoutOrder.STATUS_DELIVERING);
+            case "done":
+                return List.of(TakeoutOrder.STATUS_DONE);
+            default:
+                return List.of();
+        }
+    }
+
+    /**
+     * 惰性推进单条订单：超时取消、模拟接单。
+     *
+     * 只在内存里改状态给本次响应，不重查 —— 列表页没必要为这个再发一条 SQL。
+     */
+    private void advance(TakeoutOrder order) {
+        if (TakeoutOrder.STATUS_UNPAID.equals(order.getStatus())) {
+            if (orderMapper.expireCancel(order.getOrderId()) > 0) {
                 order.setStatus(TakeoutOrder.STATUS_CANCELLED);
                 order.setCancelReason("超时未支付，系统自动取消");
             }
+        } else if (TakeoutOrder.STATUS_PAID.equals(order.getStatus())) {
+            if (orderMapper.markDelivered(order.getOrderId()) > 0) {
+                order.setStatus(TakeoutOrder.STATUS_DELIVERING);
+            }
         }
-        return orders;
     }
 
     /**

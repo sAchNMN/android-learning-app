@@ -60,6 +60,12 @@ data class OrderDetail(
     @SerializedName("timeline") val timeline: List<TimelineNode> = emptyList(),
 )
 
+/** 订单分页响应：{ total, rows }。 */
+data class OrderPage(
+    @SerializedName("total") val total: Long = 0,
+    @SerializedName("rows") val rows: List<Order> = emptyList(),
+)
+
 /** 时间轴节点。只包含已发生的节点，最后一项即当前状态。 */
 data class TimelineNode(
     @SerializedName("status") val status: String = "",

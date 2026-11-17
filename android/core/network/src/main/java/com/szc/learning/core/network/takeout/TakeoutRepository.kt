@@ -21,6 +21,12 @@ class TakeoutRepository(
 
     suspend fun myOrders(): AppResult<List<Order>> = callData { api.myOrders() }
 
+    suspend fun page(
+        status: String = TAB_ALL,
+        pageNum: Int = 1,
+        pageSize: Int = PAGE_SIZE,
+    ): AppResult<OrderPage> = callData { api.page(status, pageNum, pageSize) }
+
     suspend fun orderDetail(orderId: Long): AppResult<OrderDetail> =
         callData { api.orderDetail(orderId) }
 
@@ -31,4 +37,14 @@ class TakeoutRepository(
         callUnit { api.cancel(orderId, OrderCancelBody(reason)) }
 
     suspend fun confirm(orderId: Long): AppResult<Unit> = callUnit { api.confirm(orderId) }
+
+    companion object {
+        /** 与服务端 statusesOf() 一一对应。 */
+        const val TAB_ALL = "all"
+        const val TAB_UNPAID = "unpaid"
+        const val TAB_ONGOING = "ongoing"
+        const val TAB_DONE = "done"
+
+        const val PAGE_SIZE = 10
+    }
 }

@@ -42,6 +42,26 @@ public interface TakeoutOrderMapper {
     @Select("select " + COLS + " from takeout_order where user_id = #{userId} order by order_id desc")
     List<TakeoutOrder> selectByUser(@Param("userId") Long userId);
 
+    /**
+     * 分页查询。[statuses] 为空表示全部。
+     *
+     * 状态集合由 Service 从 tab 映射而来，客户端传的 tab 永远进不了 SQL。
+     */
+    @Select("<script>select " + COLS + " from takeout_order where user_id = #{userId}"
+            + "<if test='statuses != null and statuses.size() > 0'> and status in "
+            + "<foreach collection='statuses' item='s' open='(' separator=',' close=')'>#{s}</foreach>"
+            + "</if> order by order_id desc limit #{offset}, #{pageSize}</script>")
+    List<TakeoutOrder> selectPage(@Param("userId") Long userId,
+                                  @Param("statuses") List<String> statuses,
+                                  @Param("offset") int offset,
+                                  @Param("pageSize") int pageSize);
+
+    @Select("<script>select count(1) from takeout_order where user_id = #{userId}"
+            + "<if test='statuses != null and statuses.size() > 0'> and status in "
+            + "<foreach collection='statuses' item='s' open='(' separator=',' close=')'>#{s}</foreach>"
+            + "</if></script>")
+    int countPage(@Param("userId") Long userId, @Param("statuses") List<String> statuses);
+
     @Select("select " + COLS + " from takeout_order where order_id = #{orderId}")
     TakeoutOrder selectById(@Param("orderId") Long orderId);
 
