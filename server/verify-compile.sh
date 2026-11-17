@@ -67,6 +67,11 @@ public @interface Transactional {
     String value() default "";
 }'
 
+mk org/springframework/dao/DuplicateKeyException.java 'package org.springframework.dao;
+public class DuplicateKeyException extends RuntimeException {
+    public DuplicateKeyException(String message) { super(message); }
+}'
+
 mk org/springframework/data/redis/core/ValueOperations.java 'package org.springframework.data.redis.core;
 import java.util.concurrent.TimeUnit;
 public interface ValueOperations<K, V> {

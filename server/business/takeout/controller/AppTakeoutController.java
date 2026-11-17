@@ -4,6 +4,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.takeout.domain.OrderCancelBody;
 import com.ruoyi.takeout.domain.OrderCreateBody;
+import com.ruoyi.takeout.domain.ReviewSubmitBody;
 import com.ruoyi.takeout.service.TakeoutService;
 import com.ruoyi.takeout.service.TakeoutShopService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,5 +104,21 @@ public class AppTakeoutController {
     public AjaxResult confirm(@PathVariable("orderId") Long orderId) {
         takeoutService.confirm(orderId, SecurityUtils.getUserId());
         return AjaxResult.success("已确认收货");
+    }
+
+    /** 提交评价：只有已完成且未评价的订单能评，一单一评。 */
+    @PostMapping("/order/{orderId}/review")
+    public AjaxResult review(@PathVariable("orderId") Long orderId,
+                             @RequestBody ReviewSubmitBody body) {
+        takeoutService.submitReview(SecurityUtils.getUserId(), orderId, body);
+        return AjaxResult.success("评价成功");
+    }
+
+    /** 店铺评价列表，分页。 */
+    @GetMapping("/shop/{shopId}/reviews")
+    public AjaxResult shopReviews(@PathVariable("shopId") Long shopId,
+                                  @RequestParam(value = "pageNum", required = false) Integer pageNum,
+                                  @RequestParam(value = "pageSize", required = false) Integer pageSize) {
+        return AjaxResult.success(takeoutService.shopReviews(shopId, pageNum, pageSize));
     }
 }

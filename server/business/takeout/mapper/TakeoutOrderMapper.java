@@ -107,4 +107,14 @@ public interface TakeoutOrderMapper {
             + "update_time = now() "
             + "where order_id = #{orderId} and user_id = #{userId} and status = '2'")
     int confirm(@Param("orderId") Long orderId, @Param("userId") Long userId);
+
+    /**
+     * 标记已评价。
+     *
+     * 用 `review_status = '0'` 做 CAS，影响行数为 0 说明已经评过，
+     * 与 takeout_review 的唯一键形成双保险：并发下最多一条评价落库。
+     */
+    @Update("update takeout_order set review_status = '1', update_time = now() "
+            + "where order_id = #{orderId} and user_id = #{userId} and review_status = '0'")
+    int markReviewed(@Param("orderId") Long orderId, @Param("userId") Long userId);
 }

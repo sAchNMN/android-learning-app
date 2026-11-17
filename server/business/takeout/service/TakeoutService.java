@@ -6,6 +6,8 @@ import com.ruoyi.takeout.domain.OrderDetail;
 import com.ruoyi.takeout.domain.OrderPreview;
 import com.ruoyi.takeout.domain.OrderTimelineNode;
 import com.ruoyi.takeout.domain.PageData;
+import com.ruoyi.takeout.domain.ReviewRow;
+import com.ruoyi.takeout.domain.ReviewSubmitBody;
 import com.ruoyi.takeout.domain.TakeoutAddress;
 import com.ruoyi.takeout.domain.TakeoutDish;
 import com.ruoyi.takeout.domain.TakeoutDishSpec;
@@ -19,8 +21,10 @@ import com.ruoyi.takeout.mapper.TakeoutDishSpecMapper;
 import com.ruoyi.takeout.mapper.TakeoutOrderItemMapper;
 import com.ruoyi.takeout.mapper.TakeoutOrderMapper;
 import com.ruoyi.takeout.mapper.TakeoutOrderStatusLogMapper;
+import com.ruoyi.takeout.mapper.TakeoutReviewMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,6 +83,9 @@ public class TakeoutService {
 
     @Autowired
     private TakeoutAddressMapper addressMapper;
+
+    @Autowired
+    private TakeoutReviewMapper reviewMapper;
 
     /**
      * 若依 RedisConfig 里注册的 bean 是 `RedisTemplate<Object, Object>`，
@@ -614,6 +621,96 @@ public class TakeoutService {
                 throw new ServiceException("数量必须在 1-" + MAX_QUANTITY + " 之间");
             }
         }
+    }
+
+    // ============================================================
+    // 评价
+    // ============================================================
+
+    /**
+     * 提交评价。
+     *
+     * 三道闸：
+     * 1. 订单必须属于本人、状态为已完成
+     * 2. 一单一评：先看 review_status，再靠唯一键兜底并发
+     * 3. 评分 1-5，分项非法值按「未填」处理而不是报错
+     *
+     * 落库后按 AVG 重算店铺评分（不累加，评价被删改也能算回来）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void submitReview(Long userId, Long orderId, ReviewSubmitBody body) {
+        if (body == null) {
+            throw new ServiceException("评价内容不能为空");
+        }
+
+        TakeoutOrder order = orderMapper.selectById(orderId);
+        if (order == null || !order.getUserId().equals(userId)) {
+            throw new ServiceException("订单不存在");
+        }
+        if (!TakeoutOrder.STATUS_DONE.equals(order.getStatus())) {
+            throw new ServiceException("订单完成后才能评价");
+        }
+        if ("1".equals(order.getReviewStatus())) {
+            throw new ServiceException("该订单已评价");
+        }
+
+        int rating = ratingOf(body.getRating());
+        if (rating < 0) {
+            throw new ServiceException("请先选择总评星级");
+        }
+
+        String tags = (body.getTags() == null || body.getTags().isEmpty())
+                ? null
+                : limit(String.join(",", body.getTags()), 128);
+        String content = limit(trimToNull(body.getContent()), 500);
+
+        try {
+            reviewMapper.insert(
+                    orderId,
+                    order.getShopId(),
+                    userId,
+                    rating,
+                    optionalRating(body.getTasteRating()),
+                    optionalRating(body.getPackRating()),
+                    optionalRating(body.getDeliveryRating()),
+                    tags,
+                    content,
+                    Boolean.TRUE.equals(body.getAnonymous()) ? "1" : "0");
+        } catch (DuplicateKeyException e) {
+            // 唯一键 uk_review_order 挡住并发重复提交
+            throw new ServiceException("该订单已评价");
+        }
+
+        if (orderMapper.markReviewed(orderId, userId) == 0) {
+            throw new ServiceException("该订单已评价");
+        }
+
+        shopMapper.recalcRating(order.getShopId());
+    }
+
+    /** 店铺评价分页。列表为空时不查明细，省一次 SQL。 */
+    public PageData<ReviewRow> shopReviews(Long shopId, Integer pageNum, Integer pageSize) {
+        int num = (pageNum == null || pageNum < 1) ? 1 : pageNum;
+        int size = (pageSize == null || pageSize < 1) ? 10 : Math.min(pageSize, 50);
+
+        int total = reviewMapper.countByShop(shopId);
+        List<ReviewRow> rows = total == 0
+                ? List.of()
+                : reviewMapper.selectPage(shopId, (num - 1) * size, size);
+        return new PageData<>(total, rows);
+    }
+
+    /** 总评必填：null 或越界返回 -1。 */
+    private int ratingOf(Integer value) {
+        if (value == null || value < 1 || value > 5) {
+            return -1;
+        }
+        return value;
+    }
+
+    /** 分项可选：传了越界值就当没填，不因此拒掉整条评价。 */
+    private Integer optionalRating(Integer value) {
+        return (value == null || value < 1 || value > 5) ? null : value;
     }
 
     // ============================================================

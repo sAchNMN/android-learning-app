@@ -3,6 +3,7 @@ package com.ruoyi.takeout.mapper;
 import com.ruoyi.takeout.domain.TakeoutShop;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -51,4 +52,16 @@ public interface TakeoutShopMapper {
 
     @Select("<script>select count(1)" + PAGE_WHERE + "</script>")
     int countPage(@Param("categoryId") Long categoryId, @Param("keyword") String keyword);
+
+    /**
+     * 按评价重算店铺评分。
+     *
+     * 直接 `AVG(rating)` 覆盖，不做「新分与旧分加权」——累加式更新一旦有评价被删改，
+     * 分数就再也回不去了。一条评价都没有时保留原分（ifnull 兜底）。
+     */
+    @Update("update takeout_shop set rating = ifnull("
+            + "(select round(avg(r.rating), 1) from takeout_review r "
+            + "where r.shop_id = #{shopId} and r.del_flag = '0'), rating) "
+            + "where shop_id = #{shopId}")
+    int recalcRating(@Param("shopId") Long shopId);
 }
