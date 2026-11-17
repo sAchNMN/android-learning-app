@@ -1,6 +1,7 @@
 package com.szc.learning
 
 import android.content.Context
+import com.szc.learning.cart.CartStore
 import com.szc.learning.core.network.ApiClient
 import com.szc.learning.core.network.AuthRepository
 import com.szc.learning.core.network.SessionStore
@@ -25,4 +26,7 @@ class AppContainer(context: Context) {
     val authRepository: AuthRepository = AuthRepository(apiClient.authApi, sessionStore)
 
     val takeoutRepository: TakeoutRepository = TakeoutRepository(apiClient.takeoutApi)
+
+    /** 购物车是本地状态，底部角标与购物车 tab 共用同一份。 */
+    val cartStore: CartStore = CartStore()
 }

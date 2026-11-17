@@ -16,7 +16,14 @@
     <string name="login_error_captcha_empty">请输入验证码</string>
     <string name="login_server_hint">接口地址：%1$s</string>
 
-    <!-- 首页 -->
+    <!-- 底部导航 -->
+    <string name="tab_home">首页</string>
+    <string name="tab_cart">购物车</string>
+    <string name="tab_order">订单</string>
+    <string name="tab_mine">我的</string>
+
+    <!-- 我的 -->
+    <string name="mine_title">我的</string>
     <string name="home_account">账号：%1$s</string>
     <string name="home_logout">退出登录</string>
     <string name="home_logout_confirm">确定要退出登录吗？</string>
@@ -27,7 +34,13 @@
     <string name="shop_list_empty">暂无营业中的店铺</string>
     <string name="shop_checkout">去结算</string>
     <string name="shop_min_hint">还差 ¥%1$s 起送</string>
+    <string name="cart_title">购物车</string>
+    <string name="cart_empty">购物车还是空的</string>
+    <string name="cart_go_shopping">去逛逛</string>
+    <string name="cart_total">合计 ¥%1$s</string>
+    <string name="cart_item_total">共 %1$d 件</string>
     <string name="dish_add">＋</string>
+    <string name="dish_remove">−</string>
     <string name="order_list_title">我的订单</string>
     <string name="order_empty">还没有订单</string>
     <string name="order_pay">去支付</string>
@@ -39,10 +52,6 @@
     <string name="checkout_confirm">提交订单</string>
     <string name="checkout_success">下单成功</string>
     <string name="pay_success">支付成功</string>
-    <string name="home_shop_entry">点外卖</string>
-    <string name="home_shop_desc">浏览店铺、下单、查看订单</string>
-    <string name="home_order_entry">我的订单</string>
-    <string name="home_section_entry">功能</string>
 
     <!-- 通用 -->
     <string name="action_confirm">确定</string>

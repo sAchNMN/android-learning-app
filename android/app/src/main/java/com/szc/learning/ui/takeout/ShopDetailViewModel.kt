@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.szc.learning.cart.CartStore
 import com.szc.learning.core.common.AppResult
 import com.szc.learning.core.network.takeout.Dish
 import com.szc.learning.core.network.takeout.Order
@@ -20,11 +21,12 @@ import kotlinx.coroutines.launch
 /**
  * 店铺详情 + 购物车。
  *
- * 购物车只存在内存里（Map<dishId, qty>），退出页面即清空 ——
- * 演示项目不做购物车持久化，够用且不会出现「昨天的菜今天还在」的尴尬。
+ * 购物车数据不再由本 ViewModel 独占，而是写入全局 [CartStore]：
+ * 这样退出店铺页后购物车 tab 和底部角标还能看到同样的内容。
  */
 class ShopDetailViewModel(
     private val repository: TakeoutRepository,
+    private val cartStore: CartStore,
     private val shopId: Long,
 ) : ViewModel() {
 
@@ -55,6 +57,18 @@ class ShopDetailViewModel(
 
     init {
         load()
+        // 购物车是全局的：只取本店那一份，别家店的内容不显示
+        viewModelScope.launch {
+            cartStore.state.collect { cart ->
+                val mine = cart.takeIf { it.shopId == shopId }
+                _state.update { current ->
+                    current.copy(
+                        cart = mine?.items?.associate { it.dishId to it.quantity }.orEmpty(),
+                        totalAmount = mine?.totalAmount ?: 0.0,
+                    )
+                }
+            }
+        }
     }
 
     fun load() {
@@ -73,20 +87,12 @@ class ShopDetailViewModel(
     }
 
     fun addDish(dish: Dish) {
-        _state.update { current ->
-            val cart = current.cart.toMutableMap()
-            cart[dish.dishId] = (cart[dish.dishId] ?: 0) + 1
-            current.copy(cart = cart, totalAmount = totalOf(cart, current.detail))
-        }
+        val shop = _state.value.detail?.shop ?: return
+        cartStore.add(dish, shop.shopId, shop.shopName, shop.minAmount, shop.deliveryFee)
     }
 
     fun removeDish(dishId: Long) {
-        _state.update { current ->
-            val cart = current.cart.toMutableMap()
-            val next = (cart[dishId] ?: 0) - 1
-            if (next <= 0) cart.remove(dishId) else cart[dishId] = next
-            current.copy(cart = cart, totalAmount = totalOf(cart, current.detail))
-        }
+        cartStore.decrease(dishId)
     }
 
     fun checkout(receiver: String, phone: String, address: String) {
@@ -106,6 +112,9 @@ class ShopDetailViewModel(
                     address = address,
                 ),
             )
+            if (result is AppResult.Success) {
+                cartStore.clearFor(shopId)
+            }
             _state.update { current ->
                 when (result) {
                     is AppResult.Success -> current.copy(
@@ -132,15 +141,14 @@ class ShopDetailViewModel(
         _state.update { it.copy(errorMessage = null) }
     }
 
-    private fun totalOf(cart: Map<Long, Int>, detail: ShopDetail?): Double {
-        val prices = detail?.dishes.orEmpty().associate { it.dishId to it.price }
-        return cart.entries.sumOf { (dishId, qty) -> (prices[dishId] ?: 0.0) * qty }
-    }
-
     companion object {
-        fun factory(repository: TakeoutRepository, shopId: Long): ViewModelProvider.Factory =
+        fun factory(
+            repository: TakeoutRepository,
+            cartStore: CartStore,
+            shopId: Long,
+        ): ViewModelProvider.Factory =
             viewModelFactory {
-                initializer { ShopDetailViewModel(repository, shopId) }
+                initializer { ShopDetailViewModel(repository, cartStore, shopId) }
             }
     }
 }

@@ -70,6 +70,9 @@ public class TakeoutService {
         if (shop == null) {
             throw new ServiceException("店铺不存在");
         }
+        if (!"0".equals(shop.getStatus())) {
+            throw new ServiceException("店铺休息中，暂不接单");
+        }
 
         BigDecimal total = BigDecimal.ZERO;
         List<TakeoutOrderItem> items = new ArrayList<>();
@@ -82,6 +85,9 @@ public class TakeoutService {
             TakeoutDish dish = dishMapper.selectById(reqItem.getDishId());
             if (dish == null || !shop.getShopId().equals(dish.getShopId())) {
                 throw new ServiceException("菜品不存在或不属于该店铺");
+            }
+            if (!"0".equals(dish.getStatus())) {
+                throw new ServiceException("「" + dish.getDishName() + "」已下架");
             }
 
             BigDecimal subtotal = dish.getPrice().multiply(BigDecimal.valueOf(reqItem.getQuantity()));

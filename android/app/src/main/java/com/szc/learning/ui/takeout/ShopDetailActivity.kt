@@ -19,6 +19,7 @@ import com.szc.learning.R
 import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.ActivityShopDetailBinding
 import com.szc.learning.databinding.DialogCheckoutBinding
+import com.szc.learning.ui.main.MainActivity
 import kotlinx.coroutines.launch
 
 /** 店铺详情：菜品列表 + 购物车 + 结算。 */
@@ -31,7 +32,7 @@ class ShopDetailActivity : AppCompatActivity() {
     private val shopId: Long by lazy { intent.getLongExtra(EXTRA_SHOP_ID, -1L) }
 
     private val viewModel: ShopDetailViewModel by viewModels {
-        ShopDetailViewModel.factory(container.takeoutRepository, shopId)
+        ShopDetailViewModel.factory(container.takeoutRepository, container.cartStore, shopId)
     }
 
     private val adapter = DishAdapter { dish -> viewModel.addDish(dish) }
@@ -96,7 +97,13 @@ class ShopDetailActivity : AppCompatActivity() {
                     state.createdOrder?.let { order ->
                         viewModel.consumeCreatedOrder()
                         toast(getString(R.string.checkout_success) + "：${order.orderNo}")
-                        startActivity(Intent(this@ShopDetailActivity, OrderListActivity::class.java))
+                        // 直接回到宿主页的订单 tab
+                        startActivity(
+                            Intent(this@ShopDetailActivity, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                putExtra(MainActivity.EXTRA_TAB, R.id.tab_order)
+                            },
+                        )
                         finish()
                     }
                 }

@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * 外卖闭环仪器测试：登录 → 点外卖 → 选店 → 加菜 → 结算 → 订单列表。
+ * 外卖闭环仪器测试：登录 → 我的 → 首页 → 选店 → 加菜 → 结算 → 订单 tab。
  *
  * 跑之前要保证：
  * 1. 后端在 8080 且可访问（模拟器侧用 `adb reverse tcp:8080 tcp:8080`，
@@ -29,7 +29,7 @@ import org.junit.runner.RunWith
 class TakeoutFlowTest {
 
     @Test
-    fun login_thenPlaceOrder_landsOnOrderList() {
+    fun login_thenPlaceOrder_landsOnOrderTab() {
         ActivityScenario.launch(LoginActivity::class.java).use {
             // ---- 登录 ----
             onView(withId(R.id.usernameInput)).perform(replaceText("admin"))
@@ -38,10 +38,12 @@ class TakeoutFlowTest {
             onView(withId(R.id.loginButton)).perform(click())
             Thread.sleep(5_000)
 
+            // ---- 我的 tab：账号信息 ----
+            onView(withContentDescription("我的")).perform(click())
             onView(withId(R.id.nicknameText)).check(matches(withText("若依")))
 
-            // ---- 进入外卖 ----
-            onView(withId(R.id.shopEntryCard)).perform(click())
+            // ---- 首页 tab：点外卖 ----
+            onView(withContentDescription("首页")).perform(click())
             Thread.sleep(3_000)
 
             onView(withText("老王牛肉面")).perform(click())

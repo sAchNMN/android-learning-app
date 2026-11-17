@@ -16,7 +16,7 @@ import com.szc.learning.BuildConfig
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.databinding.ActivityLoginBinding
-import com.szc.learning.ui.home.HomeActivity
+import com.szc.learning.ui.main.MainActivity
 import kotlinx.coroutines.launch
 
 /**
@@ -130,7 +130,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun goHome() {
-        val intent = Intent(this, HomeActivity::class.java).apply {
+        val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         startActivity(intent)

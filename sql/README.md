@@ -1,13 +1,20 @@
 # SQL 脚本
 
-**业务表尚未设计。** 这里暂时只有约定，没有脚本。
+本目录是业务表的版本化脚本，当前业务是外卖点餐。
 
-若依自带的表结构在 `server/RuoYi-Vue/sql/`：
+| 文件 | 内容 |
+| --- | --- |
+| `01_takeout_schema.sql` | 四张业务表：`takeout_shop` / `takeout_dish` / `takeout_order` / `takeout_order_item` |
+| `02_takeout_data.sql` | 店铺与菜品的初始化数据 |
+
+前置条件是先导入若依自带的表结构，脚本在 `server/RuoYi-Vue/sql/`：
 
 | 文件 | 内容 |
 | --- | --- |
 | `ry_20260417.sql` | 系统表（用户、角色、菜单、字典、参数等） |
 | `quartz.sql` | 定时任务表 |
+
+完整导入顺序见仓库根 `README.md` 的「快速开始」。
 
 ## 加业务表时
 

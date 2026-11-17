@@ -15,7 +15,11 @@ Android 与后台管理端的所有数据都来自这里。
 | 路径 | 说明 | 状态 |
 | --- | --- | --- |
 | `RuoYi-Vue/` | 若依服务端源码，独立 clone，不入版本控制 | `mvn package` 通过 |
+| `business/takeout/` | 外卖业务源码（包 `com.ruoyi.takeout`），版本控制中的唯一可信来源 | 已同步到 `RuoYi-Vue/` |
 | `docker-compose.yml` | MySQL + Redis（可选；本机 3306 已被占用） | — |
+
+`business/` 是业务代码的备份与可信来源：`RuoYi-Vue/` 被 gitignore，
+重新 clone 会丢代码。修改后按 `business/README.md` 的两条 `cp` 命令双向同步。
 
 > RuoYi-Vue 从 3.9.x 起**只含后端**，Vue 前端拆到独立仓库 `RuoYi-Vue3`
 > （`https://gitcode.com/yangzongzhuan/RuoYi-Vue3`，不在 gitee 的 y_project 下），
@@ -49,8 +53,9 @@ MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 "$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/quartz.sql         # 定时任务表
 ```
 
-当前结果：**31 张若依表，无业务表**。
-业务表等需求确定后再加到仓库根的 `sql/`，见那里的 README。
+当前结果：**31 张若依系统表 + 4 张外卖业务表**。
+业务表脚本在仓库根的 `sql/`（`01_takeout_schema.sql` / `02_takeout_data.sql`），
+导入顺序见仓库根 `README.md`。
 
 数据库密码已写入 `RuoYi-Vue/ruoyi-admin/src/main/resources/application-druid.yml`。
 该文件属于 gitignore 的第三方源码，密码不进主仓。
