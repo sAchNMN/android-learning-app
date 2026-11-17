@@ -70,6 +70,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.material)
+    // 购物车落盘（与 SessionStore 同一个 DataStore 库，各自一个文件名）
+    implementation(libs.androidx.datastore.preferences)
+    // 购物车落盘用 Gson 序列化（与网络层同一份实现，不另引序列化库）
+    implementation(libs.gson)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

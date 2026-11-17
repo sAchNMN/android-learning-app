@@ -40,3 +40,54 @@ data class ShopPage(
     @SerializedName("total") val total: Long = 0,
     @SerializedName("rows") val rows: List<Shop> = emptyList(),
 )
+
+/** 菜品。 */
+data class Dish(
+    @SerializedName("dishId") val dishId: Long = 0,
+    @SerializedName("shopId") val shopId: Long = 0,
+    @SerializedName("dishName") val dishName: String = "",
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("price") val price: Double = 0.0,
+    @SerializedName("category") val category: String? = null,
+    @SerializedName("sales") val sales: Int = 0,
+    /** 有规格时点「+」要弹规格窗，不能直接加车。 */
+    @SerializedName("hasSpec") val hasSpec: Boolean = false,
+    @SerializedName("sortNo") val sortNo: Int = 0,
+    @SerializedName("specs") val specs: List<DishSpec> = emptyList(),
+)
+
+/** 规格组。required=true 表示必须选，multi=true 表示可多选。 */
+data class DishSpec(
+    @SerializedName("specId") val specId: Long = 0,
+    @SerializedName("specName") val specName: String = "",
+    @SerializedName("required") val required: Boolean = true,
+    @SerializedName("multi") val multi: Boolean = false,
+    @SerializedName("options") val options: List<DishSpecOption> = emptyList(),
+)
+
+/** 规格选项。priceDelta 是加价，不是最终价。 */
+data class DishSpecOption(
+    @SerializedName("optionId") val optionId: Long = 0,
+    @SerializedName("specId") val specId: Long = 0,
+    @SerializedName("optionName") val optionName: String = "",
+    @SerializedName("priceDelta") val priceDelta: Double = 0.0,
+    @SerializedName("isDefault") val isDefault: Boolean = false,
+)
+
+/** 店铺详情里的一个菜品分类。 */
+data class DishGroup(
+    @SerializedName("category") val category: String = "",
+    @SerializedName("dishes") val dishes: List<Dish> = emptyList(),
+)
+
+/** 店铺详情：店铺 + 收藏状态 + 分组菜品。 */
+data class ShopDetail(
+    @SerializedName("shop") val shop: Shop? = null,
+    @SerializedName("favorited") val favorited: Boolean = false,
+    @SerializedName("groups") val groups: List<DishGroup> = emptyList(),
+) {
+    /** 按 dishId 找菜，购物车里只有 id 时用来取名称与基础价。 */
+    fun dishOf(dishId: Long): Dish? = groups.asSequence()
+        .flatMap { it.dishes.asSequence() }
+        .firstOrNull { it.dishId == dishId }
+}

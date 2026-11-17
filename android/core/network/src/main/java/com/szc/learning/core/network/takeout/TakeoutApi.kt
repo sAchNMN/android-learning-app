@@ -7,17 +7,11 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 /**
- * 外卖业务接口。
+ * 订单接口。
  *
- * 全部挂在外卖前缀下（app 开头），需要带登录 token。
+ * 店铺相关的接口已迁到 [ShopApi]，这里只管订单。
  */
 interface TakeoutApi {
-
-    @GET("app/shop/list")
-    suspend fun shopList(): AjaxResult<List<Shop>>
-
-    @GET("app/shop/{shopId}")
-    suspend fun shopDetail(@Path("shopId") shopId: Long): AjaxResult<ShopDetail>
 
     @POST("app/order/create")
     suspend fun createOrder(@Body body: OrderCreateBody): AjaxResult<OrderDetail>

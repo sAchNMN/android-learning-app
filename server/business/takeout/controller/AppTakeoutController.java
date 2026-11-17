@@ -36,10 +36,11 @@ public class AppTakeoutController {
         return AjaxResult.success(takeoutShopService.listShops());
     }
 
-    /** 店铺详情，含在售菜品。 */
+    /** 店铺详情，含按分类分组的菜品、规格与收藏状态。 */
     @GetMapping("/shop/{shopId}")
     public AjaxResult shopDetail(@PathVariable("shopId") Long shopId) {
-        return AjaxResult.success(takeoutShopService.shopDetail(shopId));
+        return AjaxResult.success(
+                takeoutShopService.shopDetail(shopId, SecurityUtils.getUserId()));
     }
 
     /** 下单。 */

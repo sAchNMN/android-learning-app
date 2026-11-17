@@ -1,6 +1,5 @@
 package com.szc.learning.ui.takeout
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -12,16 +11,28 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szc.learning.AppContainer
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.core.common.toast
+import com.szc.learning.core.network.takeout.Dish
+import com.szc.learning.core.network.takeout.DishGroup
+import com.szc.learning.core.network.takeout.DishSpecOption
+import com.szc.learning.core.network.takeout.ShopDetail
+import com.szc.learning.data.ShopCart
 import com.szc.learning.databinding.ActivityShopDetailBinding
-import com.szc.learning.databinding.DialogCheckoutBinding
 import kotlinx.coroutines.launch
 
-/** 店铺详情：菜品列表 + 购物车 + 结算。 */
+/**
+ * 店铺详情（D1）：分类联动 + 规格选择 + 购物车。
+ *
+ * 左右联动的两条规则：
+ * 1. 右侧滚动驱动左侧高亮（用户手动滚动时生效）
+ * 2. 左侧点击驱动右侧滚动，期间**关掉**规则 1，
+ *    否则程序滚动会反过来改左侧，形成抖动
+ */
 class ShopDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityShopDetailBinding
@@ -30,11 +41,30 @@ class ShopDetailActivity : AppCompatActivity() {
 
     private val shopId: Long by lazy { intent.getLongExtra(EXTRA_SHOP_ID, -1L) }
 
-    private val viewModel: ShopDetailViewModel by viewModels {
-        ShopDetailViewModel.factory(container.takeoutRepository, shopId)
+    /** 从搜索页进来时要定位到某道菜，普通进入为 0。 */
+    private val highlightDishId: Long by lazy {
+        intent.getLongExtra(EXTRA_HIGHLIGHT_DISH_ID, 0L)
     }
 
-    private val adapter = DishAdapter { dish -> viewModel.addDish(dish) }
+    private val viewModel: ShopDetailViewModel by viewModels {
+        ShopDetailViewModel.factory(container.shopRepository, container.cartStore, shopId)
+    }
+
+    private val categoryAdapter = CategoryAdapter { groupIndex -> scrollToCategory(groupIndex) }
+
+    private val dishAdapter = DishListAdapter(
+        onAdd = { dish -> handleAdd(dish) },
+        onMinus = { dish -> viewModel.decreaseDish(dish) },
+    )
+
+    private var renderedGroups: List<DishGroup> = emptyList()
+
+    private var cartSheet: CartSheetDialog? = null
+
+    /** true 期间忽略右侧滚动，避免程序滚动与手动滚动互相打架。 */
+    private var suppressScrollSync = false
+
+    private var highlightApplied = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -54,12 +84,39 @@ class ShopDetailActivity : AppCompatActivity() {
             insets
         }
 
-        binding.dishRecycler.layoutManager = LinearLayoutManager(this)
-        binding.dishRecycler.adapter = adapter
-
-        binding.checkoutButton.setOnClickListener { showCheckoutDialog() }
-
+        setupRecyclers()
+        bindActions()
         observe()
+    }
+
+    private fun setupRecyclers() {
+        binding.categoryRecycler.layoutManager = LinearLayoutManager(this)
+        binding.categoryRecycler.adapter = categoryAdapter
+
+        val dishLayoutManager = LinearLayoutManager(this)
+        binding.dishRecycler.layoutManager = dishLayoutManager
+        binding.dishRecycler.adapter = dishAdapter
+
+        binding.dishRecycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                if (suppressScrollSync) return
+                val first = dishLayoutManager.findFirstVisibleItemPosition()
+                val groupIndex = dishAdapter.groupIndexOf(first)
+                if (groupIndex >= 0) {
+                    categoryAdapter.select(groupIndex)
+                }
+            }
+        })
+    }
+
+    private fun bindActions() {
+        binding.retryButton.setOnClickListener { viewModel.load() }
+        binding.favoriteButton.setOnClickListener { viewModel.toggleFavorite() }
+        binding.cartSummaryGroup.setOnClickListener { showCartSheet() }
+        binding.checkoutButton.setOnClickListener {
+            // D2 结算页尚未接入
+            toast(R.string.checkout_todo)
+        }
     }
 
     private fun observe() {
@@ -68,64 +125,181 @@ class ShopDetailActivity : AppCompatActivity() {
                 viewModel.state.collect { state ->
                     binding.loadingBar.isVisible = state.loading
 
-                    state.detail?.shop?.let { shop ->
-                        binding.shopName.text = shop.shopName
-                        binding.shopMeta.text = shop.description
-                            ?: "起送 ¥${formatMoney(shop.minAmount)} · 配送 ¥${formatMoney(shop.deliveryFee)}"
+                    val showError = state.loadError != null && state.detail == null
+                    binding.errorGroup.isVisible = showError
+                    if (showError) {
+                        binding.errorText.text = state.loadError
                     }
 
                     state.detail?.let { detail ->
-                        if (adapter.itemCount == 0) adapter.submit(detail.dishes)
+                        bindShopHeader(detail)
+                        if (detail.groups != renderedGroups) {
+                            renderedGroups = detail.groups
+                            categoryAdapter.submit(detail.groups.map { it.category })
+                            highlightApplied = false
+                        }
                     }
 
-                    adapter.quantities = state.cart
+                    binding.favoriteButton.setText(
+                        if (state.favorited) R.string.shop_detail_favorited
+                        else R.string.shop_detail_favorite,
+                    )
+                    binding.favoriteButton.isEnabled = !state.favoriteBusy
 
-                    binding.totalPrice.text = "合计 ¥${formatMoney(state.totalAmount)}"
-                    binding.cartSummary.text = when {
-                        state.itemCount == 0 -> "购物车是空的"
-                        state.shortOfMin > 0 -> getString(R.string.shop_min_hint, formatMoney(state.shortOfMin))
-                        else -> "共 ${state.itemCount} 件 · 另加配送费"
-                    }
-                    binding.checkoutButton.isEnabled = state.canCheckout && !state.submitting
+                    renderCart(state)
 
-                    state.errorMessage?.let {
+                    state.actionError?.let {
                         toast(it)
-                        viewModel.clearError()
-                    }
-
-                    state.createdOrder?.let { order ->
-                        viewModel.consumeCreatedOrder()
-                        toast(getString(R.string.checkout_success) + "：${order.orderNo}")
-                        startActivity(Intent(this@ShopDetailActivity, OrderListActivity::class.java))
-                        finish()
+                        viewModel.consumeError()
                     }
                 }
             }
         }
     }
 
-    private fun showCheckoutDialog() {
-        val dialogBinding = DialogCheckoutBinding.inflate(layoutInflater)
-        // 演示用的默认收货信息，改起来比每次手输快
-        dialogBinding.receiverInput.setText("张三")
-        dialogBinding.phoneInput.setText("13800138000")
-        dialogBinding.addressInput.setText("郑州市金水区文化路 1 号")
+    private fun bindShopHeader(detail: ShopDetail) {
+        val shop = detail.shop ?: return
 
+        binding.shopName.text = shop.shopName
+        binding.shopMeta.text = buildList {
+            shop.description?.takeIf { it.isNotBlank() }?.let(::add)
+            add(getString(R.string.shop_rating_score, shop.ratingText))
+        }.joinToString(" · ")
+
+        binding.shopInfo.text = buildString {
+            append(
+                getString(
+                    R.string.shop_fee_detail,
+                    formatMoney(shop.minAmount),
+                    formatMoney(shop.deliveryFee),
+                    shop.deliveryTime,
+                ),
+            )
+            shop.openTime?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
+            if (!shop.isOpen) {
+                append(" · ").append(getString(R.string.shop_closed))
+            }
+        }
+    }
+
+    private fun renderCart(state: ShopDetailState) {
+        val cart = state.cart
+
+        binding.cartBadge.isVisible = cart.itemCount > 0
+        binding.cartBadge.text = getString(R.string.shop_detail_items, cart.itemCount)
+        binding.totalPrice.text = getString(
+            R.string.shop_detail_total,
+            formatMoney(cart.totalAmount),
+        )
+
+        binding.cartSummary.text = when {
+            cart.itemCount == 0 -> getString(R.string.shop_detail_cart_empty)
+            state.shortOfMin > 0 -> getString(
+                R.string.shop_detail_min_short,
+                formatMoney(state.shortOfMin),
+            )
+            !state.shopOpen -> getString(R.string.shop_detail_closed_hint)
+            else -> getString(R.string.shop_detail_fee_hint, formatMoney(state.deliveryFee))
+        }
+
+        binding.checkoutButton.isEnabled = state.canCheckout
+
+        if (renderedGroups.isNotEmpty()) {
+            dishAdapter.submitList(buildItems(renderedGroups, cart))
+            applyHighlightIfNeeded()
+        }
+
+        cartSheet?.render(cart)
+    }
+
+    private fun buildItems(groups: List<DishGroup>, cart: ShopCart): List<DishItem> {
+        val items = ArrayList<DishItem>()
+        groups.forEachIndexed { index, group ->
+            items += DishItem.Header(group.category, index)
+            group.dishes.forEach { dish ->
+                val lines = cart.lines.filter { it.dishId == dish.dishId }
+                val quantity = lines.sumOf { it.quantity }
+                val specText = when {
+                    lines.isEmpty() -> ""
+                    lines.size == 1 -> lines.first().specText
+                    // 同菜品选了多个规格时行上只能概括，细节点进购物车看
+                    else -> getString(R.string.dish_multi_spec)
+                }
+                items += DishItem.Row(dish, index, quantity, specText)
+            }
+        }
+        return items
+    }
+
+    private fun applyHighlightIfNeeded() {
+        if (highlightApplied || highlightDishId <= 0) return
+        val position = dishAdapter.currentList.indexOfFirst {
+            it is DishItem.Row && it.dish.dishId == highlightDishId
+        }
+        if (position < 0) return
+
+        highlightApplied = true
+        binding.dishRecycler.post {
+            (binding.dishRecycler.layoutManager as? LinearLayoutManager)
+                ?.scrollToPositionWithOffset(position, 0)
+        }
+    }
+
+    private fun scrollToCategory(groupIndex: Int) {
+        val position = dishAdapter.headerPositionOf(groupIndex)
+        if (position < 0) return
+
+        suppressScrollSync = true
+        (binding.dishRecycler.layoutManager as? LinearLayoutManager)
+            ?.scrollToPositionWithOffset(position, 0)
+        binding.dishRecycler.postDelayed({ suppressScrollSync = false }, SCROLL_SYNC_DELAY_MS)
+    }
+
+    private fun handleAdd(dish: Dish) {
+        if (dish.hasSpec && dish.specs.isNotEmpty()) {
+            SpecSheetDialog(this, dish) { options -> confirmAdd(dish, options) }.show()
+        } else {
+            confirmAdd(dish, emptyList())
+        }
+    }
+
+    private fun confirmAdd(dish: Dish, options: List<DishSpecOption>) {
+        if (!viewModel.hasOtherShopCart()) {
+            viewModel.add(dish, options)
+            return
+        }
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.checkout_title)
-            .setView(dialogBinding.root)
+            .setMessage(R.string.cart_other_shop_confirm)
             .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.checkout_confirm) { _, _ ->
-                viewModel.checkout(
-                    receiver = dialogBinding.receiverInput.text?.toString()?.trim().orEmpty(),
-                    phone = dialogBinding.phoneInput.text?.toString()?.trim().orEmpty(),
-                    address = dialogBinding.addressInput.text?.toString()?.trim().orEmpty(),
-                )
+            .setPositiveButton(R.string.cart_switch_continue) { _, _ ->
+                viewModel.clearOtherCarts()
+                viewModel.add(dish, options)
             }
             .show()
     }
 
+    private fun showCartSheet() {
+        val cart = viewModel.state.value.cart
+        if (cart.isEmpty) return
+
+        if (cartSheet == null) {
+            cartSheet = CartSheetDialog(
+                context = this,
+                cart = cart,
+                onIncrease = { key -> viewModel.increase(key) },
+                onDecrease = { key -> viewModel.decrease(key) },
+                onClear = { viewModel.clearCart() },
+            ).also { dialog ->
+                dialog.setOnDismissListener { cartSheet = null }
+            }
+        }
+        cartSheet?.show()
+    }
+
     companion object {
-        const val EXTRA_SHOP_ID = "shopId"
+        private const val SCROLL_SYNC_DELAY_MS = 400L
+
+        const val EXTRA_SHOP_ID = "extra_shop_id"
+        const val EXTRA_HIGHLIGHT_DISH_ID = "extra_highlight_dish_id"
     }
 }

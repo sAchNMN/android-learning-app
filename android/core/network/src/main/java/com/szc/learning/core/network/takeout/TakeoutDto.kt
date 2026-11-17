@@ -2,23 +2,6 @@ package com.szc.learning.core.network.takeout
 
 import com.google.gson.annotations.SerializedName
 
-/** 菜品。 */
-data class Dish(
-    @SerializedName("dishId") val dishId: Long = 0,
-    @SerializedName("shopId") val shopId: Long = 0,
-    @SerializedName("dishName") val dishName: String = "",
-    @SerializedName("description") val description: String? = null,
-    @SerializedName("price") val price: Double = 0.0,
-    @SerializedName("category") val category: String? = null,
-    @SerializedName("sales") val sales: Int = 0,
-)
-
-/** 店铺详情：店铺 + 在售菜品。 */
-data class ShopDetail(
-    @SerializedName("shop") val shop: Shop? = null,
-    @SerializedName("dishes") val dishes: List<Dish> = emptyList(),
-)
-
 /** 我的订单。 */
 data class Order(
     @SerializedName("orderId") val orderId: Long = 0,

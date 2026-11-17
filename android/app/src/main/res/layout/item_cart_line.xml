@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/lineName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            tools:text="红烧牛肉面" />
+
+        <TextView
+            android:id="@+id/lineSpec"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.6"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:visibility="gone"
+            tools:text="大份/微辣"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/lineSubtotal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorPrimary"
+            tools:text="¥26.00" />
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/minusButton"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="30dp"
+        android:padding="0dp"
+        android:text="@string/dish_decrease"
+        android:textSize="14sp"
+        app:cornerRadius="15dp" />
+
+    <TextView
+        android:id="@+id/qtyText"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        tools:text="2" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/plusButton"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:insetTop="0dp"
+        android:insetBottom="0dp"
+        android:minWidth="30dp"
+        android:padding="0dp"
+        android:text="@string/dish_add"
+        android:textSize="14sp"
+        app:cornerRadius="15dp" />
+</LinearLayout>

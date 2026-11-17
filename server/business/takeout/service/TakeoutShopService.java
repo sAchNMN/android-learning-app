@@ -1,18 +1,28 @@
 package com.ruoyi.takeout.service;
 
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.takeout.domain.DishGroup;
 import com.ruoyi.takeout.domain.PageData;
 import com.ruoyi.takeout.domain.ShopDetail;
+import com.ruoyi.takeout.domain.TakeoutDish;
+import com.ruoyi.takeout.domain.TakeoutDishSpec;
+import com.ruoyi.takeout.domain.TakeoutDishSpecOption;
 import com.ruoyi.takeout.domain.TakeoutShop;
 import com.ruoyi.takeout.domain.TakeoutShopCategory;
 import com.ruoyi.takeout.mapper.TakeoutDishMapper;
+import com.ruoyi.takeout.mapper.TakeoutDishSpecMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopCategoryMapper;
+import com.ruoyi.takeout.mapper.TakeoutShopFavoriteMapper;
 import com.ruoyi.takeout.mapper.TakeoutShopMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 店铺域：分类、分页列表、详情。
@@ -38,6 +48,12 @@ public class TakeoutShopService {
     @Autowired
     private TakeoutDishMapper dishMapper;
 
+    @Autowired
+    private TakeoutDishSpecMapper specMapper;
+
+    @Autowired
+    private TakeoutShopFavoriteMapper favoriteMapper;
+
     public List<TakeoutShopCategory> categories() {
         return categoryMapper.selectEnabled();
     }
@@ -47,12 +63,82 @@ public class TakeoutShopService {
         return shopMapper.selectOpenShops();
     }
 
-    public ShopDetail shopDetail(Long shopId) {
+    /**
+     * 店铺详情：店铺 + 收藏状态 + 按分类分组的菜品（含规格）。
+     *
+     * 三条 SQL 拿全，Service 里组装。分组用 LinkedHashMap 按菜品顺序建组，
+     * 不走 GROUP BY —— MySQL 不保证组的顺序，左右联动会跳。
+     */
+    public ShopDetail shopDetail(Long shopId, Long userId) {
         TakeoutShop shop = shopMapper.selectById(shopId);
         if (shop == null) {
             throw new ServiceException("店铺不存在");
         }
-        return new ShopDetail(shop, dishMapper.selectByShop(shopId));
+
+        List<TakeoutDish> dishes = dishMapper.selectByShop(shopId);
+        attachSpecs(dishes);
+
+        Map<String, List<TakeoutDish>> grouped = new LinkedHashMap<>();
+        for (TakeoutDish dish : dishes) {
+            String category = (dish.getCategory() == null || dish.getCategory().trim().isEmpty())
+                    ? "其他"
+                    : dish.getCategory();
+            grouped.computeIfAbsent(category, key -> new ArrayList<>()).add(dish);
+        }
+
+        List<DishGroup> groups = new ArrayList<>(grouped.size());
+        grouped.forEach((category, list) -> groups.add(new DishGroup(category, list)));
+
+        boolean favorited = favoriteMapper.count(userId, shopId) > 0;
+        return new ShopDetail(shop, favorited, groups);
+    }
+
+    /**
+     * 给菜品挂上规格组与选项。
+     *
+     * 两条批量查询：先按 dishId 查组，再按 specId 查选项，绝不按菜品循环查库。
+     */
+    private void attachSpecs(List<TakeoutDish> dishes) {
+        if (dishes.isEmpty()) {
+            return;
+        }
+        List<Long> dishIds = dishes.stream().map(TakeoutDish::getDishId).collect(Collectors.toList());
+        List<TakeoutDishSpec> specs = specMapper.selectByDishIds(dishIds);
+        if (specs.isEmpty()) {
+            return;
+        }
+
+        List<Long> specIds = specs.stream().map(TakeoutDishSpec::getSpecId).collect(Collectors.toList());
+        Map<Long, List<TakeoutDishSpecOption>> optionsBySpec = specMapper.selectOptionsBySpecIds(specIds)
+                .stream()
+                .collect(Collectors.groupingBy(TakeoutDishSpecOption::getSpecId));
+
+        Map<Long, List<TakeoutDishSpec>> specsByDish = new LinkedHashMap<>();
+        for (TakeoutDishSpec spec : specs) {
+            spec.setOptions(optionsBySpec.getOrDefault(spec.getSpecId(), List.of()));
+            specsByDish.computeIfAbsent(spec.getDishId(), key -> new ArrayList<>()).add(spec);
+        }
+        for (TakeoutDish dish : dishes) {
+            dish.setSpecs(specsByDish.getOrDefault(dish.getDishId(), List.of()));
+        }
+    }
+
+    /**
+     * 收藏 / 取消收藏，都幂等：重复调用不报错，客户端不用先查状态。
+     */
+    public void favorite(Long shopId, Long userId) {
+        ensureShopExists(shopId);
+        favoriteMapper.insert(userId, shopId);
+    }
+
+    public void unfavorite(Long shopId, Long userId) {
+        favoriteMapper.delete(userId, shopId);
+    }
+
+    private void ensureShopExists(Long shopId) {
+        if (shopMapper.selectById(shopId) == null) {
+            throw new ServiceException("店铺不存在");
+        }
     }
 
     /**
