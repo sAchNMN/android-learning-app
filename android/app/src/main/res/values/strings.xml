@@ -37,6 +37,9 @@
     <string name="library_permission">需要读取音频</string>
     <string name="library_grant">允许</string>
     <string name="library_storage">%1$s / %2$s</string>
+    <string name="library_summary">%1$d 首 · %2$s</string>
+    <string name="duration_hm">%1$d 小时 %2$d 分</string>
+    <string name="duration_m">%1$d 分钟</string>
 
     <!-- 播放器 -->
     <string name="now_playing">正在播放</string>

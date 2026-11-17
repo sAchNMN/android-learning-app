@@ -1,5 +1,6 @@
 package com.szc.learning.core.network
 
+import com.szc.learning.core.network.music.MusicApi
 import com.szc.learning.core.network.takeout.AddressApi
 import com.szc.learning.core.network.takeout.ShopApi
 import com.szc.learning.core.network.takeout.TakeoutApi
@@ -59,6 +60,8 @@ class ApiClient(
     val addressApi: AddressApi = retrofit.create(AddressApi::class.java)
 
     val shopApi: ShopApi = retrofit.create(ShopApi::class.java)
+
+    val musicApi: MusicApi = retrofit.create(MusicApi::class.java)
 
     private companion object {
         const val CONNECT_TIMEOUT_SECONDS = 15L

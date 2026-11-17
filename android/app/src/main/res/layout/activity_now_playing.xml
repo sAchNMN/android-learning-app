@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  正在播放页。
+  结构：模糊封面 → 压暗层 → 内容。所有元素沿中轴对齐，
+  左右两侧（收起 / 队列）等宽，保证标题块在视觉上真正居中。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/black">
+
+    <ImageView
+        android:id="@+id/backdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_now_scrim" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageButton
+            android:id="@+id/btnCollapse"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/player_collapse"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_chevron_down"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <ImageButton
+            android:id="@+id/btnQueue"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="end"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="10dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/player_queue"
+            android:padding="12dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_queue"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="@color/white" />
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/nowCover"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="34dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="34dp"
+            android:contentDescription="@null"
+            android:elevation="18dp"
+            android:scaleType="centerCrop"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnCollapse"
+            app:shapeAppearanceOverlay="@style/Shape.Cover.Hero" />
+
+        <TextView
+            android:id="@+id/nowTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:layout_marginTop="26dp"
+            android:layout_marginEnd="28dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/white"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/nowCover" />
+
+        <TextView
+            android:id="@+id/nowArtist"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="28dp"
+            android:alpha="0.72"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/nowTitle" />
+
+        <com.szc.learning.music.ui.widget.SeekLine
+            android:id="@+id/nowSeek"
+            android:layout_width="0dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="22dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginEnd="22dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/nowArtist" />
+
+        <TextView
+            android:id="@+id/timePosition"
+            style="@style/Text.Numeric"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:textColor="@color/white"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/nowSeek" />
+
+        <TextView
+            android:id="@+id/timeDuration"
+            style="@style/Text.Numeric"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:textColor="@color/white"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/nowSeek" />
+
+        <!-- 走带：五个键左右对称，间距一致。主播放键是唯一的填充圆 -->
+        <LinearLayout
+            android:id="@+id/transport"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/timeDuration">
+
+            <ImageButton
+                android:id="@+id/btnShuffle"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_shuffle"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_shuffle"
+                app:tint="@color/white" />
+
+            <ImageButton
+                android:id="@+id/btnPrev"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_previous"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_prev"
+                app:tint="@color/white" />
+
+            <ImageButton
+                android:id="@+id/btnPlay"
+                android:layout_width="68dp"
+                android:layout_height="68dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/bg_transport_circle"
+                android:contentDescription="@string/player_pause"
+                android:elevation="4dp"
+                android:padding="22dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_pause"
+                app:tint="@color/black" />
+
+            <ImageButton
+                android:id="@+id/btnNext"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginEnd="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_next"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_next"
+                app:tint="@color/white" />
+
+            <ImageButton
+                android:id="@+id/btnRepeat"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_repeat"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_repeat"
+                app:tint="@color/white" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/volumeIcon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="26dp"
+            android:layout_marginBottom="4dp"
+            android:alpha="0.55"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_volume"
+            app:layout_constraintBottom_toBottomOf="@id/volumeLine"
+            app:layout_constraintStart_toStartOf="parent"
+            app:tint="@color/white" />
+
+        <com.szc.learning.music.ui.widget.SeekLine
+            android:id="@+id/volumeLine"
+            android:layout_width="0dp"
+            android:layout_height="22dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="26dp"
+            android:layout_marginBottom="26dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/volumeIcon" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

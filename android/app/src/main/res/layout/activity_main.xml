@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主界面骨架。
+  三层就够：极光底 → 页面容器 → 底部悬浮层（迷你播放器 + tab 栏）。
+  悬浮层不占内容高度，内容区域的底部内边距由各页面自己留（见各 fragment 的 paddingBottom），
+  这样滚动到末尾时内容不会被 tab 栏挡住。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.szc.learning.music.ui.widget.AuroraBackground
+        android:id="@+id/aurora"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <FrameLayout
+        android:id="@+id/tabContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <LinearLayout
+        android:id="@+id/dock"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="0dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="10dp">
+
+        <com.szc.learning.music.ui.widget.MiniPlayerView
+            android:id="@+id/miniPlayer"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone" />
+
+        <com.szc.learning.music.ui.widget.GlassTabBar
+            android:id="@+id/tabBar"
+            android:layout_width="match_parent"
+            android:layout_height="62dp" />
+    </LinearLayout>
+</FrameLayout>

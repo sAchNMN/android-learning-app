@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 正在播放页的主播放键：深色圆，和白色图标形成最大对比 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#F2FFFFFF" />
+</shape>

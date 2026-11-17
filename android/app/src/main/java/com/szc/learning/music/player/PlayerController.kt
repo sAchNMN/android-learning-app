@@ -110,6 +110,11 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         controller?.seekTo(positionMs.coerceAtLeast(0L))
     }
 
+    /** 音量走播放器而不是 AudioManager：后者会改动系统全局音量，退出去还得还原。 */
+    fun setVolume(volume: Float) {
+        controller?.volume = volume.coerceIn(0f, 1f)
+    }
+
     fun toggleShuffle() {
         val current = controller ?: return
         current.shuffleModeEnabled = !current.shuffleModeEnabled

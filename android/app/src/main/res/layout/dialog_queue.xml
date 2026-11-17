@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 播放队列：半透明底 + 玻璃容器，和主界面同一套材质语言 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="18dp">
+
+    <com.szc.learning.music.ui.widget.GlassView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:glassCorner="28dp"
+        app:glassElevation="0dp"
+        app:glassTopAlpha="0.92"
+        app:glassBottomAlpha="0.86">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="18dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:text="@string/player_queue" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/queueList"
+                android:layout_width="match_parent"
+                android:layout_height="420dp"
+                android:layout_marginTop="10dp"
+                android:clipToPadding="false"
+                android:overScrollMode="never"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp" />
+        </LinearLayout>
+    </com.szc.learning.music.ui.widget.GlassView>
+</FrameLayout>

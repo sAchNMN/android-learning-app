@@ -33,12 +33,11 @@ import kotlin.math.min
  *
  * 所有参数都能在 XML 里调，默认值就是标准玻璃。
  */
-class GlassView @JvmOverloads constructor(
+open class GlassView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
 ) : FrameLayout(context, attrs, defStyleAttr) {
-
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val sheenPaint = Paint(Paint.ANTI_ALIAS_FLAG)
