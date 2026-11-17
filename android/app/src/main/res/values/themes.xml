@@ -1,11 +1,28 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- 应用基础主题：Material3 日夜双主题，无 ActionBar -->
-    <style name="Base.Theme.Learning" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/brand_primary</item>
-        <item name="colorOnPrimary">@color/brand_on_primary</item>
-        <item name="colorPrimaryContainer">@color/brand_primary_container</item>
-        <item name="colorOnPrimaryContainer">@color/brand_on_primary_container</item>
+    <!--
+      全屏 edge-to-edge：状态栏/导航栏都透明，内容自己负责避让。
+      浅色模式要求深色状态栏图标，否则白底白字。
+    -->
+    <style name="Theme.Aurora" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/accent</item>
+        <item name="colorOnPrimary">@color/accent_on</item>
+        <item name="colorSurface">@color/canvas</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="android:windowBackground">@color/canvas</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorSecondary">@color/ink_secondary</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="28">shortEdges</item>
     </style>
 
-    <style name="Theme.Learning" parent="Base.Theme.Learning" />
+    <!-- 进出场不做系统默认的整屏滑动，改成短促淡入，接近 iOS 的转场节奏 -->
+    <style name="Animation.Aurora.Window" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/fade_in_scale</item>
+        <item name="android:activityOpenExitAnimation">@anim/fade_out</item>
+        <item name="android:activityCloseEnterAnimation">@anim/fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/fade_out_scale</item>
+    </style>
 </resources>
