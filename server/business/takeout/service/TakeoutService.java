@@ -80,8 +80,13 @@ public class TakeoutService {
     @Autowired
     private TakeoutAddressMapper addressMapper;
 
+    /**
+     * 若依 RedisConfig 里注册的 bean 是 `RedisTemplate<Object, Object>`，
+     * 泛型不协变，写成 `RedisTemplate<String, Object>` 会注入失败（启动期报 No qualifying bean）。
+     * 这里只能跟着它的泛型走。
+     */
     @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedisTemplate<Object, Object> redisTemplate;
 
     // ============================================================
     // 结算预览

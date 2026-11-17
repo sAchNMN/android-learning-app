@@ -14,8 +14,14 @@ Android 与后台管理端的所有数据都来自这里。
 
 | 路径 | 说明 | 状态 |
 | --- | --- | --- |
-| `RuoYi-Vue/` | 若依服务端源码，独立 clone，不入版本控制 | `mvn package` 通过 |
+| `RuoYi-Vue/` | 若依服务端源码，独立 clone，不入版本控制 | 本机未 clone |
+| `business/takeout/` | 外卖业务代码（domain / mapper / service / controller） | 语法自检通过 |
+| `verify-compile.sh` | 无若依源码时的语法自检：用 23 个 stub 编译全部业务代码 | 37 个文件通过 |
 | `docker-compose.yml` | MySQL + Redis（可选；本机 3306 已被占用） | — |
+
+> 改完 `business/` 下的代码，**先跑 `bash server/verify-compile.sh`**。
+> 它能查出语法、类型、方法签名、import 的错误，不用等 `RuoYi-Vue/` 就位。
+> 查不出 SQL 与 Spring 装配问题——那些必须真跑一次，见 `docs/verify-checklist.md`。
 
 > RuoYi-Vue 从 3.9.x 起**只含后端**，Vue 前端拆到独立仓库 `RuoYi-Vue3`
 > （`https://gitcode.com/yangzongzhuan/RuoYi-Vue3`，不在 gitee 的 y_project 下），

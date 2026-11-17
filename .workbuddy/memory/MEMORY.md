@@ -11,6 +11,31 @@ docs/      接口契约 api.md、架构 architecture.md
 - 若依源码都是**独立 git 仓**，各自有 .git，被上级 .gitignore 排除，不进主仓
 - 包名统一 `com.szc.learning`，模块前缀 `core.*` / `feature.*`
 
+## 本机真实的运行环境（2026-11-17 实测，别猜）
+
+**能跑的后端不在 WorkBuddy 工作区里**：
+
+- 主工作树：`C:/Users/34759/Desktop/android-demo/android-learning-app`（分支 `master`）
+- 若依源码：`<主工作树>/server/RuoYi-Vue`，jar 在 `ruoyi-admin/target/ruoyi-admin.jar`
+- 启动：`bash server/start-backend.sh`（脚本里 `exec java -jar ... --server.port=8080`，
+  必须显式传端口，环境里有东西会把端口顶到 8066）
+- MySQL：`/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe`，
+  **root 密码 `2006`**（写在 `RuoYi-Vue/ruoyi-admin/src/main/resources/application-druid.yml`）
+- 库名 `ry-vue`；Redis 便携版 @6379（token 存这里，不起 Redis 登录必失败）
+- 业务代码装进工程的方式：`server/business/takeout` → `RuoYi-Vue/ruoyi-admin/src/main/java/com/ruoyi/takeout`
+
+## 两条分支已分叉（2026-11-17 发现）
+
+分叉点 `bd7e534`，之后各走各的：
+
+| 分支 | 客户端架构 | 后端 |
+| --- | --- | --- |
+| `master`（Desktop 主工作树） | 底部导航 + 4 个 Fragment + 全局购物车 | 停在 P1 |
+| `workbuddy/master-ea349285` | 独立 Activity + BottomSheet | P2 全套（37 类，已验证 22 接口全通） |
+
+同名类语义不同（`ShopDetailActivity`/`CartStore`/`OrderListViewModel`），**不能直接 cherry-pick**。
+装机验证前必须先定客户端走哪套架构。
+
 ## 技术选型（已定型，不要再讨论）
 - Kotlin + XML View（不用 Compose）、MVVM、StateFlow、DataStore
 - **不引 Hilt**，用 `AppContainer` 手写依赖容器
