@@ -19,6 +19,11 @@ data class Order(
     @SerializedName("remark") val remark: String? = null,
     @SerializedName("expectTime") val expectTime: String? = null,
     @SerializedName("payTime") val payTime: String? = null,
+    @SerializedName("deliverTime") val deliverTime: String? = null,
+    @SerializedName("receiveTime") val receiveTime: String? = null,
+    @SerializedName("finishTime") val finishTime: String? = null,
+    @SerializedName("cancelReason") val cancelReason: String? = null,
+    @SerializedName("cancelTime") val cancelTime: String? = null,
     @SerializedName("createTime") val createTime: String? = null,
 ) {
     /** 状态文案。后端用 char(1) 存，这里翻译成中文。 */
@@ -47,10 +52,24 @@ data class OrderItem(
     @SerializedName("subtotal") val subtotal: Double = 0.0,
 )
 
-/** 订单详情：订单 + 明细。 */
+/** 订单详情：订单 + 明细 + 评价状态 + 时间轴。 */
 data class OrderDetail(
     @SerializedName("order") val order: Order? = null,
     @SerializedName("items") val items: List<OrderItem> = emptyList(),
+    @SerializedName("reviewed") val reviewed: Boolean = false,
+    @SerializedName("timeline") val timeline: List<TimelineNode> = emptyList(),
+)
+
+/** 时间轴节点。只包含已发生的节点，最后一项即当前状态。 */
+data class TimelineNode(
+    @SerializedName("status") val status: String = "",
+    @SerializedName("label") val label: String = "",
+    @SerializedName("time") val time: String = "",
+)
+
+/** 取消订单请求体。 */
+data class OrderCancelBody(
+    @SerializedName("reason") val reason: String? = null,
 )
 
 /** 结算预览里的一行，单价已含规格加价。 */

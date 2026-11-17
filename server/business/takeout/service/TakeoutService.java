@@ -4,6 +4,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.domain.OrderDetail;
 import com.ruoyi.takeout.domain.OrderPreview;
+import com.ruoyi.takeout.domain.OrderTimelineNode;
 import com.ruoyi.takeout.domain.TakeoutAddress;
 import com.ruoyi.takeout.domain.TakeoutDish;
 import com.ruoyi.takeout.domain.TakeoutDishSpec;
@@ -207,16 +208,104 @@ public class TakeoutService {
     // 查询与支付
     // ============================================================
 
+    /**
+     * 我的订单。
+     *
+     * 逐条做惰性超时取消：用户看不到「待支付」的过期订单，才不会点进去才发现付不了。
+     */
     public List<TakeoutOrder> myOrders(Long userId) {
-        return orderMapper.selectByUser(userId);
+        List<TakeoutOrder> orders = orderMapper.selectByUser(userId);
+        for (TakeoutOrder order : orders) {
+            if (TakeoutOrder.STATUS_UNPAID.equals(order.getStatus())
+                    && orderMapper.expireCancel(order.getOrderId()) > 0) {
+                order.setStatus(TakeoutOrder.STATUS_CANCELLED);
+                order.setCancelReason("超时未支付，系统自动取消");
+            }
+        }
+        return orders;
     }
 
+    /**
+     * 订单详情。
+     *
+     * 查之前先做两次惰性推进：
+     * 1. 待支付超时 → 已取消
+     * 2. 已支付超过 1 分钟 → 配送中（演示期模拟商家接单）
+     * 任一步真的改了状态，就重查一次，保证返回的是最新状态。
+     */
     public OrderDetail orderDetail(Long orderId, Long userId) {
         TakeoutOrder order = orderMapper.selectById(orderId);
         if (order == null || !order.getUserId().equals(userId)) {
             throw new ServiceException("订单不存在");
         }
-        return new OrderDetail(order, orderItemMapper.selectByOrder(orderId));
+
+        boolean changed = orderMapper.expireCancel(orderId) > 0;
+        if (!changed) {
+            changed = orderMapper.markDelivered(orderId) > 0;
+        }
+        if (changed) {
+            order = orderMapper.selectById(orderId);
+        }
+
+        OrderDetail detail = new OrderDetail(order, orderItemMapper.selectByOrder(orderId));
+        detail.setReviewed("1".equals(order.getReviewStatus()));
+        detail.setTimeline(buildTimeline(order));
+        return detail;
+    }
+
+    /** 取消订单。已支付但商家已接单的不能自助取消，需要联系客服。 */
+    @Transactional(rollbackFor = Exception.class)
+    public void cancel(Long orderId, Long userId, String reason) {
+        String safeReason = limit(trimToNull(reason), 128);
+        if (safeReason == null) {
+            safeReason = "用户取消";
+        }
+
+        int rows = orderMapper.cancel(orderId, userId, safeReason);
+        if (rows == 0) {
+            throw new ServiceException("订单当前状态不可取消");
+        }
+
+        for (TakeoutOrderItem item : orderItemMapper.selectByOrder(orderId)) {
+            dishMapper.decreaseSales(item.getDishId(), item.getQuantity());
+        }
+        statusLogMapper.insert(orderId, null, TakeoutOrder.STATUS_CANCELLED,
+                OPERATOR_USER, userId, safeReason);
+    }
+
+    /** 确认收货。只有配送中可确认。 */
+    @Transactional(rollbackFor = Exception.class)
+    public void confirm(Long orderId, Long userId) {
+        int rows = orderMapper.confirm(orderId, userId);
+        if (rows == 0) {
+            throw new ServiceException("订单当前状态不可确认收货");
+        }
+        statusLogMapper.insert(orderId, TakeoutOrder.STATUS_DELIVERING, TakeoutOrder.STATUS_DONE,
+                OPERATOR_USER, userId, "确认收货");
+    }
+
+    /**
+     * 时间轴只从订单表的时间戳拼，不读 status_log。
+     * 日志是流水，后台反复改状态会出现重复节点。
+     */
+    private List<OrderTimelineNode> buildTimeline(TakeoutOrder order) {
+        List<OrderTimelineNode> nodes = new ArrayList<>();
+        if (order.getCreateTime() != null) {
+            nodes.add(new OrderTimelineNode(TakeoutOrder.STATUS_UNPAID, "已下单", order.getCreateTime()));
+        }
+        if (order.getPayTime() != null) {
+            nodes.add(new OrderTimelineNode(TakeoutOrder.STATUS_PAID, "已支付", order.getPayTime()));
+        }
+        if (order.getDeliverTime() != null) {
+            nodes.add(new OrderTimelineNode(TakeoutOrder.STATUS_DELIVERING, "商家已接单", order.getDeliverTime()));
+        }
+        if (order.getReceiveTime() != null) {
+            nodes.add(new OrderTimelineNode(TakeoutOrder.STATUS_DONE, "已送达", order.getReceiveTime()));
+        }
+        if (order.getCancelTime() != null) {
+            nodes.add(new OrderTimelineNode(TakeoutOrder.STATUS_CANCELLED, "已取消", order.getCancelTime()));
+        }
+        return nodes;
     }
 
     /**

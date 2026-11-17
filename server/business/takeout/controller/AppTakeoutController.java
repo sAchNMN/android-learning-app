@@ -2,6 +2,7 @@ package com.ruoyi.takeout.controller;
 
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.utils.SecurityUtils;
+import com.ruoyi.takeout.domain.OrderCancelBody;
 import com.ruoyi.takeout.domain.OrderCreateBody;
 import com.ruoyi.takeout.service.TakeoutService;
 import com.ruoyi.takeout.service.TakeoutShopService;
@@ -72,5 +73,21 @@ public class AppTakeoutController {
     public AjaxResult pay(@PathVariable("orderId") Long orderId) {
         takeoutService.pay(orderId, SecurityUtils.getUserId());
         return AjaxResult.success("支付成功");
+    }
+
+    /** 取消订单。已支付但商家已接单的不能自助取消。 */
+    @PostMapping("/order/{orderId}/cancel")
+    public AjaxResult cancel(@PathVariable("orderId") Long orderId,
+                             @RequestBody(required = false) OrderCancelBody body) {
+        takeoutService.cancel(orderId, SecurityUtils.getUserId(),
+                body == null ? null : body.getReason());
+        return AjaxResult.success("已取消");
+    }
+
+    /** 确认收货。 */
+    @PostMapping("/order/{orderId}/confirm")
+    public AjaxResult confirm(@PathVariable("orderId") Long orderId) {
+        takeoutService.confirm(orderId, SecurityUtils.getUserId());
+        return AjaxResult.success("已确认收货");
     }
 }

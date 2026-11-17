@@ -26,4 +26,9 @@ class TakeoutRepository(
 
     /** 支付只返回 msg，没有 data，用 [callUnit]。 */
     suspend fun pay(orderId: Long): AppResult<Unit> = callUnit { api.pay(orderId) }
+
+    suspend fun cancel(orderId: Long, reason: String?): AppResult<Unit> =
+        callUnit { api.cancel(orderId, OrderCancelBody(reason)) }
+
+    suspend fun confirm(orderId: Long): AppResult<Unit> = callUnit { api.confirm(orderId) }
 }

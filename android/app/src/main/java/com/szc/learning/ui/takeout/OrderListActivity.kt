@@ -29,7 +29,14 @@ class OrderListActivity : AppCompatActivity() {
         OrderListViewModel.factory(container.takeoutRepository)
     }
 
-    private val adapter = OrderAdapter { order -> viewModel.pay(order) }
+    private val adapter = OrderAdapter(
+        onClick = { order ->
+            startActivity(OrderDetailActivity.intent(this, order.orderId))
+        },
+        onPay = { order ->
+            startActivity(PayActivity.intent(this, order.orderId))
+        },
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()

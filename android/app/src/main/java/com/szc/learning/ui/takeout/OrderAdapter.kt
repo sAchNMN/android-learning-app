@@ -9,8 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.szc.learning.core.network.takeout.Order
 import com.szc.learning.databinding.ItemOrderBinding
 
-/** 订单列表适配器。待支付的订单显示「去支付」。 */
+/** 订单列表适配器。点卡片进详情，待支付的另有「去支付」直达收银台。 */
 class OrderAdapter(
+    private val onClick: (Order) -> Unit,
     private val onPay: (Order) -> Unit,
 ) : ListAdapter<Order, OrderAdapter.ViewHolder>(DIFF) {
 
@@ -39,6 +40,7 @@ class OrderAdapter(
 
             binding.payButton.isVisible = order.canPay
             binding.payButton.setOnClickListener { onPay(order) }
+            binding.root.setOnClickListener { onClick(order) }
         }
     }
 

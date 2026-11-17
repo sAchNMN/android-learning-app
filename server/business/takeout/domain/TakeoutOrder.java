@@ -31,7 +31,15 @@ public class TakeoutOrder {
     private String expectTime;
     private String remark;
     private String payTime;
+    /** 商家发货（接单）时间。 */
+    private String deliverTime;
+    /** 用户确认收货时间。 */
+    private String receiveTime;
     private String finishTime;
+    private String cancelReason;
+    private String cancelTime;
+    /** 评价状态：0 未评价 / 1 已评价。 */
+    private String reviewStatus;
     private String createTime;
 
     public Long getOrderId() { return orderId; }
@@ -84,6 +92,21 @@ public class TakeoutOrder {
 
     public String getPayTime() { return payTime; }
     public void setPayTime(String payTime) { this.payTime = payTime; }
+
+    public String getDeliverTime() { return deliverTime; }
+    public void setDeliverTime(String deliverTime) { this.deliverTime = deliverTime; }
+
+    public String getReceiveTime() { return receiveTime; }
+    public void setReceiveTime(String receiveTime) { this.receiveTime = receiveTime; }
+
+    public String getCancelReason() { return cancelReason; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
+
+    public String getCancelTime() { return cancelTime; }
+    public void setCancelTime(String cancelTime) { this.cancelTime = cancelTime; }
+
+    public String getReviewStatus() { return reviewStatus; }
+    public void setReviewStatus(String reviewStatus) { this.reviewStatus = reviewStatus; }
 
     public String getFinishTime() { return finishTime; }
     public void setFinishTime(String finishTime) { this.finishTime = finishTime; }

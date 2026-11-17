@@ -36,4 +36,8 @@ public interface TakeoutDishMapper {
 
     @Update("update takeout_dish set sales = sales + #{qty} where dish_id = #{dishId}")
     int increaseSales(@Param("dishId") Long dishId, @Param("qty") int qty);
+
+    /** 取消订单时扣回销量，用 greatest 兜底，别让销量变负数。 */
+    @Update("update takeout_dish set sales = greatest(0, sales - #{qty}) where dish_id = #{dishId}")
+    int decreaseSales(@Param("dishId") Long dishId, @Param("qty") int qty);
 }

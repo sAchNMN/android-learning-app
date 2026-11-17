@@ -53,6 +53,14 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".ui.takeout.PayActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.takeout.OrderDetailActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.address.AddressListActivity"
             android:exported="false" />
 

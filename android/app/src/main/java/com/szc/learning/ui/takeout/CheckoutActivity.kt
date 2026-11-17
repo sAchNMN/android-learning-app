@@ -116,12 +116,10 @@ class CheckoutActivity : AppCompatActivity() {
                     if (state.createdOrder != null && !navigated) {
                         navigated = true
                         toast(R.string.checkout_success)
-                        startActivity(
-                            Intent(this@CheckoutActivity, OrderListActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                            },
-                        )
+                        val createdId = state.createdOrder.order?.orderId ?: 0L
+                        if (createdId > 0) {
+                            startActivity(PayActivity.intent(this@CheckoutActivity, createdId))
+                        }
                         finish()
                     }
                 }

@@ -28,4 +28,13 @@ interface TakeoutApi {
 
     @POST("app/order/{orderId}/pay")
     suspend fun pay(@Path("orderId") orderId: Long): AjaxResult<Any>
+
+    @POST("app/order/{orderId}/cancel")
+    suspend fun cancel(
+        @Path("orderId") orderId: Long,
+        @Body body: OrderCancelBody,
+    ): AjaxResult<Any>
+
+    @POST("app/order/{orderId}/confirm")
+    suspend fun confirm(@Path("orderId") orderId: Long): AjaxResult<Any>
 }

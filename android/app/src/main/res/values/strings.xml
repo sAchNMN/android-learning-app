@@ -68,6 +68,49 @@
     <string name="checkout_empty_cart">购物车是空的，请返回重新选菜</string>
     <string name="checkout_qty">×%1$d</string>
     <string name="checkout_pay_amount">实付 ¥%1$s</string>
+
+    <!-- 收银台 -->
+    <string name="pay_title">收银台</string>
+    <string name="pay_remaining">剩余支付时间 %1$s</string>
+    <string name="pay_method_mock">模拟支付（演示用）</string>
+    <string name="pay_method_wechat">微信支付（未接入）</string>
+    <string name="pay_confirm">确认支付 ¥%1$s</string>
+    <string name="pay_success_title">支付成功</string>
+    <string name="pay_view_order">查看订单</string>
+    <string name="pay_expired">订单已超时，支付已关闭</string>
+    <string name="pay_status_invalid">订单状态已变更，无法支付</string>
+
+    <!-- 订单详情 -->
+    <string name="order_detail_title">订单详情</string>
+    <string name="order_status_unpaid">等待支付</string>
+    <string name="order_status_paid">等待商家接单</string>
+    <string name="order_status_delivering">配送中</string>
+    <string name="order_status_done">已完成</string>
+    <string name="order_status_cancelled">已取消</string>
+    <string name="order_unpaid_hint">请在 15 分钟内完成支付</string>
+    <string name="order_expect_delivery">预计 %1$s 送达</string>
+    <string name="order_section_timeline">订单进度</string>
+    <string name="order_section_receiver">收货信息</string>
+    <string name="order_section_items">商品明细</string>
+    <string name="order_section_amount">金额</string>
+    <string name="order_section_info">订单信息</string>
+    <string name="order_no_label">订单号 %1$s</string>
+    <string name="order_create_time_label">下单时间 %1$s</string>
+    <string name="order_remark_label">备注 %1$s</string>
+    <string name="order_cancel_reason">取消原因：%1$s</string>
+    <string name="order_action_cancel">取消订单</string>
+    <string name="order_action_pay">去支付</string>
+    <string name="order_action_confirm">确认收货</string>
+    <string name="order_action_reorder">再来一单</string>
+    <string name="order_cancel_title">取消订单</string>
+    <string name="order_cancel_confirm">确定取消这笔订单吗？</string>
+    <string name="order_cancel_reason_1">不想要了</string>
+    <string name="order_cancel_reason_2">点错了</string>
+    <string name="order_cancel_reason_3">地址填错了</string>
+    <string name="order_cancel_reason_4">其他原因</string>
+    <string name="order_confirm_receive_title">确认收货</string>
+    <string name="order_confirm_receive_msg">确认已经收到商品？</string>
+    <string name="order_items_count">共 %1$d 件</string>
     <string name="dish_sales">已售 %1$d</string>
     <string name="dish_selected_spec">已选：%1$s</string>
     <string name="dish_multi_spec">多种规格</string>
