@@ -38,6 +38,10 @@ class TakeoutRepository(
 
     suspend fun confirm(orderId: Long): AppResult<Unit> = callUnit { api.confirm(orderId) }
 
+    /** 提交评价。服务端会校验订单归属、已完成状态与一单一评。 */
+    suspend fun review(orderId: Long, body: ReviewSubmitBody): AppResult<Unit> =
+        callUnit { api.review(orderId, body) }
+
     companion object {
         /** 与服务端 statusesOf() 一一对应。 */
         const val TAB_ALL = "all"

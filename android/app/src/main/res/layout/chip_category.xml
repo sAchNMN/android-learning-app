@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 分类栏的 Chip 模板：动态添加时 inflate 它，才有 Filter 样式（选中态背景 + 勾选） -->
-<com.google.android.material.chip.Chip xmlns:android="http://schemas.android.com/apk/res/android"
-    style="@style/Widget.Material3.Chip.Filter"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:checkable="true" />

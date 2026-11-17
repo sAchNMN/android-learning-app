@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      排版只有五档：Display / Title / Section / RowTitle / Body / Caption。
+      字号越大字距越紧（负 letterSpacing），这是 iOS 大字标题的观感来源；
+      小字反而要放松，否则挤成一团。所有字号都不加 includeFontPadding，
+      让文本按视觉边界对齐，而不是按字形额外留白。
+    -->
+    <style name="Text" parent="">
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="Text.Display">
+        <item name="android:textSize">36sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.035</item>
+    </style>
+
+    <style name="Text.Title">
+        <item name="android:textSize">26sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.025</item>
+    </style>
+
+    <style name="Text.Section">
+        <item name="android:textSize">19sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.015</item>
+    </style>
+
+    <style name="Text.RowTitle">
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <style name="Text.Body">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/ink_secondary</item>
+    </style>
+
+    <style name="Text.Caption">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/ink_tertiary</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+
+    <!-- 时间码：等宽数字，播放时不会因为 1 和 0 宽度不同而抖动 -->
+    <style name="Text.Numeric">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/ink_tertiary</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <!-- 分段控件里的选项 -->
+    <style name="Text.Segment">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">-0.005</item>
+        <item name="android:gravity">center</item>
+    </style>
+</resources>

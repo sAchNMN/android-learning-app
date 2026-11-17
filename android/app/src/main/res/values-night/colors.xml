@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色模式：玻璃改用"提亮"而不是"发白"，
+         靠白色低透明度叠加制造折射，直接调高白色亮度会糊成灰块 -->
+    <color name="canvas">#08080C</color>
+    <color name="canvas_deep">#0E0E14</color>
+
+    <color name="glass_tint">#FFFFFFFF</color>
+    <color name="glass_tint_strong">#FFFFFFFF</color>
+    <color name="glass_rim">#FFFFFFFF</color>
+    <color name="glass_tint_dark">#FF0A0A0E</color>
+
+    <color name="ink">#F5F5F8</color>
+    <color name="ink_secondary">#9A9AA6</color>
+    <color name="ink_tertiary">#5E5E6A</color>
+    <color name="ink_inverse">#0B0B0F</color>
+
+    <color name="accent">#FFFFFFFF</color>
+    <color name="accent_on">#0B0B0F</color>
+
+    <color name="hairline">#1FFFFFFF</color>
+    <color name="hairline_light">#14FFFFFF</color>
+    <color name="scrim">#99000000</color>
+
+    <color name="brand_primary">#FFFFFFFF</color>
+    <color name="brand_on_primary">#0B0B0F</color>
+    <color name="brand_primary_container">#1A1A22</color>
+    <color name="brand_on_primary_container">#F5F5F8</color>
+    <color name="avatar_background">#FFFFFFFF</color>
+</resources>

@@ -43,6 +43,12 @@ class ShopRepository(
         api.page(categoryId, keyword, sort, pageNum, pageSize)
     }
 
+    suspend fun reviews(
+        shopId: Long,
+        pageNum: Int = 1,
+        pageSize: Int = PAGE_SIZE,
+    ): AppResult<ReviewPage> = callData { api.reviews(shopId, pageNum, pageSize) }
+
     companion object {
         const val SORT_DEFAULT = "default"
         const val SORT_RATING = "rating"

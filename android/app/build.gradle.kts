@@ -121,6 +121,13 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.material)
+
+    // 播放内核：ExoPlayer + MediaSession（后台播放、通知栏控制、锁屏控制都靠它）
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
+    // 专辑封面异步加载（本地 content:// 与云端 http:// 同一套 API）
+    implementation(libs.coil)
+
     // 购物车落盘（与 SessionStore 同一个 DataStore 库，各自一个文件名）
     implementation(libs.androidx.datastore.preferences)
     // 购物车落盘用 Gson 序列化（与网络层同一份实现，不另引序列化库）

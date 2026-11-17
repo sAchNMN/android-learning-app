@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      GlassView 的可调参数。默认值就是"标准玻璃"：
+      顶部 62% 白、底部 26% 白、边缘提亮 85%，这组数值在浅色画布上最像折射。
+    -->
+    <declare-styleable name="GlassView">
+        <attr name="glassCorner" format="dimension" />
+        <attr name="glassTint" format="color" />
+        <attr name="glassTopAlpha" format="float" />
+        <attr name="glassBottomAlpha" format="float" />
+        <attr name="glassRimAlpha" format="float" />
+        <attr name="glassRimWidth" format="dimension" />
+        <attr name="glassSheenAlpha" format="float" />
+        <attr name="glassBlobAlpha" format="float" />
+        <attr name="glassDepth" format="float" />
+        <attr name="glassDark" format="boolean" />
+        <attr name="glassElevation" format="dimension" />
+    </declare-styleable>
+
+    <declare-styleable name="AuroraBackground">
+        <attr name="auroraIntensity" format="float" />
+    </declare-styleable>
+</resources>

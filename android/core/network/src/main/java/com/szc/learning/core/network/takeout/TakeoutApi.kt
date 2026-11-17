@@ -46,4 +46,11 @@ interface TakeoutApi {
 
     @POST("app/order/{orderId}/confirm")
     suspend fun confirm(@Path("orderId") orderId: Long): AjaxResult<Any>
+
+    /** 提交评价：只有已完成且未评价的订单能评，一单一评。 */
+    @POST("app/order/{orderId}/review")
+    suspend fun review(
+        @Path("orderId") orderId: Long,
+        @Body body: ReviewSubmitBody,
+    ): AjaxResult<Any>
 }

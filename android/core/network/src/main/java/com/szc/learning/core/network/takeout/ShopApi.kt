@@ -62,4 +62,12 @@ interface ShopApi {
         @Query("pageNum") pageNum: Int,
         @Query("pageSize") pageSize: Int,
     ): AjaxResult<ShopPage>
+
+    /** 店铺评价列表，按时间倒序。 */
+    @GET("app/shop/{shopId}/reviews")
+    suspend fun reviews(
+        @Path("shopId") shopId: Long,
+        @Query("pageNum") pageNum: Int,
+        @Query("pageSize") pageSize: Int,
+    ): AjaxResult<ReviewPage>
 }

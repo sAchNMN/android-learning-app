@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 8pt 栅格，只取这几档就够，多一档就乱 -->
+    <dimen name="space_2">2dp</dimen>
+    <dimen name="space_4">4dp</dimen>
+    <dimen name="space_6">6dp</dimen>
+    <dimen name="space_8">8dp</dimen>
+    <dimen name="space_10">10dp</dimen>
+    <dimen name="space_12">12dp</dimen>
+    <dimen name="space_16">16dp</dimen>
+    <dimen name="space_20">20dp</dimen>
+    <dimen name="space_24">24dp</dimen>
+    <dimen name="space_28">28dp</dimen>
+    <dimen name="space_32">32dp</dimen>
+    <dimen name="space_40">40dp</dimen>
+    <dimen name="space_48">48dp</dimen>
+
+    <!-- 左右统一留白：所有页面同一根竖线，视觉才对得齐 -->
+    <dimen name="gutter">20dp</dimen>
+
+    <!-- 圆角阶梯：封面 20 / 卡片 24 / 大封面 28 / 胶囊 999 -->
+    <dimen name="radius_sm">12dp</dimen>
+    <dimen name="radius_md">18dp</dimen>
+    <dimen name="radius_lg">24dp</dimen>
+    <dimen name="radius_xl">30dp</dimen>
+    <dimen name="radius_pill">999dp</dimen>
+
+    <!-- 控件 -->
+    <dimen name="tab_bar_height">62dp</dimen>
+    <dimen name="mini_player_height">58dp</dimen>
+    <dimen name="row_height">64dp</dimen>
+    <dimen name="cover_row">48dp</dimen>
+    <dimen name="icon">24dp</dimen>
+    <dimen name="icon_sm">18dp</dimen>
+    <dimen name="play_button">64dp</dimen>
+</resources>

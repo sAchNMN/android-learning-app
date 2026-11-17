@@ -5,6 +5,18 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- 本地曲库：Android 13 起改读 READ_MEDIA_AUDIO，之前是 READ_EXTERNAL_STORAGE -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- 后台播放：前台服务 + 唤醒锁；13 起通知要单独申请 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".LearningApp"
         android:allowBackup="true"
@@ -15,68 +27,35 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Learning"
+        android:theme="@style/Theme.Aurora"
         tools:targetApi="31">
 
         <activity
-            android:name=".ui.login.LoginActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- 正在播放：从迷你播放器上滑进入，单实例，避免连点叠出好几层 -->
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".music.ui.now.NowPlayingActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Aurora" />
 
-        <activity
-            android:name=".ui.takeout.ShopDetailActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.takeout.ShopListActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.takeout.OrderListActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.takeout.CheckoutActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.takeout.PayActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.takeout.OrderDetailActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.takeout.SearchActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".ui.takeout.FavoriteListActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.address.AddressListActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.address.AddressEditActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+        <!-- MediaSessionService 负责后台播放与通知栏/锁屏控制 -->
+        <service
+            android:name=".music.player.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

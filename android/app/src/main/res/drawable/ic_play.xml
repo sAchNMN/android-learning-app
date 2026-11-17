@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 三角形用描边+填充画，圆角靠 lineJoin=round 出来 -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M8,5.6L18.4,12L8,18.4Z"
+        android:strokeColor="#FF000000"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2.4" />
+</vector>
