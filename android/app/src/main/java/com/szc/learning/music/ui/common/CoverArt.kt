@@ -52,7 +52,7 @@ object CoverArt {
         // 底色：从左上到右下，两色过渡
         paint.shader = LinearGradient(
             0f, 0f, s, s,
-            blend(first, second, 0.78f),
+            blend(first, second, 0.88f),
             second,
             Shader.TileMode.CLAMP,
         )
@@ -61,7 +61,7 @@ object CoverArt {
         // 左上高光
         paint.shader = RadialGradient(
             s * 0.22f, s * 0.16f, s * 0.85f,
-            withAlpha(Color.WHITE, 0.34f),
+            withAlpha(Color.WHITE, 0.24f),
             Color.TRANSPARENT,
             Shader.TileMode.CLAMP,
         )
@@ -79,7 +79,7 @@ object CoverArt {
         // 一道斜向玻璃反光，让"无封面"看起来像有设计，而不是缺图
         paint.shader = LinearGradient(
             0f, s, s, 0f,
-            intArrayOf(Color.TRANSPARENT, withAlpha(Color.WHITE, 0.12f), Color.TRANSPARENT),
+            intArrayOf(Color.TRANSPARENT, withAlpha(Color.WHITE, 0.10f), Color.TRANSPARENT),
             floatArrayOf(0.34f, 0.5f, 0.66f),
             Shader.TileMode.CLAMP,
         )

@@ -19,6 +19,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- 内容滚到底部时的渐隐层，压在玻璃栏下面 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="176dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_dock_scrim" />
+
     <LinearLayout
         android:id="@+id/dock"
         android:layout_width="match_parent"

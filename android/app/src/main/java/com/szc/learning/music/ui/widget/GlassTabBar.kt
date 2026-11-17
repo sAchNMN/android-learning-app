@@ -43,6 +43,9 @@ class GlassTabBar @JvmOverloads constructor(
     private var selectedIndex = 0
 
     private val capsulePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val capsuleShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = withAlpha(android.graphics.Color.BLACK, 0.07f)
+    }
     private val capsuleRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = context.dp(1f)
@@ -55,10 +58,13 @@ class GlassTabBar @JvmOverloads constructor(
 
     init {
         corner = context.dp(31f)
-        elevation = context.dp(14f)
-        topAlpha = 0.70f
-        bottomAlpha = 0.30f
-        rimAlpha = 0.9f
+        elevation = context.dp(18f)
+        // 悬浮在内容之上时玻璃要更"实"一点，但也不能到纯白：
+        // 纯白会盖掉极光底，玻璃就退了成一块白板
+        topAlpha = 0.66f
+        bottomAlpha = 0.36f
+        rimAlpha = 0.95f
+        sheenAlpha = 0.40f
 
         row.orientation = LinearLayout.HORIZONTAL
         row.gravity = Gravity.CENTER_VERTICAL
@@ -194,7 +200,12 @@ class GlassTabBar @JvmOverloads constructor(
         if (capsuleRect.width() <= 0f) {
             scrollCapsuleTo(selectedIndex, animate = false)
         }
-        capsulePaint.color = withAlpha(android.graphics.Color.WHITE, 0.62f)
+        capsulePaint.color = withAlpha(android.graphics.Color.WHITE, 0.98f)
+        // 先画一层下移 1.5dp 的软阴影，选中项才有"浮起来"的层级感
+        canvas.save()
+        canvas.translate(0f, context.dp(1.5f))
+        canvas.drawPath(capsuleShape, capsuleShadowPaint)
+        canvas.restore()
         canvas.drawPath(capsuleShape, capsulePaint)
         canvas.drawPath(capsuleShape, capsuleRimPaint)
     }

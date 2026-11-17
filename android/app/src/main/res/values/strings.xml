@@ -64,6 +64,10 @@
     <string name="genre_folk">民谣</string>
     <string name="genre_hiphop">嘻哈</string>
     <string name="genre_ambient">氛围</string>
+    <string name="genre_blues">蓝调</string>
+    <string name="genre_soul">灵魂</string>
+    <string name="genre_soundtrack">原声</string>
+    <string name="genre_world">世界</string>
 
     <!-- 通用 -->
     <string name="action_retry">重试</string>

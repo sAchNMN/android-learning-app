@@ -1,144 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!--
+  首页只有一棵 RecyclerView。
+  原来的写法是 NestedScrollView 里套两个 wrap_content 的 RecyclerView，
+  在 UNSPECIFIED 约束下会被量成 0 高度（列表直接消失）。
+  改成「一个列表 + 多种条目类型」，测量交给 RecyclerView 自己，滚动也更省。
+-->
+<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/homeList"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clipToPadding="false"
+    android:overScrollMode="never"
     android:paddingBottom="150dp"
-    android:scrollbars="none">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp">
-
-        <TextView
-            style="@style/Text.Display"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/home_title" />
-
-        <!-- 主卡片：封面铺满、底部压暗、白字压在上面。圆角与裁切在代码里设 -->
-        <FrameLayout
-            android:id="@+id/heroCard"
-            android:layout_width="match_parent"
-            android:layout_height="208dp"
-            android:layout_marginTop="18dp"
-            android:background="@drawable/bg_cover_hero"
-            android:clickable="true"
-            android:focusable="true">
-
-            <ImageView
-                android:id="@+id/heroCover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:contentDescription="@null"
-                android:scaleType="centerCrop" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_hero_scrim" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:layout_marginStart="18dp"
-                android:layout_marginEnd="88dp"
-                android:layout_marginBottom="18dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/heroTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/heroArtist"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:alpha="0.78"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/white"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/heroPlay"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_gravity="bottom|end"
-                android:layout_marginEnd="16dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/bg_play_circle"
-                android:contentDescription="@string/player_play"
-                android:elevation="6dp"
-                android:padding="15dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_play"
-                app:tint="@color/black" />
-        </FrameLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="26dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
-
-            <TextView
-                style="@style/Text.Section"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/home_recent" />
-
-            <TextView
-                android:id="@+id/recentAll"
-                style="@style/Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="?attr/selectableItemBackground"
-                android:paddingStart="8dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="0dp"
-                android:paddingBottom="4dp"
-                android:text="@string/home_see_all" />
-        </LinearLayout>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recentRail"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:clipToPadding="false"
-            android:overScrollMode="never"
-            android:scrollbars="none" />
-
-        <TextView
-            style="@style/Text.Section"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="26dp"
-            android:text="@string/home_recommend" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recommendList"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:nestedScrollingEnabled="false"
-            android:overScrollMode="never" />
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+    android:scrollbars="none" />

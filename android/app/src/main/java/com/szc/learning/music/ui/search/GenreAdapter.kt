@@ -29,11 +29,12 @@ class GenreAdapter(
         fun bind(genre: Genre) {
             val context = binding.root.context
             binding.genreName.setText(genre.labelRes)
-            // 染成分类色：玻璃填充用低透明度色，边框保持白，所以看起来是"彩色玻璃"而不是色块
+            // 染成分类色：填充透明度要够高，否则一排卡片会糊成同一片灰粉；
+            // 边框保持白、玻璃高光不动，观感是"彩色玻璃"而不是纯色块
             binding.genreTile.tint = ContextCompat.getColor(context, genre.colorRes)
-            binding.genreTile.topAlpha = 0.34f
-            binding.genreTile.bottomAlpha = 0.18f
-            binding.genreTile.rimAlpha = 0.5f
+            binding.genreTile.topAlpha = 0.52f
+            binding.genreTile.bottomAlpha = 0.34f
+            binding.genreTile.rimAlpha = 0.55f
             binding.genreTile.corner = context.resources.displayMetrics.density * 20f
             binding.root.setOnClickListener { onClick(genre) }
         }
@@ -50,7 +51,7 @@ class GenreAdapter(
     }
 }
 
-/** 八个分类，和 strings.xml 里的 genre_* 一一对应。 */
+/** 十二个分类，和 strings.xml 里的 genre_* 一一对应。凑满 6 行，整页不留大片空地。 */
 val defaultGenres: List<Genre> = listOf(
     Genre(R.string.genre_pop, R.color.accent_pink),
     Genre(R.string.genre_electronic, R.color.accent_violet),
@@ -60,4 +61,8 @@ val defaultGenres: List<Genre> = listOf(
     Genre(R.string.genre_folk, R.color.accent_amber),
     Genre(R.string.genre_hiphop, R.color.accent_violet),
     Genre(R.string.genre_ambient, R.color.accent_cyan),
+    Genre(R.string.genre_blues, R.color.accent_rose),
+    Genre(R.string.genre_soul, R.color.accent_pink),
+    Genre(R.string.genre_soundtrack, R.color.accent_cyan),
+    Genre(R.string.genre_world, R.color.accent_violet),
 )

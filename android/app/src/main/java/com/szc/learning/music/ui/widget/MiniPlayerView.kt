@@ -48,9 +48,12 @@ class MiniPlayerView @JvmOverloads constructor(
         progressLine = findViewById(R.id.miniProgress)
 
         corner = context.dp(19f)
-        elevation = context.dp(10f)
-        topAlpha = 0.72f
-        bottomAlpha = 0.34f
+        elevation = context.dp(12f)
+        // 迷你播放器下面永远压着封面和文字，必须近乎不透明，否则两行字叠在一起看不清
+        topAlpha = 0.94f
+        bottomAlpha = 0.80f
+        rimAlpha = 1f
+        sheenAlpha = 0.26f
 
         // 进度线不接收触摸，整条 pill 都是"展开"的热区
         progressLine.isClickable = false

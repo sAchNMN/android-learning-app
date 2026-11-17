@@ -59,6 +59,7 @@ class NowPlayingActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         applyWindowInsets()
+        sizeCover()
         setupControls()
         setupDragToDismiss()
         observe()
@@ -68,8 +69,24 @@ class NowPlayingActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val base = (8 * resources.displayMetrics.density).toInt()
-            binding.content.updatePadding(top = bars.top + base, bottom = bars.bottom + base)
+            // 顶栏只让出状态栏，底栏让出导航栏；中间的舞台不参与，保持居中
+            binding.topBar.updatePadding(top = bars.top)
+            binding.volumeRow.updatePadding(bottom = bars.bottom + base)
             insets
+        }
+    }
+
+    /**
+     * 封面按屏宽定尺寸，保证正方形且左右留白一致。
+     * 写死 dp 会在小屏上超出、大屏上缩成一小块，所以按可用宽度算，再封顶 340dp。
+     */
+    private fun sizeCover() {
+        val density = resources.displayMetrics.density
+        val available = resources.displayMetrics.widthPixels - (48 * density).toInt()
+        val size = minOf(available, (340 * density).toInt())
+        binding.nowCover.layoutParams = binding.nowCover.layoutParams.apply {
+            width = size
+            height = size
         }
     }
 
@@ -228,7 +245,7 @@ class NowPlayingActivity : AppCompatActivity() {
     }
 
     private companion object {
-        const val BACKDROP_ALPHA = 0.62f
+        const val BACKDROP_ALPHA = 0.92f
         const val INITIAL_VOLUME = 0.8f
         const val DISMISS_FRACTION = 0.15f
     }

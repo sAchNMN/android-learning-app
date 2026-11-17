@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  横滑轨道作为一个列表条目存在。
+  里面又是一个横向 RecyclerView —— 这是"竖向列表里嵌横向列表"的标准做法，
+  不要试图用 HorizontalScrollView 拼，那样回收不到视图。
+-->
+<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/railList"
+    android:layout_width="match_parent"
+    android:layout_height="202dp"
+    android:clipToPadding="false"
+    android:orientation="horizontal"
+    android:overScrollMode="never"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:scrollbars="none" />

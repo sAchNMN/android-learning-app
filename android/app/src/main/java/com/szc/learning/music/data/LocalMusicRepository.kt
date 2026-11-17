@@ -31,7 +31,6 @@ class LocalMusicRepository(private val context: Context) {
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
-            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.DURATION,
         )
 
@@ -51,12 +50,10 @@ class LocalMusicRepository(private val context: Context) {
         val titleIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
         val artistIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
         val albumIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-        val albumIdIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
         val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idIndex)
-            val albumId = cursor.getLong(albumIdIndex)
             val rawArtist = cursor.getString(artistIndex).orEmpty()
             out += MusicTrack(
                 id = id.toString(),
@@ -68,17 +65,18 @@ class LocalMusicRepository(private val context: Context) {
                 uri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id,
                 ).toString(),
-                artUri = albumArtUri(albumId),
+                artUri = audioUri(id).toString(),
                 source = TrackSource.LOCAL,
             )
         }
     }
 
-    private fun albumArtUri(albumId: Long): String? =
-        if (albumId <= 0L) null else ContentUris.withAppendedId(ALBUM_ART_URI, albumId).toString()
-
-    private companion object {
-        /** 系统内置的专辑封面通道，没有封面时返回 null，交给兜底封面处理。 */
-        val ALBUM_ART_URI: Uri = Uri.parse("content://media/external/audio/albumart")
-    }
+    /**
+     * 封面地址直接复用音频自己的 uri。
+     *
+     * 不用 `content://media/external/audio/albumart/{albumId}`：那张表从 Android 10
+     * 起就没人维护了。真正的封面在 ID3 里，由 AudioArtFetcher 通过 loadThumbnail 取。
+     */
+    private fun audioUri(id: Long): Uri =
+        ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
 }
