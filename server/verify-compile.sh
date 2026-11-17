@@ -48,6 +48,11 @@ public class SecurityUtils {
     public static String getUsername() { return "admin"; }
 }'
 
+mk com/ruoyi/common/annotation/Anonymous.java 'package com.ruoyi.common.annotation;
+import java.lang.annotation.*;
+@Retention(RetentionPolicy.RUNTIME) @Target({ElementType.TYPE, ElementType.METHOD})
+public @interface Anonymous {}'
+
 # ---------- Spring ----------
 mk org/springframework/beans/factory/annotation/Autowired.java 'package org.springframework.beans.factory.annotation;
 import java.lang.annotation.*;

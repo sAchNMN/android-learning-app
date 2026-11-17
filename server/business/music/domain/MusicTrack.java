@@ -4,7 +4,8 @@ package com.ruoyi.music.domain;
  * 云端曲目。
  *
  * 只存元信息 + 相对路径，不存绝对地址：换域名、挂 CDN 都不用动库里的数据。
- * `filePath` 指向若依 profile 目录下的文件，由 `/profile/**` 静态映射对外提供。
+ * `url` 是 `/profile/music/xx.mp3` 这样的相对路径，由 `/profile/**` 静态映射对外提供，
+ * 客户端拿 baseUrl 拼绝对地址。字段名必须是 `url` —— 客户端 DTO 直接按这个名字反序列化。
  */
 public class MusicTrack {
 
@@ -20,7 +21,7 @@ public class MusicTrack {
     private Long durationMs;
 
     /** 相对路径，例如 /profile/music/01.mp3，客户端按 baseUrl 拼绝对地址。 */
-    private String filePath;
+    private String url;
 
     private String cover;
 
@@ -66,12 +67,12 @@ public class MusicTrack {
         this.durationMs = durationMs;
     }
 
-    public String getFilePath() {
-        return filePath;
+    public String getUrl() {
+        return url;
     }
 
-    public void setFilePath(String filePath) {
-        this.filePath = filePath;
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     public String getCover() {

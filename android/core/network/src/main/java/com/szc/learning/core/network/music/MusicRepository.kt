@@ -9,8 +9,10 @@ import com.szc.learning.core.network.callData
 /**
  * 云端曲库仓库：把接口 DTO 翻译成 UI 用的 [MusicTrack]。
  *
- * 需要 baseUrl 是因为后端允许只下发 id，播放地址由客户端拼 `stream/{id}`。
- * 这样 CDN 换域名不用改库里的数据，符合"数据不存绝对地址"的一般做法。
+ * `url` 可能是完整地址、也可能是 `/profile/music/01.mp3` 这种站内相对路径 ——
+ * 后端刻意只存相对路径，所以这里必须补成绝对地址再交给 ExoPlayer。
+ * 原样透传会被 ExoPlayer 当成**本地文件路径**，直接 FileNotFound。
+ * `url` 为空时才回退到按 id 拼 `stream/{id}`。
  */
 class MusicRepository(
     private val api: MusicApi,
@@ -26,7 +28,8 @@ class MusicRepository(
         artist = artist,
         album = album,
         durationMs = durationMs,
-        uri = url?.takeIf { it.isNotBlank() } ?: (normalizedBase() + STREAM_PATH + id),
+        uri = url?.takeIf { it.isNotBlank() }?.let { absolute(it) }
+            ?: (normalizedBase() + STREAM_PATH + id),
         artUri = cover?.takeIf { it.isNotBlank() }?.let { absolute(it) },
         source = TrackSource.CLOUD,
     )

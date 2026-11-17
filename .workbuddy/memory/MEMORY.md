@@ -1,4 +1,13 @@
-# MEMORY.md — 学习助手项目长期约定
+# MEMORY.md — Aurora 音乐播放器项目长期约定
+
+> 2026-11-17 起，项目由「外卖点餐」整体转为 **Aurora 音乐播放器**（期末答辩项目）。
+> 外卖时代的 app 端代码已全部移除，只在 `master` 的 118a4be 之前的历史里。
+
+## 当前形态
+- App：本地曲库（MediaStore）+ 云端曲库（若依 `/app/music/tracks`）双源播放
+- 设计：iOS 液态玻璃 + 极光底，浅色优先，深色可用
+- 播放内核：media3 ExoPlayer + MediaSessionService（后台播放、通知栏、锁屏控制）
+- 分支：`feat/music-glass` 是当前开发线；master 已收拢全部旧分支
 
 ## 仓库结构（monorepo，三端各占一个顶层目录）
 ```
@@ -39,6 +48,10 @@ docs/      接口契约 api.md、架构 architecture.md
 - **`10.0.2.2:8080` 在本机连不通**（App 侧 15s connect timeout，宿主机 curl 正常）。
   稳定走法：`-PapiBaseUrl=http://127.0.0.1:8080/` 打包 + `adb reverse tcp:8080 tcp:8080`
 - `assembleDebug` 不装包，改完必须 `adb install -r`
+- `ruoyi.profile` = `C:/ruoyi/uploadPath`（**不要放 D:**，那是可移动盘，抽走就 500）
+- Redis 便携版已关 RDB 快照（`save ""`），否则 MISCONF 会把写命令全禁掉、若依起不来
+- 打包前先杀 java 进程，否则 `ruoyi-admin.jar` 被占用、`mvn package` rename 失败
+- 云端曲目 `url` 是站内相对路径，客户端必须补 baseUrl 再交给 ExoPlayer
 
 ## 操作纪律（本机特有）
 - `adb` server 活不过一次 Bash 调用，安装/截图必须写在**同一个脚本**里跑完

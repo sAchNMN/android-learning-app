@@ -22,13 +22,17 @@ CREATE TABLE biz_music_track (
   KEY idx_music_sort (status, del_flag, sort_no)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '云端曲库';
 
--- 演示数据：与 sql/README.md 里说明的 8 个示例文件对应
+-- 演示数据：对应 $ruoyi.profile/music/ 下的 01..10.mp3
+-- 本机 $ruoyi.profile 已从 D:/ruoyi/uploadPath 改为 C:/ruoyi/uploadPath（D: 是可移动盘，常被抽走）
 INSERT INTO biz_music_track (title, artist, album, duration_ms, file_path, sort_no) VALUES
-('夜航西飞', '林深',     '夜航',   222000, '/profile/music/01.mp3', 1),
-('玻璃海',   '陈屿',     '潮汐',   245000, '/profile/music/02.mp3', 2),
-('逆光行走', '苏木',     '回声',   198000, '/profile/music/03.mp3', 3),
-('城市候鸟', '白鹭乐队', '候鸟',   271000, '/profile/music/04.mp3', 4),
-('缓慢坠落', '沈青',     '失重',   236000, '/profile/music/05.mp3', 5),
-('极光以北', 'Nova',     'Aurora', 302000, '/profile/music/06.mp3', 6),
-('雨落三号线', '顾南',   '地铁',   207000, '/profile/music/07.mp3', 7),
-('无边',     '海盐汽水', '夏末',   254000, '/profile/music/08.mp3', 8);
+('晴天',             '周杰伦',        '', 269747, '/profile/music/01.mp3', 1),
+('遇见',             '孙燕姿',        '', 210575, '/profile/music/02.mp3', 2),
+('淘汰',             '陈奕迅',        '', 284867, '/profile/music/03.mp3', 3),
+('多远都要在一起',   'G.E.M. 邓紫棋', '', 217721, '/profile/music/04.mp3', 4),
+('失语者',           '蔡健雅',        '', 221907, '/profile/music/05.mp3', 5),
+('小さな恋のうた',   '高橋李依',      '', 247253, '/profile/music/06.mp3', 6),
+('Love In The Dark', 'Adele',         '', 285935, '/profile/music/07.mp3', 7),
+('In The End',       'Linkin Park',   '', 216293, '/profile/music/08.mp3', 8),
+('Die For You',      'The Weeknd',    '', 260256, '/profile/music/09.mp3', 9),
+('安和桥',           '宋冬野',        '', 251000, '/profile/music/10.mp3', 10);
+
