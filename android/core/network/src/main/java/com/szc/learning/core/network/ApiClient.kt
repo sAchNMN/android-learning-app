@@ -1,5 +1,6 @@
 package com.szc.learning.core.network
 
+import com.szc.learning.core.network.takeout.AddressApi
 import com.szc.learning.core.network.takeout.TakeoutApi
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -52,6 +53,8 @@ class ApiClient(
     val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 
     val takeoutApi: TakeoutApi = retrofit.create(TakeoutApi::class.java)
+
+    val addressApi: AddressApi = retrofit.create(AddressApi::class.java)
 
     private companion object {
         const val CONNECT_TIMEOUT_SECONDS = 15L

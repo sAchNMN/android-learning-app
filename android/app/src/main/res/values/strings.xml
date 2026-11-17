@@ -42,10 +42,46 @@
     <string name="home_shop_entry">点外卖</string>
     <string name="home_shop_desc">浏览店铺、下单、查看订单</string>
     <string name="home_order_entry">我的订单</string>
+    <string name="home_address_entry">收货地址</string>
+    <string name="home_address_desc">管理下单时使用的收货信息</string>
     <string name="home_section_entry">功能</string>
+
+    <!-- 收货地址 -->
+    <string name="address_list_title">收货地址</string>
+    <string name="address_list_empty">还没有收货地址</string>
+    <string name="address_list_empty_hint">添加一个地址，下单时就不用重复填写</string>
+    <string name="address_add">新增收货地址</string>
+    <string name="address_add_title">新增收货地址</string>
+    <string name="address_edit_title">编辑收货地址</string>
+    <string name="address_default">默认</string>
+    <string name="address_set_default">设为默认</string>
+    <string name="address_edit">编辑</string>
+    <string name="address_delete">删除</string>
+    <string name="address_delete_confirm">确定删除这个收货地址吗？</string>
+    <string name="address_delete_success">已删除</string>
+    <string name="address_set_default_success">已设为默认地址</string>
+    <string name="address_receiver">收货人</string>
+    <string name="address_phone">手机号</string>
+    <string name="address_province">省</string>
+    <string name="address_city">市</string>
+    <string name="address_district">区/县</string>
+    <string name="address_detail">详细地址（门牌号）</string>
+    <string name="address_tag">地址标签</string>
+    <string name="address_tag_home">家</string>
+    <string name="address_tag_company">公司</string>
+    <string name="address_tag_school">学校</string>
+    <string name="address_default_switch">设为默认地址</string>
+    <string name="address_save">保存</string>
+    <string name="address_saving">保存中…</string>
+    <string name="address_discard_confirm">放弃本次修改？</string>
+    <string name="address_error_receiver">请填写收货人（2-20 字）</string>
+    <string name="address_error_phone">请填写正确的手机号</string>
+    <string name="address_error_region">请填写完整的省、市、区</string>
+    <string name="address_error_detail">详细地址至少 5 个字</string>
 
     <!-- 通用 -->
     <string name="action_confirm">确定</string>
     <string name="action_cancel">取消</string>
+    <string name="action_retry">重试</string>
     <string name="avatar_placeholder">U</string>
 </resources>

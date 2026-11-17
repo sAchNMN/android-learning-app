@@ -46,6 +46,15 @@
         <activity
             android:name=".ui.takeout.OrderListActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ui.address.AddressListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.address.AddressEditActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

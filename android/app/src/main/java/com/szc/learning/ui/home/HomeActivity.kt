@@ -16,6 +16,7 @@ import com.szc.learning.AppContainer
 import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.databinding.ActivityHomeBinding
+import com.szc.learning.ui.address.AddressListActivity
 import com.szc.learning.ui.login.LoginActivity
 import com.szc.learning.ui.takeout.OrderListActivity
 import com.szc.learning.ui.takeout.ShopListActivity
@@ -71,6 +72,10 @@ class HomeActivity : AppCompatActivity() {
 
         binding.orderEntryCard.setOnClickListener {
             startActivity(Intent(this, OrderListActivity::class.java))
+        }
+
+        binding.addressEntryCard.setOnClickListener {
+            startActivity(AddressListActivity.manageIntent(this))
         }
     }
 
