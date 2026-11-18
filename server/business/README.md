@@ -16,10 +16,14 @@ server/business/takeout/          对应包 com.ruoyi.takeout
 
 server/business/music/            对应包 com.ruoyi.music
 ├── controller/AppMusicController.java     App 端接口（/app/music/**）
-├── domain/                                OnlineTrack / OnlinePlay / 音源配置
-├── mapper/MusicSourceConfigMapper.java    biz_music_source 的注解 SQL
-└── source/                                网易云、酷狗适配器 + 聚合/换源/缓存
+├── domain/                                OnlineTrack / OnlinePlay / 音源配置 / 喜欢与歌单
+├── mapper/                                biz_music_source、biz_music_user_like 的注解 SQL
+├── service/                               云端曲库、推荐算法、喜欢/歌单同步
+└── source/                                网易云、酷狗适配器 + 聚合/换源/缓存/账号能力
 ```
+
+账号能力（推荐流、同步喜欢、我的歌单）是 `MusicSourceProvider` 的**默认方法**：
+只有网易云覆写了它们，酷狗走默认实现（返回「暂不支持」），加新平台时按需覆写即可。
 
 多音源的设计与接口见 [`docs/music-sources.md`](../../docs/music-sources.md)。
 

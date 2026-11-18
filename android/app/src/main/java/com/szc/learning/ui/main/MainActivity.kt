@@ -22,7 +22,6 @@ import com.szc.learning.R
 import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.databinding.ActivityMainBinding
 import com.szc.learning.music.ui.MusicViewModel
-import com.szc.learning.music.ui.home.HomeFragment
 import com.szc.learning.music.ui.library.LibraryFragment
 import com.szc.learning.music.ui.mine.MineFragment
 import com.szc.learning.music.ui.now.NowPlayingActivity
@@ -33,22 +32,24 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * 主页面：五个 tab + 常驻迷你播放器。
+ * 主页面：四个 tab + 常驻迷你播放器。
  *
- * 五个 tab 的顺序刻意对齐参考产品：首页 / 播放 / 推荐 / 本地 / 我的。
- * 第二个 tab 从「MV 短视频流」改成了真正的播放器：大封面、内嵌歌词、上下滑切歌。
+ * tab 顺序：播放 / 推荐 / 本地 / 我的。
  *
- * Fragment 用 show/hide 而不是 replace —— 切回首页时滚动位置还在，
- * 这对"边听边翻"的用法是必要的。Fragment 也是懒创建的：
- * 播放器页一旦创建就会读当前曲目的歌词，不能让它开机就跟着启动。
+ * 首页已经拿掉：它原本只是把「每日推荐 + 歌单 + 好歌」堆在一起，
+ * 而这些内容现在全部落在推荐页（并且是真·在线推荐，不再是本地洗牌），
+ * 留一个首页只会让用户多点一次。默认落在推荐页，打开就有歌可听。
+ *
+ * Fragment 用 show/hide 而不是 replace —— 切回来时滚动位置还在。
+ * Fragment 懒创建：播放器页一旦创建就会读当前曲目的歌词，不能让它开机就跟着启动。
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MusicViewModel by viewModels()
 
-    private val tags = listOf(TAG_HOME, TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
-    private var currentTab = 0
+    private val tags = listOf(TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
+    private var currentTab = DEFAULT_TAB
     private var hasTrack = false
 
     private var insetTop = 0
@@ -91,7 +92,7 @@ class MainActivity : AppCompatActivity() {
         bindMiniPlayer()
         observePlayer()
 
-        val restored = savedInstanceState?.getInt(KEY_TAB, 0) ?: 0
+        val restored = savedInstanceState?.getInt(KEY_TAB, DEFAULT_TAB) ?: DEFAULT_TAB
         showTab(restored)
         val animationsEnabled = android.provider.Settings.Global.getFloat(
             contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
@@ -158,7 +159,6 @@ class MainActivity : AppCompatActivity() {
     private fun setupTabBar() {
         binding.tabBar.setItems(
             listOf(
-                BottomNavBar.Item(R.drawable.ic_nav_home, getString(R.string.tab_home)),
                 BottomNavBar.Item(R.drawable.ic_nav_player, getString(R.string.tab_mv)),
                 BottomNavBar.Item(R.drawable.ic_nav_discover, getString(R.string.tab_recommend)),
                 BottomNavBar.Item(R.drawable.ic_nav_local, getString(R.string.tab_local)),
@@ -192,11 +192,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createFragment(tag: String): Fragment = when (tag) {
-        TAG_PLAYER -> PlayerFragment()
         TAG_RECOMMEND -> RecommendFragment()
         TAG_LOCAL -> LibraryFragment()
         TAG_MINE -> MineFragment()
-        else -> HomeFragment()
+        else -> PlayerFragment()
     }
 
     /** 切到播放器时整页变深色：状态栏/导航栏图标转白、底部条换成深色玻璃。 */
@@ -218,7 +217,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun isPlayerTab(): Boolean = tags[currentTab] == TAG_PLAYER
 
-    /** 供各页面跳 tab：首页的"视频"、我的页的"本地音乐"等。 */
+    /** 供各页面跳 tab：我的页的"本地音乐""推荐"等。 */
     fun openTab(index: Int) {
         if (index == currentTab) return
         showTab(index)
@@ -227,6 +226,8 @@ class MainActivity : AppCompatActivity() {
     fun openLocalTab() = openTab(INDEX_LOCAL)
 
     fun openRecommendTab() = openTab(INDEX_RECOMMEND)
+
+    fun openPlayerTab() = openTab(INDEX_PLAYER)
 
     // ---------------------------------------------------------------- 播放
 
@@ -285,13 +286,14 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val KEY_TAB = "aurora.tab"
 
-        const val INDEX_HOME = 0
-        const val INDEX_PLAYER = 1
-        const val INDEX_RECOMMEND = 2
-        const val INDEX_LOCAL = 3
-        const val INDEX_MINE = 4
+        /** 打开先落在推荐页：播放器页在没歌可播时是空的，不适合当默认首屏。 */
+        const val DEFAULT_TAB = 1
 
-        private const val TAG_HOME = "tab_home"
+        const val INDEX_PLAYER = 0
+        const val INDEX_RECOMMEND = 1
+        const val INDEX_LOCAL = 2
+        const val INDEX_MINE = 3
+
         private const val TAG_PLAYER = "tab_player"
         private const val TAG_RECOMMEND = "tab_recommend"
         private const val TAG_LOCAL = "tab_local"

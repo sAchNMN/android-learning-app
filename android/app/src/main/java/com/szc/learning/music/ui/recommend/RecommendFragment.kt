@@ -2,9 +2,9 @@ package com.szc.learning.music.ui.recommend
 
 import android.os.Bundle
 import android.view.View
-import androidx.annotation.StringRes
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -13,24 +13,36 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.R
+import com.szc.learning.core.common.music.MusicTrack
+import com.szc.learning.core.common.toast
+import com.szc.learning.core.network.music.UserPlaylistInfo
 import com.szc.learning.databinding.FragmentRecommendBinding
-import com.szc.learning.databinding.ItemChartCardBinding
+import com.szc.learning.music.data.Playlist
+import com.szc.learning.music.data.PlaylistTag
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.music.ui.common.Playlists
 import com.szc.learning.music.ui.track.PlaylistRailAdapter
 import com.szc.learning.music.ui.widget.ShimmerSkeletonView
 import com.szc.learning.music.ui.widget.dp
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlin.random.Random
 
 /**
- * 推荐页：
- * 每日推荐（按天换一批）+ 歌单 + 歌手 + 三个榜。
+ * 推荐页。
  *
- * 数据全部来自本机曲库，没有后端推荐算法 —— 所谓"猜你喜欢"就是
- * 把云端和本地混在一起、按日期做一次稳定洗牌。至少它每次都不一样，
- * 又不会在同一天里来回跳。
+ * 数据不再来自「把本机曲库按天洗牌」——那是假推荐，换个日期就露馅。
+ * 现在整条链路是：
+ *
+ * ```
+ * 本机算口味（收藏 + 最近播放里的歌手）
+ *        ↓ artists
+ * 后端 /app/music/recommend：按歌手搜各音源 + 补平台推荐流 + 排除已喜欢
+ *        ↓ OnlineTrack 列表
+ * 页面渲染；结果同时写进本机缓存，断网时回放上一次
+ * ```
+ *
+ * 每行的红心走「本机 → 后端 → 音源平台」三级同步，状态提示在下方 toast；
+ * 「来自音源」那一排是账号里的歌单，进页面时自动同步（5 分钟内不重复请求）。
  */
 class RecommendFragment : Fragment(R.layout.fragment_recommend) {
 
@@ -41,17 +53,29 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         ViewModelProvider(requireActivity())[MusicViewModel::class.java]
     }
 
+    private val trackAdapter = RecommendTrackAdapter(
+        favoriteKeys = { viewModel.favorites.value },
+        onClick = { index -> playFrom(index) },
+        onToggleFavorite = { track -> viewModel.toggleFavorite(track) },
+    )
+
+    /** 本机拼出来的歌单（收藏 / 云端 / 本地 / 最近 / 同歌手）。 */
     private val playlistAdapter = PlaylistRailAdapter { playlist ->
-        viewModel.play(playlist.tracks, 0)
+        viewModel.playTracks(playlist.tracks, 0, ::onPlayEvent)
     }
 
-    private val artistAdapter = ArtistRailAdapter { artist ->
-        val tracks = viewModel.allTracks().filter { it.artist == artist.name }
-        viewModel.play(tracks, 0)
+    /** 音源账号里的歌单：卡片只有标题/封面/总数，点开才去拉曲目。 */
+    private val sourceAdapter = PlaylistRailAdapter { card ->
+        val playlist = sourceIndex[card.key]
+        if (playlist == null) {
+            viewModel.playTracks(card.tracks, 0, ::onPlayEvent)
+        } else {
+            viewModel.playSyncedPlaylist(playlist, ::onPlayEvent)
+        }
     }
 
-    private var dailySeed = System.currentTimeMillis() / DAY_MS
-    private var dailyTracks = emptyList<com.szc.learning.core.common.music.MusicTrack>()
+    /** 卡片 key → 音源歌单，点卡片时用它回查 source/id。 */
+    private val sourceIndex = mutableMapOf<String, UserPlaylistInfo>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -59,41 +83,79 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
 
         binding.recommendSkeleton.style = ShimmerSkeletonView.Style.RECOMMEND
 
+        binding.recommendTracks.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = trackAdapter
+            setHasFixedSize(false)
+        }
         binding.recommendPlaylists.apply {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
             adapter = playlistAdapter
             setHasFixedSize(true)
         }
-        binding.recommendArtists.apply {
+        binding.recommendSourcePlaylists.apply {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            adapter = artistAdapter
+            adapter = sourceAdapter
             setHasFixedSize(true)
         }
 
-        binding.recommendRefresh.setOnClickListener {
-            dailySeed = System.currentTimeMillis()
-            rebuild()
-        }
-        binding.dailyCard.setOnClickListener { playDaily() }
-        binding.dailyPlay.setOnClickListener { playDaily() }
+        binding.recommendRefresh.setOnClickListener { viewModel.loadRecommendations(refresh = true) }
+        binding.dailyCard.setOnClickListener { playFrom(0) }
+        binding.dailyPlay.setOnClickListener { playFrom(0) }
         installInsets()
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(
-                    viewModel.cloud,
-                    viewModel.local,
-                    viewModel.recent,
-                    viewModel.favorites,
-                ) { _, _, _, _ -> Unit }.collect { rebuild() }
+                viewModel.recommend.collect { renderTracks() }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.cloudLoading.collect { rebuild() }
+                viewModel.recommendBasedOn.collect { renderHeader() }
             }
         }
-        rebuild()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.recommendLoading.collect { renderLoading() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.recommendOffline.collect { renderHeader() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.syncedPlaylists.collect {
+                    renderSourcePlaylists()
+                    renderPlaylists()
+                }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 收藏变了红心要跟着变；曲库变了本机歌单也要重算
+                viewModel.favorites.collect {
+                    trackAdapter.notifyDataSetChanged()
+                    renderPlaylists()
+                }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.recent.collect { renderPlaylists() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.likeNotice.collect { message -> context?.toast(message) }
+            }
+        }
+
+        // 首次进入才拉数据；切回来不重复请求（ViewModel 里有 TTL 兜底）
+        viewModel.loadRecommendations()
+        viewModel.syncLibrary()
+        renderAll()
     }
 
     private fun installInsets() {
@@ -108,20 +170,73 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         ViewCompat.requestApplyInsets(binding.recommendScroll)
     }
 
-    private fun rebuild() {
+    // ---------------------------------------------------------------- 渲染
+
+    private fun renderAll() {
+        renderLoading()
+        renderHeader()
+        renderTracks()
+        renderSourcePlaylists()
+        renderPlaylists()
+    }
+
+    private fun renderLoading() {
+        val loading = viewModel.recommendLoading.value && viewModel.recommend.value.isEmpty()
+        binding.recommendSkeleton.isVisible = loading
+        binding.recommendScroll.isVisible = !loading
+    }
+
+    private fun renderHeader() {
+        val offline = viewModel.recommendOffline.value
+        val basedOn = viewModel.recommendBasedOn.value
+        binding.recommendSubtitle.text = when {
+            offline -> getString(R.string.recommend_subtitle_offline)
+            basedOn.isNotEmpty() -> getString(
+                R.string.recommend_subtitle_taste,
+                basedOn.take(3).joinToString("、"),
+            )
+
+            else -> getString(R.string.recommend_subtitle_fresh)
+        }
+    }
+
+    private fun renderTracks() {
+        val tracks = viewModel.recommend.value
+        trackAdapter.submitList(tracks)
+        binding.recommendTrackCount.text =
+            getString(R.string.recommend_track_count, tracks.size)
+        binding.dailyTitle.text = getString(R.string.recommend_daily_title, tracks.size)
+        binding.dailySubtitle.setText(R.string.recommend_daily_subtitle)
+        binding.dailyCard.isEnabled = tracks.isNotEmpty()
+
+        val empty = tracks.isEmpty() && !viewModel.recommendLoading.value
+        binding.recommendEmpty.isVisible = empty
+        if (empty) {
+            binding.recommendEmpty.text = buildString {
+                append(getString(R.string.recommend_empty))
+                append('\n')
+                append(getString(R.string.recommend_empty_hint))
+            }
+        }
+    }
+
+    private fun renderSourcePlaylists() {
+        val playlists = viewModel.syncedPlaylists.value
+        sourceIndex.clear()
+        playlists.forEach { sourceIndex["source:${it.source}:${it.id}"] = it }
+        sourceAdapter.submitList(playlists.map { it.toCard() })
+        binding.recommendSourceState.text =
+            getString(R.string.recommend_playlist_count, playlists.size)
+        binding.recommendSourceEmpty.isVisible = playlists.isEmpty()
+        binding.recommendSourcePlaylists.isVisible = playlists.isNotEmpty()
+    }
+
+    private fun renderPlaylists() {
         val context = context ?: return
-        val all = viewModel.allTracks()
-        val local = viewModel.local.value
-
-        val loading = all.isEmpty() && viewModel.cloudLoading.value
-        binding.recommendSkeleton.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.recommendScroll.visibility = if (loading) View.INVISIBLE else View.VISIBLE
-        if (loading) return
-
         val playlists = Playlists.build(
             context,
             viewModel.cloud.value,
-            local,
+            viewModel.local.value,
             viewModel.recent.value,
             viewModel.favoriteTracks(),
             limit = 8,
@@ -129,49 +244,35 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         playlistAdapter.submitList(playlists)
         binding.recommendMorePlaylists.text =
             getString(R.string.recommend_playlist_count, playlists.size)
-
-        val artists = all
-            .filter { it.artist.isNotBlank() }
-            .groupBy { it.artist }
-            .map { (name, tracks) -> Artist(name, tracks.size) }
-            .sortedByDescending { it.trackCount }
-            .take(10)
-        artistAdapter.submitList(artists)
-
-        dailyTracks = all.shuffled(Random(dailySeed * 31)).take(DAILY_COUNT)
-        binding.dailyTitle.text = getString(R.string.recommend_daily_title, dailyTracks.size)
-        binding.dailySubtitle.setText(R.string.recommend_daily_subtitle)
-        binding.dailyCard.isEnabled = dailyTracks.isNotEmpty()
-
-        binding.recommendCharts.removeAllViews()
-        addChart(1, R.string.chart_hot, all.take(CHART_COUNT))
-        addChart(2, R.string.chart_new, all.sortedByDescending { it.key }.take(CHART_COUNT))
-        addChart(3, R.string.chart_local, local.take(CHART_COUNT))
     }
 
-    private fun addChart(index: Int, @StringRes title: Int, tracks: List<com.szc.learning.core.common.music.MusicTrack>) {
+    // ---------------------------------------------------------------- 播放
+
+    private fun playFrom(index: Int) {
+        val tracks = viewModel.recommend.value
         if (tracks.isEmpty()) return
-        val card = ItemChartCardBinding.inflate(layoutInflater, binding.recommendCharts, false)
-        card.chartIndex.text = index.toString()
-        card.chartTitle.setText(title)
-        card.chartSubtitle.text = tracks.take(3).joinToString(" / ") { it.title }
-        card.root.setOnClickListener { viewModel.play(tracks, 0) }
-        card.chartPlay.setOnClickListener { viewModel.play(tracks, 0) }
-        binding.recommendCharts.addView(card.root)
+        viewModel.playTracks(tracks, index, ::onPlayEvent)
     }
 
-    private fun playDaily() {
-        if (dailyTracks.isNotEmpty()) viewModel.play(dailyTracks, 0)
+    private fun onPlayEvent(event: OnlinePlayEvent) {
+        when (event) {
+            is OnlinePlayEvent.Ready -> context?.toast(event.notice)
+            is OnlinePlayEvent.Failed -> context?.toast(event.message)
+        }
     }
+
+    /** 音源歌单 → 卡片模型：只有标题/封面/总数，曲目点开才拉。 */
+    private fun UserPlaylistInfo.toCard(): Playlist = Playlist(
+        key = "source:$source:$id",
+        title = name,
+        tag = PlaylistTag.SOURCE,
+        tracks = emptyList<MusicTrack>(),
+        declaredSize = trackCount,
+        coverUrl = coverUrl,
+    )
 
     override fun onDestroyView() {
         _binding = null
         super.onDestroyView()
-    }
-
-    private companion object {
-        const val DAY_MS = 86_400_000L
-        const val DAILY_COUNT = 12
-        const val CHART_COUNT = 8
     }
 }

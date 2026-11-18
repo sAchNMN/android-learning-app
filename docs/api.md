@@ -165,6 +165,53 @@
 3. 酷狗取址需要把搜索返回的 `hash / albumId / albumAudioId` 原样带回；网易云只需 `id`。
 4. 搜索结果不落库；播放地址缓存 10 分钟，失败结果缓存 30 秒。
 
+### 3.4 推荐与「我的」同步
+
+推荐页与「我喜欢」用的四个接口。App 没有登录体系，**`deviceId` 就是用户身份**
+（客户端首次启动生成的 UUID），所以这几个接口不读 token，全在 `@Anonymous` 下。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/app/music/recommend?deviceId=&artists=周杰伦,陈奕迅&seed=&limit=20` | 猜你喜欢：按口味歌手搜各音源 + 补平台推荐流 |
+| POST | `/app/music/like` | 喜欢/取消喜欢，`{deviceId, source, id, title, artist, album, durationMs, cover, hash, albumId, albumAudioId, liked}` |
+| GET | `/app/music/likes?deviceId=&limit=200` | 我喜欢的曲目（重装后恢复） |
+| GET | `/app/music/playlists` | 各平台账号里的歌单（未登录的平台跳过） |
+| GET | `/app/music/playlist?source=netease&id=123&limit=200` | 拉某个歌单的曲目 |
+
+推荐算法（`RecommendService`）按顺序做五件事：
+
+1. 取口味种子：客户端传的 `artists` 优先，没传就用后台喜欢表里「喜欢最多的歌手」
+2. 用种子歌手当关键词走聚合搜索，天然同歌手/同风格
+3. 不足条数时补各平台推荐流（网易云 `/api/personalized/newsong`，公开接口，无 Cookie 可用）
+4. 去重（歌名 + 主歌手）并排除已经喜欢过的歌
+5. 按 `seed` 稳定洗牌：不传按天固定，同一天多次进入顺序一致；点「换一批」传新 seed
+
+`/like` 的返回要分两层看：
+
+```json
+{ "code": 200, "data": {
+    "liked": true,
+    "saved": true,
+    "syncs": [{ "source": "netease", "ok": false, "message": "网易云未登录，已只记在本机与后台" }]
+} }
+```
+
+- `saved` = 后端 `biz_music_user_like` 是否写入
+- `syncs` = 各平台的同步回执，`ok=false` **不是接口失败**
+- 规则：后端库先写，平台同步后补；平台没登录/风控失败都不影响「点红心」这个动作
+
+平台能力现状（`MusicSourceProvider` 的默认方法决定，加平台时只覆写需要的）：
+
+| 能力 | 网易云 | 酷狗 |
+| --- | --- | --- |
+| 推荐流 `dailyRecommend` | ✅ `/api/personalized/newsong` | — |
+| 同步喜欢 `like` | ✅ `/api/radio/like`（需 Cookie + csrf_token） | — |
+| 我的歌单 `myPlaylists` | ✅ `/api/user/playlist` | — |
+| 歌单曲目 `playlistTracks` | ✅ `/api/v6/playlist/detail` | — |
+
+酷狗这几项要签名/token 才能调，没有可靠公开接口，所以留空实现：
+客户端会显示「酷狗暂不支持同步喜欢，已记在本机与后台」，**不假装成功**。
+
 ## 4. 错误码对照
 
 | code | 含义 | Android 端处理 |

@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.szc.learning.R
 import com.szc.learning.ui.theme.themeColor
+import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.databinding.ItemPlaylistCardBinding
 import com.szc.learning.music.data.Playlist
 import com.szc.learning.music.data.PlaylistTag
@@ -37,7 +38,19 @@ class PlaylistRailAdapter(
             binding.playlistTitle.text = playlist.title
             binding.playlistCount.text =
                 binding.root.context.getString(R.string.playlist_tracks, playlist.size)
-            playlist.cover?.let { binding.playlistCover.bindArt(it, sizePx = 480) }
+            // 同步回来的歌单没有曲目详情，封面是平台下发的 URL，包一层临时曲目交给 Coil
+            val artTrack = playlist.cover ?: playlist.coverUrl?.let { url ->
+                MusicTrack(
+                    id = playlist.key,
+                    title = playlist.title,
+                    artist = "",
+                    album = "",
+                    durationMs = 0,
+                    uri = "",
+                    artUri = url,
+                )
+            }
+            artTrack?.let { binding.playlistCover.bindArt(it, sizePx = 480) }
             bindTag(playlist.tag)
             binding.root.setOnClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) onClick(playlist)
@@ -78,6 +91,12 @@ class PlaylistRailAdapter(
                     background = R.drawable.bg_tag_gray
                     textColor = R.attr.auInkSecondary
                     label = R.string.tag_local
+                }
+
+                PlaylistTag.SOURCE -> {
+                    background = R.drawable.bg_tag_blue
+                    textColor = R.attr.auTagBrandText
+                    label = R.string.tag_source
                 }
             }
             binding.playlistTag.setBackgroundResource(background)

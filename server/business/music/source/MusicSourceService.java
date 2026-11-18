@@ -6,6 +6,8 @@ import com.ruoyi.music.domain.OnlinePlay;
 import com.ruoyi.music.domain.OnlineTrack;
 import com.ruoyi.music.domain.SearchResponse;
 import com.ruoyi.music.domain.SourceUpdateBody;
+import com.ruoyi.music.domain.SyncResult;
+import com.ruoyi.music.domain.UserPlaylist;
 import com.ruoyi.music.mapper.MusicSourceConfigMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -259,6 +261,100 @@ public class MusicSourceService {
         } catch (RuntimeException ex) {
             return "";
         }
+    }
+
+    // ---------------------------------------------------------------- 账号与发现
+
+    /**
+     * 各平台推荐流合并。
+     *
+     * 与 {@link #search} 的区别是**不需要关键词**：平台自己按热度/新歌给一批，
+     * 新用户还没有任何收藏时，推荐页靠它把首屏填满。
+     */
+    public List<OnlineTrack> discover(int limit) {
+        ensureConfigs();
+        int size = Math.max(1, Math.min(limit, SEARCH_LIMIT_MAX));
+        List<List<OnlineTrack>> buckets = new ArrayList<>();
+        for (MusicSourceConfig config : enabledConfigs(null)) {
+            MusicSourceProvider provider = providers.get(config.getSourceKey());
+            if (provider == null) {
+                continue;
+            }
+            try {
+                List<OnlineTrack> list = provider.dailyRecommend(size, nullToEmpty(config.getCookie()));
+                if (list != null && !list.isEmpty()) {
+                    buckets.add(list);
+                }
+            } catch (RuntimeException ex) {
+                LOG.log(Level.FINE, "推荐流获取失败：" + config.getSourceKey(), ex);
+            }
+        }
+        return interleave(buckets, size);
+    }
+
+    /** 把「喜欢 / 取消喜欢」推给平台。平台不支持或未登录都只是失败回执，不抛异常。 */
+    public SyncResult like(String source, String trackId, boolean liked) {
+        ensureConfigs();
+        MusicSourceProvider provider = providers.get(source);
+        if (provider == null) {
+            return SyncResult.fail(source, "未知音源：" + source);
+        }
+        MusicSourceConfig config = configs.get(source);
+        if (config == null || !config.isOn()) {
+            return SyncResult.fail(source, provider.label() + " 已在音源管理中停用");
+        }
+        if (!provider.supportsAccount()) {
+            return SyncResult.fail(source, provider.label() + " 暂不支持同步喜欢，已记在本机与后台");
+        }
+        try {
+            return provider.like(trackId, liked, nullToEmpty(config.getCookie()));
+        } catch (RuntimeException ex) {
+            return SyncResult.fail(source, provider.label() + " 同步失败：" + ex.getMessage());
+        }
+    }
+
+    /** 所有已启用平台的个人歌单。没登录的平台直接跳过，不算错误。 */
+    public List<UserPlaylist> userPlaylists() {
+        ensureConfigs();
+        List<UserPlaylist> out = new ArrayList<>();
+        for (MusicSourceConfig config : enabledConfigs(null)) {
+            MusicSourceProvider provider = providers.get(config.getSourceKey());
+            if (provider == null || !provider.supportsAccount()) {
+                continue;
+            }
+            try {
+                List<UserPlaylist> list = provider.myPlaylists(nullToEmpty(config.getCookie()));
+                if (list != null && !list.isEmpty()) {
+                    out.addAll(list);
+                }
+            } catch (RuntimeException ex) {
+                LOG.log(Level.FINE, "歌单同步失败：" + config.getSourceKey(), ex);
+            }
+        }
+        return out;
+    }
+
+    public List<OnlineTrack> playlistTracks(String source, String playlistId, int limit) {
+        ensureConfigs();
+        MusicSourceProvider provider = providers.get(source);
+        if (provider == null || playlistId == null || playlistId.isBlank()) {
+            return new ArrayList<>();
+        }
+        MusicSourceConfig config = configs.get(source);
+        try {
+            List<OnlineTrack> list = provider.playlistTracks(
+                    playlistId, limit, config == null ? "" : nullToEmpty(config.getCookie()));
+            return list == null ? new ArrayList<>() : list;
+        } catch (RuntimeException ex) {
+            LOG.log(Level.FINE, "歌单曲目获取失败：" + source + "/" + playlistId, ex);
+            return new ArrayList<>();
+        }
+    }
+
+    /** 平台是否支持账号能力（客户端据此决定要不要显示「同步」按钮）。 */
+    public boolean supportsAccount(String source) {
+        MusicSourceProvider provider = providers.get(source);
+        return provider != null && provider.supportsAccount();
     }
 
     // ---------------------------------------------------------------- 配置

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 推荐页：每日推荐卡 + 歌单 + 歌手 + 三个榜。内容铺到系统栏下面，靠 insets 让标题避让 -->
+<!-- 推荐页：每日推荐卡 + 为你推荐（可点红心）+ 音源歌单 + 本机歌单。
+     内容铺到系统栏下面，靠 insets 让标题避让 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -65,11 +66,13 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/recommendSubtitle"
             style="@style/Text.Caption"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="20dp"
             android:text="@string/recommend_subtitle" />
 
         <!-- 每日推荐卡 -->
@@ -139,7 +142,102 @@
                 app:tint="?attr/auAccent" />
         </FrameLayout>
 
-        <!-- 推荐歌单 -->
+        <!-- 为你推荐 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="24dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/recommend_tracks" />
+
+            <TextView
+                android:id="@+id/recommendTrackCount"
+                style="@style/Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recommendTracks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/recommendEmpty"
+            style="@style/Text.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="20dp"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/recommend_empty"
+            android:visibility="gone" />
+
+        <!-- 来自音源的歌单 -->
+        <LinearLayout
+            android:id="@+id/recommendSourceHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="24dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/recommend_source_playlists" />
+
+            <TextView
+                android:id="@+id/recommendSourceState"
+                style="@style/Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/recommend_more"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recommendSourcePlaylists"
+            android:layout_width="match_parent"
+            android:layout_height="212dp"
+            android:clipToPadding="false"
+            android:overScrollMode="never"
+            android:paddingStart="20dp"
+            android:paddingEnd="8dp"
+            android:scrollbars="none" />
+
+        <TextView
+            android:id="@+id/recommendSourceEmpty"
+            style="@style/Text.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginEnd="20dp"
+            android:text="@string/recommend_source_empty"
+            android:visibility="gone" />
+
+        <!-- 推荐歌单（本机拼的） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -175,44 +273,6 @@
             android:paddingStart="20dp"
             android:paddingEnd="8dp"
             android:scrollbars="none" />
-
-        <!-- 热门歌手 -->
-        <TextView
-            style="@style/Text.Section"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="22dp"
-            android:text="@string/recommend_artists" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recommendArtists"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:layout_marginTop="8dp"
-            android:clipToPadding="false"
-            android:overScrollMode="never"
-            android:paddingStart="20dp"
-            android:paddingEnd="8dp"
-            android:scrollbars="none" />
-
-        <!-- 排行榜 -->
-        <TextView
-            style="@style/Text.Section"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="22dp"
-            android:text="@string/recommend_charts" />
-
-        <LinearLayout
-            android:id="@+id/recommendCharts"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginEnd="20dp"
-            android:orientation="vertical" />
 
         <TextView
             style="@style/Text.Caption"

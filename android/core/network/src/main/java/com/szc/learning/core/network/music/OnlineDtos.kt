@@ -58,3 +58,74 @@ data class SourceUpdateBody(
     @SerializedName("priority") val priority: Int? = null,
     @SerializedName("cookie") val cookie: String? = null,
 )
+
+/**
+ * 推荐响应。`basedOn` 是口味种子（歌手名），页面用它说明「为什么推这些」；
+ * `reason` 取 favorites / likes / discover，对应「按收藏」「按后台记录」「无偏好兜底」。
+ */
+data class RecommendDto(
+    @SerializedName("basedOn") val basedOn: List<String> = emptyList(),
+    @SerializedName("tracks") val tracks: List<OnlineTrackDto> = emptyList(),
+    @SerializedName("reason") val reason: String = "discover",
+)
+
+/** 收藏请求体。`source` 是 netease / kugou / cloud / local。 */
+data class LikeBody(
+    @SerializedName("deviceId") val deviceId: String,
+    @SerializedName("source") val source: String,
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("artist") val artist: String,
+    @SerializedName("album") val album: String,
+    @SerializedName("durationMs") val durationMs: Long,
+    @SerializedName("cover") val cover: String?,
+    @SerializedName("hash") val hash: String,
+    @SerializedName("albumId") val albumId: String,
+    @SerializedName("albumAudioId") val albumAudioId: String,
+    @SerializedName("liked") val liked: Boolean,
+)
+
+/** 单平台同步回执。`ok=false` 不是请求失败，只是这个平台没同步成功。 */
+data class SyncNoteDto(
+    @SerializedName("ok") val ok: Boolean = false,
+    @SerializedName("source") val source: String = "",
+    @SerializedName("message") val message: String = "",
+)
+
+data class LikeResultDto(
+    @SerializedName("liked") val liked: Boolean = true,
+    @SerializedName("saved") val saved: Boolean = false,
+    @SerializedName("syncs") val syncs: List<SyncNoteDto> = emptyList(),
+)
+
+/** 后端存的喜欢记录，字段够还原成一条可播放的 MusicTrack。 */
+data class UserLikeDto(
+    @SerializedName("source") val source: String = "",
+    @SerializedName("id") val id: String = "",
+    @SerializedName("title") val title: String = "",
+    @SerializedName("artist") val artist: String = "",
+    @SerializedName("album") val album: String = "",
+    @SerializedName("durationMs") val durationMs: Long = 0,
+    @SerializedName("cover") val cover: String? = null,
+    @SerializedName("hash") val hash: String? = null,
+    @SerializedName("albumId") val albumId: String? = null,
+    @SerializedName("albumAudioId") val albumAudioId: String? = null,
+)
+
+/** 音源账号里的歌单卡片。 */
+data class UserPlaylistDto(
+    @SerializedName("source") val source: String = "",
+    @SerializedName("id") val id: String = "",
+    @SerializedName("name") val name: String = "",
+    @SerializedName("coverUrl") val coverUrl: String? = null,
+    @SerializedName("trackCount") val trackCount: Int = 0,
+    @SerializedName("own") val own: Boolean? = null,
+)
+
+data class PlaylistDetailDto(
+    @SerializedName("source") val source: String = "",
+    @SerializedName("id") val id: String = "",
+    @SerializedName("name") val name: String = "",
+    @SerializedName("coverUrl") val coverUrl: String? = null,
+    @SerializedName("tracks") val tracks: List<OnlineTrackDto> = emptyList(),
+)

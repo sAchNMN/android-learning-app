@@ -4,6 +4,8 @@ import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.music.domain.OnlinePlay;
 import com.ruoyi.music.domain.OnlineTrack;
+import com.ruoyi.music.domain.SyncResult;
+import com.ruoyi.music.domain.UserPlaylist;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -60,36 +62,47 @@ public class NeteaseSourceProvider implements MusicSourceProvider {
 
         List<OnlineTrack> tracks = new ArrayList<>();
         for (int i = 0; i < songs.size() && tracks.size() < size; i++) {
-            JSONObject song = songs.getJSONObject(i);
-            if (song == null) {
-                continue;
-            }
-            OnlineTrack track = new OnlineTrack();
-            track.setSource(key());
-            track.setId(song.getString("id"));
-            track.setTitle(firstNonBlank(song.getString("name"), song.getString("title")));
-            track.setArtist(joinArtists(song));
-            JSONObject album = song.getJSONObject("album");
-            if (album == null) {
-                album = song.getJSONObject("al");
-            }
-            if (album != null) {
-                track.setAlbum(album.getString("name"));
-                track.setCoverUrl(albumCover(album));
-            }
-            long duration = song.getLongValue("duration");
-            if (duration <= 0) {
-                duration = song.getLongValue("dt");
-            }
-            track.setDurationMs(duration);
-            int fee = song.getIntValue("fee");
-            // fee: 0 免费 / 8 免费但低音质 / 1 会员 / 4 付费专辑
-            track.setPlayable(fee == 0 || fee == 8);
-            if (track.getTitle() != null && track.getId() != null) {
+            OnlineTrack track = toTrack(songs.getJSONObject(i));
+            if (track != null) {
                 tracks.add(track);
             }
         }
         return tracks;
+    }
+
+    /**
+     * 把网易云的 song 对象翻成统一模型。
+     *
+     * 三个接口（搜索 / 歌单详情 / 推荐新歌）返回的是同一套字段，只是外层包装不同，
+     * 所以解析只写一份：{@code name/artists|ar/album|al/duration|dt} 都兼容。
+     */
+    private OnlineTrack toTrack(JSONObject song) {
+        if (song == null) {
+            return null;
+        }
+        OnlineTrack track = new OnlineTrack();
+        track.setSource(key());
+        track.setId(song.getString("id"));
+        track.setTitle(firstNonBlank(song.getString("name"), song.getString("title")));
+        track.setArtist(joinArtists(song));
+        JSONObject album = song.getJSONObject("album");
+        if (album == null) {
+            album = song.getJSONObject("al");
+        }
+        if (album != null) {
+            track.setAlbum(album.getString("name"));
+            track.setCoverUrl(albumCover(album));
+        }
+        long duration = song.getLongValue("duration");
+        if (duration <= 0) {
+            duration = song.getLongValue("dt");
+        }
+        track.setDurationMs(duration);
+        int fee = song.getIntValue("fee");
+        // fee: 0 免费 / 8 免费但低音质 / 1 会员 / 4 付费专辑
+        track.setPlayable(fee == 0 || fee == 8);
+        return track.getTitle() != null && !track.getTitle().isBlank() && track.getId() != null
+                ? track : null;
     }
 
     @Override
@@ -152,6 +165,162 @@ public class NeteaseSourceProvider implements MusicSourceProvider {
         } catch (RuntimeException ex) {
             return "";
         }
+    }
+
+    // ---------------------------------------------------------------- 账号能力
+
+    @Override
+    public boolean supportsAccount() {
+        return true;
+    }
+
+    /**
+     * 平台推荐流：新歌推荐。
+     *
+     * 这是公开接口，不带 Cookie 也能用 —— 新用户还没收藏时，
+     * 推荐页就靠它兜底，不会开屏一片空白。
+     */
+    @Override
+    public List<OnlineTrack> dailyRecommend(int limit, String cookie) {
+        int size = Math.max(1, Math.min(limit, 30));
+        try {
+            JSONObject json = HttpJson.getJson(
+                    BASE + "/api/personalized/newsong?limit=" + size, headers(cookie), 8);
+            JSONArray result = json.getJSONArray("result");
+            if (result == null) {
+                return new ArrayList<>();
+            }
+            List<OnlineTrack> tracks = new ArrayList<>();
+            for (int i = 0; i < result.size() && tracks.size() < size; i++) {
+                JSONObject item = result.getJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                // 新歌接口把歌曲本体包在 song 里，老版本直接平铺
+                JSONObject song = item.getJSONObject("song");
+                OnlineTrack track = toTrack(song == null ? item : song);
+                if (track != null) {
+                    tracks.add(track);
+                }
+            }
+            return tracks;
+        } catch (RuntimeException ex) {
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 同步「喜欢 / 取消喜欢」。
+     *
+     * 用老 web 接口 {@code /api/radio/like}：它只需要登录 Cookie + csrf_token，
+     * 不必移植 weapi 加密。返回 200 表示平台侧已生效。
+     */
+    @Override
+    public SyncResult like(String trackId, boolean liked, String cookie) {
+        if (cookie == null || cookie.isBlank()) {
+            return SyncResult.fail(key(), "网易云未登录，已只记在本机与后台");
+        }
+        try {
+            String url = BASE + "/api/radio/like?alg=itembased&trackId=" + HttpJson.encode(trackId)
+                    + "&like=" + liked + "&csrf_token=" + HttpJson.encode(csrf(cookie));
+            JSONObject json = HttpJson.postForm(url, "", headers(cookie), 8);
+            int code = json.getIntValue("code");
+            if (code == 200) {
+                return SyncResult.ok(key());
+            }
+            if (code == 301 || code == -460 || code == -462) {
+                return SyncResult.fail(key(), "网易云登录态已失效，请在音源管理里重新登录");
+            }
+            String message = json.getString("message");
+            return SyncResult.fail(key(), "网易云返回 " + code
+                    + (message == null || message.isBlank() ? "" : "：" + message));
+        } catch (RuntimeException ex) {
+            return SyncResult.fail(key(), "网易云同步失败：" + ex.getMessage());
+        }
+    }
+
+    /** 账号里的歌单：自己建的排前面，收藏的排后面。 */
+    @Override
+    public List<UserPlaylist> myPlaylists(String cookie) {
+        List<UserPlaylist> out = new ArrayList<>();
+        if (cookie == null || cookie.isBlank()) {
+            return out;
+        }
+        try {
+            JSONObject accountJson = HttpJson.getJson(BASE + "/api/nuser/account/get", headers(cookie), 8);
+            JSONObject account = accountJson.getJSONObject("account");
+            if (account == null) {
+                return out;
+            }
+            long uid = account.getLongValue("id");
+            JSONObject json = HttpJson.getJson(
+                    BASE + "/api/user/playlist?uid=" + uid + "&limit=100&offset=0", headers(cookie), 8);
+            JSONArray playlists = json.getJSONArray("playlist");
+            if (playlists == null) {
+                return out;
+            }
+            for (int i = 0; i < playlists.size(); i++) {
+                JSONObject item = playlists.getJSONObject(i);
+                if (item == null) {
+                    continue;
+                }
+                JSONObject creator = item.getJSONObject("creator");
+                boolean own = creator != null && creator.getLongValue("userId") == uid;
+                out.add(new UserPlaylist(
+                        key(),
+                        item.getString("id"),
+                        item.getString("name"),
+                        coverUrl(item.getString("coverImgUrl")),
+                        item.getIntValue("trackCount"),
+                        own));
+            }
+        } catch (RuntimeException ex) {
+            // 未登录 / 平台改版都走这里：返回已拿到的部分，不把异常抛给聚合层
+            return out;
+        }
+        return out;
+    }
+
+    @Override
+    public List<OnlineTrack> playlistTracks(String playlistId, int limit, String cookie) {
+        List<OnlineTrack> out = new ArrayList<>();
+        int size = Math.max(1, Math.min(limit, 500));
+        try {
+            JSONObject json = HttpJson.getJson(
+                    BASE + "/api/v6/playlist/detail?id=" + HttpJson.encode(playlistId) + "&n=" + size,
+                    headers(cookie), 10);
+            JSONObject playlist = json.getJSONObject("playlist");
+            if (playlist == null) {
+                return out;
+            }
+            JSONArray tracks = playlist.getJSONArray("tracks");
+            if (tracks == null) {
+                return out;
+            }
+            for (int i = 0; i < tracks.size() && out.size() < size; i++) {
+                OnlineTrack track = toTrack(tracks.getJSONObject(i));
+                if (track != null) {
+                    out.add(track);
+                }
+            }
+        } catch (RuntimeException ex) {
+            return out;
+        }
+        return out;
+    }
+
+    /** 网易云的写接口要求 csrf_token 与 Cookie 里的 __csrf 一致，否则一律 301。 */
+    private static String csrf(String cookie) {
+        if (cookie == null) {
+            return "";
+        }
+        for (String part : cookie.split(";")) {
+            String trimmed = part.trim();
+            if (trimmed.startsWith("__csrf=")) {
+                return trimmed.substring("__csrf=".length()).trim();
+            }
+        }
+        return "";
     }
 
     private Map<String, String> headers(String cookie) {

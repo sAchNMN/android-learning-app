@@ -16,8 +16,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.R
 import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.core.common.music.MusicTrack
+import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.ActivityTrackListBinding
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.music.ui.now.NowPlayingActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -37,10 +39,7 @@ class TrackListActivity : AppCompatActivity() {
     private var tracks: List<MusicTrack> = emptyList()
 
     private val adapter = TrackAdapter { index ->
-        if (index in tracks.indices) {
-            viewModel.play(tracks, index)
-            openPlayer()
-        }
+        if (index in tracks.indices) play(tracks, index)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,10 +73,7 @@ class TrackListActivity : AppCompatActivity() {
         )
         binding.trackListBack.setOnClickListener { finish() }
         binding.trackListPlayAll.setOnClickListener {
-            if (tracks.isNotEmpty()) {
-                viewModel.play(tracks, 0)
-                openPlayer()
-            }
+            if (tracks.isNotEmpty()) play(tracks, 0)
         }
 
         binding.trackList.layoutManager = LinearLayoutManager(this)
@@ -100,6 +96,21 @@ class TrackListActivity : AppCompatActivity() {
 
     private fun openPlayer() {
         startActivity(Intent(this, NowPlayingActivity::class.java))
+    }
+
+    /**
+     * 走统一入口播放。
+     *
+     * 收藏列表里可能混着在线曲目（uri 为空），直接 `play()` 会把空地址塞给 ExoPlayer；
+     * [MusicViewModel.playTracks] 会先把在线曲目换好地址再起播。
+     */
+    private fun play(list: List<MusicTrack>, index: Int) {
+        viewModel.playTracks(list, index) { event ->
+            when (event) {
+                is OnlinePlayEvent.Ready -> openPlayer()
+                is OnlinePlayEvent.Failed -> toast(event.message)
+            }
+        }
     }
 
     private fun render() {
