@@ -61,3 +61,7 @@ docs/      接口契约 api.md、架构 architecture.md
 - `MSYS_NO_PATHCONV=1` 时传给 `adb.exe` 的本地路径要用 `C:/` 形式
 - 模拟器默认中文输入法，`adb shell input text` 前先 `ime set` 到 AOSP 键盘
 - **动目录前先 `git status`**：untracked 文件不会被 git 保护，`rm -rf` 直接没
+- **adb 调试截图不要放桌面**：一律输出到 `%TEMP%` 或项目内 `.verify-shots/`，验证完即清。
+  曾一次在桌面留下 29 张 `_p2_*.png`（6 MB），事后要专门清理。
+- `MainActivity` 若 `exported=false`，`adb shell am start` 会被拒；从 launcher intent
+  或 exported 的入口页进，session 有效时会自动跳主页
