@@ -200,10 +200,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         if (duration > 0) player.seekTo((duration * fraction).toLong())
     }
 
-    fun toggleShuffle() = player.toggleShuffle()
-
     fun setVolume(volume: Float) = player.setVolume(volume)
-    fun cycleRepeat() = player.cycleRepeat()
+
+    fun cyclePlayMode() = player.cyclePlayMode()
 
     fun playAt(index: Int) = player.playAt(index)
 

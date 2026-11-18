@@ -61,6 +61,8 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
                 val connected = runCatching { controllerFuture.get() }.getOrNull()
                     ?: return@addListener
                 controller = connected
+                // 冷启动默认列表循环：顺序播放播完就停，容易被当成"播放器坏了"
+                connected.repeatMode = Player.REPEAT_MODE_ALL
                 connected.addListener(listener)
                 publish(connected)
                 startPositionTicker()
@@ -115,19 +117,27 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         controller?.volume = volume.coerceIn(0f, 1f)
     }
 
-    fun toggleShuffle() {
+    /**
+     * 播放方式按 顺序 → 列表循环 → 单曲循环 → 随机 循环切换。
+     *
+     * 底层还是 media3 的两个开关，但这里一次只改一个组合，
+     * 保证「随机」和「循环」不会同时处于用户看得见的高亮态。
+     */
+    fun cyclePlayMode() {
         val current = controller ?: return
-        current.shuffleModeEnabled = !current.shuffleModeEnabled
+        when (state.value.playMode.next()) {
+            PlayMode.SEQUENCE -> current.applyMode(Player.REPEAT_MODE_OFF, shuffle = false)
+            PlayMode.REPEAT_ALL -> current.applyMode(Player.REPEAT_MODE_ALL, shuffle = false)
+            PlayMode.REPEAT_ONE -> current.applyMode(Player.REPEAT_MODE_ONE, shuffle = false)
+            PlayMode.SHUFFLE -> current.applyMode(Player.REPEAT_MODE_ALL, shuffle = true)
+        }
     }
 
-    /** 关 → 列表循环 → 单曲循环，三态循环，和 iOS 一致。 */
-    fun cycleRepeat() {
-        val current = controller ?: return
-        current.repeatMode = when (current.repeatMode) {
-            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-            else -> Player.REPEAT_MODE_OFF
-        }
+    /** 先关随机再改循环：顺序反过来的话，中间那一帧会出现两个都亮的状态。 */
+    private fun Player.applyMode(repeat: Int, shuffle: Boolean) {
+        if (!shuffle && shuffleModeEnabled) shuffleModeEnabled = false
+        repeatMode = repeat
+        if (shuffle && !shuffleModeEnabled) shuffleModeEnabled = true
     }
 
     /** 点队列里的某一项：直接跳到对应索引继续播。 */

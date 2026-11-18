@@ -1,6 +1,5 @@
 package com.szc.learning.music.ui.player
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.WindowInsetsCompat
@@ -16,6 +15,7 @@ import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentPlayerBinding
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.common.labelRes
 import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.theme.themeColor
 import kotlinx.coroutines.Job
@@ -51,14 +51,16 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
             adapter.setFavorites(viewModel.favorites.value)
             toast(if (favorite) R.string.player_added_favorite else R.string.player_removed_favorite)
         },
-        onShare = { track -> share(track) },
-        onMore = { track -> showMore(track) },
         onTogglePlay = { viewModel.toggle() },
         onPrevious = { viewModel.previous() },
         onNext = { viewModel.next() },
-        onToggleShuffle = { viewModel.toggleShuffle() },
-        onCycleRepeat = { viewModel.cycleRepeat() },
+        onCyclePlayMode = {
+            viewModel.cyclePlayMode()
+            // 图标小，切完给个文字回执，否则用户不知道点到了哪种模式
+            toast(viewModel.playerState.value.playMode.labelRes)
+        },
         onSeek = { fraction -> viewModel.seekToFraction(fraction) },
+        onSeekTo = { positionMs -> viewModel.seekTo(positionMs) },
         onShowLyrics = { track, text -> showLyrics(track, text) },
     )
 
@@ -206,39 +208,6 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
             .setTitle(track.title)
             .setView(scroll)
             .setPositiveButton(android.R.string.ok, null)
-            .show()
-    }
-
-    private fun share(track: MusicTrack) {
-        val text = getString(
-            R.string.player_share_text,
-            track.title,
-            track.artist.ifBlank { getString(R.string.player_unknown_artist) },
-        )
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text)
-        }
-        startActivity(Intent.createChooser(send, getString(R.string.player_share)))
-    }
-
-    private fun showMore(track: MusicTrack) {
-        val favorite = viewModel.isFavorite(track.key)
-        val actions = arrayOf(
-            getString(if (favorite) R.string.player_unlike else R.string.player_like),
-            getString(R.string.player_share),
-        )
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 -> {
-                        viewModel.toggleFavorite(track)
-                        adapter.setFavorites(viewModel.favorites.value)
-                    }
-
-                    else -> share(track)
-                }
-            }
             .show()
     }
 

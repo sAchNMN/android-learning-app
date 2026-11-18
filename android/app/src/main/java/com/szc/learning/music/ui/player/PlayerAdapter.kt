@@ -9,8 +9,13 @@ import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.formatDuration
 import com.szc.learning.databinding.ItemPlayerBinding
+import com.szc.learning.music.data.LrcParser
+import com.szc.learning.music.data.LyricSheet
+import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
 import com.szc.learning.music.ui.common.bindArt
+import com.szc.learning.music.ui.common.iconRes
+import com.szc.learning.music.ui.common.labelRes
 import com.szc.learning.music.ui.motion.installSpringPress
 import com.szc.learning.music.ui.motion.springPop
 import com.szc.learning.music.ui.widget.dp
@@ -26,20 +31,18 @@ import com.szc.learning.ui.theme.themeColor
 class PlayerAdapter(
     private val favoriteKeys: () -> Set<String>,
     private val onToggleFavorite: (MusicTrack) -> Unit,
-    private val onShare: (MusicTrack) -> Unit,
-    private val onMore: (MusicTrack) -> Unit,
     private val onTogglePlay: () -> Unit,
     private val onPrevious: () -> Unit,
     private val onNext: () -> Unit,
-    private val onToggleShuffle: () -> Unit,
-    private val onCycleRepeat: () -> Unit,
+    private val onCyclePlayMode: () -> Unit,
     private val onSeek: (Float) -> Unit,
+    private val onSeekTo: (Long) -> Unit,
     private val onShowLyrics: (MusicTrack, String) -> Unit,
 ) : RecyclerView.Adapter<PlayerAdapter.Holder>() {
 
     private var tracks: List<MusicTrack> = emptyList()
     private val holders = mutableMapOf<Int, Holder>()
-    private val lyrics = mutableMapOf<String, String?>()
+    private val lyrics = mutableMapOf<String, LyricSheet>()
     private var activePosition = 0
     private var state: PlayerUiState? = null
     private var topInsetPx = 0
@@ -83,7 +86,7 @@ class PlayerAdapter(
     }
 
     fun setLyrics(key: String, text: String?) {
-        lyrics[key] = text?.takeIf { it.isNotBlank() }
+        lyrics[key] = LrcParser.parse(text)
         holders.values
             .filter { it.track?.key == key }
             .forEach { it.renderLyrics() }
@@ -139,8 +142,10 @@ class PlayerAdapter(
             binding.playerPlay.setOnClickListener { onTogglePlay() }
             binding.playerPrev.setOnClickListener { onPrevious() }
             binding.playerNext.setOnClickListener { onNext() }
-            binding.playerShuffle.setOnClickListener { onToggleShuffle() }
-            binding.playerRepeat.setOnClickListener { onCycleRepeat() }
+            binding.playerMode.setOnClickListener {
+                onCyclePlayMode()
+                binding.playerMode.springPop(startScale = 0.78f, durationSeconds = 0.4f)
+            }
             binding.playerFavorite.setOnClickListener {
                 track?.let {
                     onToggleFavorite(it)
@@ -151,23 +156,25 @@ class PlayerAdapter(
                     )
                 }
             }
-            binding.playerShare.setOnClickListener { track?.let(onShare) }
-            binding.playerMore.setOnClickListener { track?.let(onMore) }
-            binding.playerLyrics.setOnClickListener {
-                val current = track ?: return@setOnClickListener
-                val text = lyrics[current.key] ?: return@setOnClickListener
-                onShowLyrics(current, text)
+            binding.playerLyrics.onLineClick = { line ->
+                val current = track
+                when {
+                    current == null -> Unit
+                    line.timeMs >= 0 -> onSeekTo(line.timeMs)
+                    else -> {
+                        val text = lyrics[current.key]?.lines
+                            ?.joinToString("\n") { it.text }
+                        if (!text.isNullOrBlank()) onShowLyrics(current, text)
+                    }
+                }
             }
 
             listOf<View>(
                 binding.playerPlay,
                 binding.playerPrev,
                 binding.playerNext,
-                binding.playerShuffle,
-                binding.playerRepeat,
+                binding.playerMode,
                 binding.playerFavorite,
-                binding.playerShare,
-                binding.playerMore,
             ).forEach { it.installSpringPress(0.9f) }
         }
 
@@ -217,25 +224,22 @@ class PlayerAdapter(
 
         fun renderLyrics() {
             val current = track ?: return
-            val loaded = lyrics.containsKey(current.key)
-            val text = lyrics[current.key]
+            val sheet = lyrics[current.key]
+            val context = binding.root.context
             when {
-                !loaded -> {
-                    binding.playerLyrics.setText(R.string.player_lyrics_loading)
-                    binding.playerLyrics.alpha = 0.42f
-                }
+                sheet == null -> binding.playerLyrics.showPlaceholder(
+                    context.getString(R.string.player_lyrics_loading),
+                )
 
-                text.isNullOrBlank() -> {
-                    binding.playerLyrics.setText(R.string.player_lyrics_none)
-                    binding.playerLyrics.alpha = 0.42f
-                }
+                sheet.isEmpty -> binding.playerLyrics.showPlaceholder(
+                    context.getString(R.string.player_lyrics_none),
+                )
 
-                else -> {
-                    binding.playerLyrics.text = text
-                    binding.playerLyrics.alpha = 0.66f
-                }
+                else -> binding.playerLyrics.setSheet(
+                    sheet,
+                    if (boundPosition == activePosition) state?.positionMs ?: 0L else 0L,
+                )
             }
-            binding.playerLyrics.isClickable = !text.isNullOrBlank()
         }
 
         fun render(value: PlayerUiState?, active: Boolean) {
@@ -250,11 +254,14 @@ class PlayerAdapter(
 
             val accent = context.themeColor(R.attr.auAccent)
             val normal = context.themeColor(R.attr.auOnDark)
-            binding.playerShuffle.imageTintList = ColorStateList.valueOf(
-                if (value?.shuffle == true) accent else normal,
+            val mode = value?.playMode ?: PlayMode.SEQUENCE
+            binding.playerMode.setImageResource(mode.iconRes)
+            binding.playerMode.imageTintList = ColorStateList.valueOf(
+                if (mode == PlayMode.SEQUENCE) normal else accent,
             )
-            binding.playerRepeat.imageTintList = ColorStateList.valueOf(
-                if (value?.isRepeatOne == true || value?.isRepeatAll == true) accent else normal,
+            binding.playerMode.contentDescription = context.getString(
+                R.string.player_mode_switch,
+                context.getString(mode.labelRes),
             )
 
             val positionMs = if (active) value?.positionMs ?: 0L else 0L
@@ -264,6 +271,7 @@ class PlayerAdapter(
                 track?.durationMs ?: 0L
             }
             renderProgress(positionMs, durationMs)
+            if (active) binding.playerLyrics.updateProgress(positionMs)
         }
 
         private fun renderProgress(positionMs: Long, durationMs: Long) {

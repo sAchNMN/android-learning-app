@@ -1,6 +1,6 @@
 package com.szc.learning.music.ui.now
 
-import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
@@ -28,9 +28,15 @@ import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.formatDuration
 import com.szc.learning.databinding.ActivityNowPlayingBinding
 import com.szc.learning.databinding.DialogQueueBinding
+import com.szc.learning.music.data.LrcParser
+import com.szc.learning.music.data.LyricLine
+import com.szc.learning.music.data.LyricSheet
+import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.common.bindArt
+import com.szc.learning.music.ui.common.iconRes
+import com.szc.learning.music.ui.common.labelRes
 import com.szc.learning.music.ui.motion.installSpringPress
 import com.szc.learning.music.ui.motion.springHaptic
 import com.szc.learning.music.ui.motion.springPop
@@ -54,7 +60,7 @@ class NowPlayingActivity : AppCompatActivity() {
     private var boundKey: String? = null
     private var currentTrack: MusicTrack? = null
     private var lyricJob: Job? = null
-    private var lyricText: String? = null
+    private var lyricSheet: LyricSheet? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 主题要在 super 之前套上：晚一步，窗口会先按清单里的默认主题创建
@@ -90,25 +96,21 @@ class NowPlayingActivity : AppCompatActivity() {
         binding.nowPlay.setOnClickListener { viewModel.toggle() }
         binding.nowNext.setOnClickListener { viewModel.next() }
         binding.nowPrev.setOnClickListener { viewModel.previous() }
-        binding.nowShuffle.setOnClickListener { viewModel.toggleShuffle() }
-        binding.nowRepeat.setOnClickListener { viewModel.cycleRepeat() }
-        binding.nowQueue.setOnClickListener { showQueue() }
-        binding.nowShare.setOnClickListener { currentTrack?.let { share(it) } }
-        binding.nowMore.setOnClickListener { currentTrack?.let { showMore(it) } }
-        binding.nowFavorite.setOnClickListener { currentTrack?.let { toggleFavorite(it) } }
-        binding.nowLyric.setOnClickListener {
-            lyricText?.takeIf { it.isNotBlank() }?.let { showLyrics(it) }
+        binding.nowMode.setOnClickListener {
+            viewModel.cyclePlayMode()
+            // 图标小，切完给个文字回执，否则用户不知道点到了哪种模式
+            toast(viewModel.playerState.value.playMode.labelRes)
         }
+        binding.nowQueue.setOnClickListener { showQueue() }
+        binding.nowFavorite.setOnClickListener { currentTrack?.let { toggleFavorite(it) } }
+        binding.nowLyric.onLineClick = { line -> handleLyricClick(line) }
         listOf(
             binding.nowCollapse,
             binding.nowQueue,
             binding.nowPlay,
             binding.nowNext,
             binding.nowPrev,
-            binding.nowShuffle,
-            binding.nowRepeat,
-            binding.nowShare,
-            binding.nowMore,
+            binding.nowMode,
             binding.nowFavorite,
         ).forEach { it.installSpringPress(0.86f) }
 
@@ -121,28 +123,35 @@ class NowPlayingActivity : AppCompatActivity() {
 
     /**
      * 在线曲目没有内嵌歌词，走 `/app/music/lyric`；本地/云端仍由仓库解析。
-     * 只取一行做预览，点一下看全文。
+     * 带时间码的歌词进入滚动视图，纯文本歌词则静态居中，点一下看全文。
      */
     private fun loadLyric(track: MusicTrack) {
         lyricJob?.cancel()
-        lyricText = null
-        binding.nowLyric.text = getString(R.string.player_lyrics_loading)
+        lyricSheet = null
+        binding.nowLyric.showPlaceholder(getString(R.string.player_lyrics_loading))
         lyricJob = lifecycleScope.launch {
             val text = viewModel.lyrics(track)
             // 加载期间已经切歌：这次结果作废，不能盖掉新歌的歌词
             if (currentTrack?.key != track.key) return@launch
-            lyricText = text
-            binding.nowLyric.text =
-                text?.let { firstLyricLine(it) } ?: getString(R.string.player_lyric_placeholder)
+            val sheet = LrcParser.parse(text)
+            lyricSheet = sheet
+            if (sheet.isEmpty) {
+                binding.nowLyric.showPlaceholder(getString(R.string.player_lyric_placeholder))
+            } else {
+                binding.nowLyric.setSheet(sheet, viewModel.playerState.value.positionMs)
+            }
         }
     }
 
-    /** 去掉 `[00:12.34]` 时间码，取第一句真正有内容的歌词（跳过作词/作曲这类署名行）。 */
-    private fun firstLyricLine(text: String): String? = text.lineSequence()
-        .map { it.replace(Regex("^\\[[^\\]]*\\]"), "").trim() }
-        .firstOrNull { line ->
-            line.isNotEmpty() && LYRIC_META.none { line.startsWith(it) }
+    private fun handleLyricClick(line: LyricLine) {
+        if (line.timeMs >= 0) {
+            viewModel.seekTo(line.timeMs)
+            return
         }
+        // 没有时间码就没法跳转，退回成「点开看全文」
+        val text = lyricSheet?.lines?.joinToString("\n") { it.text }
+        if (!text.isNullOrBlank()) showLyrics(text)
+    }
 
     private fun showLyrics(text: String) {
         MaterialAlertDialogBuilder(this)
@@ -173,6 +182,7 @@ class NowPlayingActivity : AppCompatActivity() {
         binding.nowPosition.text = formatDuration(state.positionMs)
         binding.nowDuration.text = formatDuration(state.durationMs)
         binding.nowSeek.progress = state.progress
+        binding.nowLyric.updateProgress(state.positionMs)
 
         binding.nowPlay.setImageResource(if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
         binding.nowPlay.contentDescription =
@@ -180,10 +190,14 @@ class NowPlayingActivity : AppCompatActivity() {
 
         val accent = themeColor(R.attr.auAccent)
         val idle = themeColor(R.attr.auOnDarkSecondary)
-        binding.nowShuffle.imageTintList =
-            android.content.res.ColorStateList.valueOf(if (state.shuffle) accent else idle)
-        binding.nowRepeat.imageTintList = android.content.res.ColorStateList.valueOf(
-            if (state.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF) accent else idle,
+        val mode = state.playMode
+        binding.nowMode.setImageResource(mode.iconRes)
+        binding.nowMode.imageTintList = ColorStateList.valueOf(
+            if (mode == PlayMode.SEQUENCE) idle else accent,
+        )
+        binding.nowMode.contentDescription = getString(
+            R.string.player_mode_switch,
+            getString(mode.labelRes),
         )
 
         if (boundKey != track.key) {
@@ -209,7 +223,7 @@ class NowPlayingActivity : AppCompatActivity() {
         binding.nowFavorite.setImageResource(
             if (favorite) R.drawable.ic_heart_filled else R.drawable.ic_heart,
         )
-        binding.nowFavorite.imageTintList = android.content.res.ColorStateList.valueOf(
+        binding.nowFavorite.imageTintList = ColorStateList.valueOf(
             themeColor(if (favorite) R.attr.auLike else R.attr.auOnDark),
         )
     }
@@ -225,37 +239,6 @@ class NowPlayingActivity : AppCompatActivity() {
         )
         binding.nowFavorite.springHaptic()
         toast(if (favorite) R.string.player_added_favorite else R.string.player_removed_favorite)
-    }
-
-    private fun share(track: MusicTrack) {
-        val text = getString(
-            R.string.player_share_text,
-            track.title,
-            track.artist.ifBlank { getString(R.string.player_unknown_artist) },
-        )
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_TEXT, text)
-        }
-        startActivity(Intent.createChooser(send, getString(R.string.player_share)))
-    }
-
-    private fun showMore(track: MusicTrack) {
-        val favorite = viewModel.isFavorite(track.key)
-        val actions = arrayOf(
-            getString(if (favorite) R.string.player_unlike else R.string.player_like),
-            getString(R.string.player_queue),
-            getString(R.string.player_share),
-        )
-        MaterialAlertDialogBuilder(this)
-            .setItems(actions) { _, which ->
-                when (which) {
-                    0 -> toggleFavorite(track)
-                    1 -> showQueue()
-                    else -> share(track)
-                }
-            }
-            .show()
     }
 
     private fun showQueue() {
@@ -278,9 +261,5 @@ class NowPlayingActivity : AppCompatActivity() {
 
     private fun toast(resId: Int) {
         Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
-    }
-
-    private companion object {
-        val LYRIC_META = listOf("作词", "作曲", "编曲", "制作人", "混音", "母带", "录音", "出品", "监制")
     }
 }

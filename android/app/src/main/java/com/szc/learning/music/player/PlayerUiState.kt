@@ -27,4 +27,16 @@ data class PlayerUiState(
 
     val isRepeatOne: Boolean get() = repeatMode == Player.REPEAT_MODE_ONE
     val isRepeatAll: Boolean get() = repeatMode == Player.REPEAT_MODE_ALL
+
+    /**
+     * 底层的两个开关合并成一个对外状态。shuffle 优先判定：
+     * 随机播放也会带着 REPEAT_MODE_ALL，靠顺序分不清。
+     */
+    val playMode: PlayMode
+        get() = when {
+            shuffle -> PlayMode.SHUFFLE
+            repeatMode == Player.REPEAT_MODE_ONE -> PlayMode.REPEAT_ONE
+            repeatMode == Player.REPEAT_MODE_ALL -> PlayMode.REPEAT_ALL
+            else -> PlayMode.SEQUENCE
+        }
 }

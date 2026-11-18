@@ -145,6 +145,11 @@
     <string name="player_previous">上一首</string>
     <string name="player_shuffle">随机</string>
     <string name="player_repeat">循环</string>
+    <string name="player_mode_sequence">顺序播放</string>
+    <string name="player_mode_repeat_all">列表循环</string>
+    <string name="player_mode_repeat_one">单曲循环</string>
+    <string name="player_mode_shuffle">随机播放</string>
+    <string name="player_mode_switch">切换播放方式，当前：%1$s</string>
     <string name="player_queue">播放队列</string>
     <string name="player_like">收藏</string>
     <string name="player_unlike">取消收藏</string>
@@ -249,9 +254,13 @@
     <!-- 在线音源（Mineradio 式多平台接入） -->
     <string name="source_netease">网易云音乐</string>
     <string name="source_kugou">酷狗音乐</string>
+    <string name="source_qq">QQ音乐</string>
+    <string name="source_kuwo">酷我音乐</string>
     <string name="source_other">其它音源</string>
     <string name="source_short_netease">网易云</string>
     <string name="source_short_kugou">酷狗</string>
+    <string name="source_short_qq">QQ</string>
+    <string name="source_short_kuwo">酷我</string>
     <string name="source_switched_notice">%1$s 不可播，已自动换到 %2$s</string>
     <string name="source_manage_title">音源管理</string>
     <string name="source_manage_subtitle">搜索与播放在服务端聚合，这里控制参与的平台</string>
