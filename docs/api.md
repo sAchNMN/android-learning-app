@@ -144,13 +144,15 @@
 2. 金额一律后端用 `BigDecimal`、响应体是数字，客户端用 `Double` 接收。
 3. 时间字段在 SQL 里 `date_format` 成 `yyyy-MM-dd HH:mm:ss` 字符串，避免时区与格式歧义。
 
-### 3.3 在线音源（网易云 / 酷狗聚合）
+### 3.3 在线音源（网易云 / 酷狗 / 酷我 / QQ 音乐聚合）
 
 完整设计与 Mineradio 的对照见 `docs/music-sources.md`，这里只列契约。
 
+`source` 取值：`netease`、`kugou`、`kuwo`、`qq`。
+
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/app/music/search?keyword=晴天&limit=20&sources=netease,kugou` | 聚合搜索，单平台失败只进 `errors` |
+| GET | `/app/music/search?keyword=晴天&limit=20&sources=netease,kugou,kuwo,qq` | 聚合搜索，单平台失败只进 `errors` |
 | GET | `/app/music/play?source=netease&id=186016&title=晴天&artist=周杰伦&durationMs=269747&fallback=true` | 换取播放地址，可自动换源 |
 | GET | `/app/music/lyric?source=netease&id=186016` | LRC 文本，可能为空串 |
 | GET | `/app/music/sources` | 音源列表（不回传 Cookie，只给 `hasCookie`） |
@@ -162,8 +164,13 @@
    `message` 表达原因（`login_required / vip_required / paid_required /
    trial_only / copyright_unavailable / url_unavailable`）。
 2. 自动换源成功时 `data.switchedFrom` / `data.switchedTo` 非空，客户端 toast 提示。
-3. 酷狗取址需要把搜索返回的 `hash / albumId / albumAudioId` 原样带回；网易云只需 `id`。
+3. 酷狗取址需要把搜索返回的 `hash / albumId / albumAudioId` 原样带回；
+   酷我只需 `id`（形如 `MUSIC_228908`）；QQ 音乐只需 `id`（即 songmid）；
+   网易云只需 `id`。
 4. 搜索结果不落库；播放地址缓存 10 分钟，失败结果缓存 30 秒。
+5. 四个平台的匿名可播率差别很大，这是平台策略不是 bug：
+   酷我最高（几乎都能取到地址），酷狗次之，网易云大量曲目要会员，
+   QQ 音乐最严（热门歌 `payplay=1`，匿名取址返回空 purl，必须自己填 Cookie）。
 
 ## 4. 错误码对照
 

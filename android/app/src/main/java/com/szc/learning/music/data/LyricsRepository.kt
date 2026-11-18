@@ -147,8 +147,8 @@ class LyricsRepository(private val context: Context) {
     }
 
     /**
-     * SYLT 是「文本 + 4 字节时间戳」重复；当前 UI 不做逐行高亮，
-     * 所以把文本按行拼起来即可。之后要做卡拉 OK 时，把时间戳一起返回即可。
+     * SYLT 是「文本 + 4 字节时间戳（毫秒）」重复。
+     * 直接拼成 LRC 文本交给 UI，逐行高亮和滚动就能直接复用 LRC 那套逻辑。
      */
     private fun parseSylt(data: ByteArray): String? {
         if (data.size < 7) return null
@@ -159,7 +159,13 @@ class LyricsRepository(private val context: Context) {
             val textEnd = skipTerminator(data, cursor, encoding)
             if (textEnd <= cursor || textEnd + 4 > data.size) break
             val line = decode(data, cursor, textEnd - terminatorLength(encoding), encoding)
-            if (line.isNotBlank()) lines += line.trim()
+            val timeMs = readInt32(data, textEnd).coerceAtLeast(0)
+            if (line.isNotBlank()) {
+                val minutes = timeMs / 60_000
+                val seconds = (timeMs / 1_000) % 60
+                val centis = (timeMs % 1_000) / 10
+                lines += "[%02d:%02d.%02d]%s".format(minutes, seconds, centis, line.trim())
+            }
             cursor = textEnd + 4
         }
         return lines.joinToString("\n").takeIf { it.isNotBlank() }

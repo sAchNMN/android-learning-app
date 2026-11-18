@@ -169,7 +169,12 @@ public class MusicSourceService {
 
         String cacheKey = "play|" + source + "|" + id + "|" + (quality == null ? "" : quality);
         OnlinePlay cached = getCached(cacheKey, OnlinePlay.class);
-        if (cached != null) {
+        // 失败结果会缓存 30 秒，但 fallback=true 的调用不能吃这份缓存：
+        // 否则「先试播一次失败 → 用户点自动换源」会直接命中旧的失败结果，换源形同虚设。
+        // 这个缓存 key 本来就不区分 fallback，所以在读取这一侧兜。
+        boolean canUseCache = cached != null
+                && (!Boolean.FALSE.equals(cached.getPlayable()) || !fallback);
+        if (canUseCache) {
             return cached;
         }
 

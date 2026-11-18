@@ -12,6 +12,8 @@ import com.szc.learning.R
 fun sourceLabel(context: Context, key: String): String = when (key) {
     "netease" -> context.getString(R.string.source_netease)
     "kugou" -> context.getString(R.string.source_kugou)
+    "qq" -> context.getString(R.string.source_qq)
+    "kuwo" -> context.getString(R.string.source_kuwo)
     else -> key.ifBlank { context.getString(R.string.source_other) }
 }
 
@@ -19,5 +21,7 @@ fun sourceLabel(context: Context, key: String): String = when (key) {
 fun sourceShortLabel(context: Context, key: String): String = when (key) {
     "netease" -> context.getString(R.string.source_short_netease)
     "kugou" -> context.getString(R.string.source_short_kugou)
+    "qq" -> context.getString(R.string.source_short_qq)
+    "kuwo" -> context.getString(R.string.source_short_kuwo)
     else -> context.getString(R.string.source_other)
 }

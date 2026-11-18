@@ -54,6 +54,21 @@ final class HttpJson {
     }
 
     /**
+     * 取纯文本响应（不是 JSON）。
+     *
+     * 酷我的取址接口 {@code antiserver.kuwo.cn/anti.s?response=url} 直接回一行地址，
+     * 酷我的搜索结果 {@code search.kuwo.cn/r.s} 回的是 JS 对象字面量（单引号），
+     * 两者都过不了 {@link #getJson}，只能先拿原始文本再自己处理。
+     */
+    static String getText(String url, Map<String, String> headers, int timeoutSeconds) {
+        HttpResult result = fetch(url, headers, timeoutSeconds, null);
+        if (result.statusCode >= 400) {
+            throw new SourceHttpException("平台返回 HTTP " + result.statusCode, result.statusCode);
+        }
+        return result.body;
+    }
+
+    /**
      * 取一个可能 302 到 CDN 的地址，只读前两个字节确认「真的能播」。
      *
      * 网易云的 outer 链接对无版权/会员曲目会返回 404 或 HTML，
@@ -66,8 +81,14 @@ final class HttpJson {
     private static HttpResult fetch(String url, Map<String, String> headers, int timeoutSeconds, String range) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(Math.max(2, timeoutSeconds)))
-                .header("User-Agent", DESKTOP_UA)
                 .GET();
+        // 少数接口按 UA 分流：酷我的歌词接口只认移动 Safari UA，用桌面 UA 直接回
+        // 「音乐查询失败」。调用方在 headers 里显式给了 User-Agent 时就不再覆盖。
+        boolean customUa = headers != null && headers.keySet().stream()
+                .anyMatch(key -> "User-Agent".equalsIgnoreCase(key));
+        if (!customUa) {
+            builder.header("User-Agent", DESKTOP_UA);
+        }
         if (range != null) {
             builder.header("Range", range);
         }
