@@ -2,15 +2,19 @@ package com.ruoyi.music.controller;
 
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.music.domain.LikeBody;
 import com.ruoyi.music.domain.MusicSourceDto;
 import com.ruoyi.music.domain.OnlinePlay;
 import com.ruoyi.music.domain.SearchResponse;
 import com.ruoyi.music.domain.SourceUpdateBody;
 import com.ruoyi.music.service.MusicService;
+import com.ruoyi.music.service.MusicUserService;
+import com.ruoyi.music.service.RecommendService;
 import com.ruoyi.music.source.MusicSourceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +45,12 @@ public class AppMusicController {
 
     @Autowired
     private MusicSourceService sourceService;
+
+    @Autowired
+    private RecommendService recommendService;
+
+    @Autowired
+    private MusicUserService userService;
 
     @GetMapping("/tracks")
     public AjaxResult tracks() {
@@ -111,6 +121,76 @@ public class AppMusicController {
     public AjaxResult sources() {
         List<MusicSourceDto> list = sourceService.listSources();
         return AjaxResult.success(list);
+    }
+
+    // ---------------------------------------------------------------- 推荐
+
+    /**
+     * 猜你喜欢。
+     *
+     * 口味种子由客户端算好传上来（收藏 + 最近播放里的歌手），
+     * 客户端没有偏好时再从后台的喜欢记录里取 —— 两边都空就退回平台推荐流。
+     *
+     * @param seed 洗牌种子。不传按天固定，同一天多次进入顺序一致；点「换一批」传新值。
+     */
+    @GetMapping("/recommend")
+    public AjaxResult recommend(@RequestParam(required = false) String deviceId,
+                                @RequestParam(required = false) String artists,
+                                @RequestParam(required = false) Long seed,
+                                @RequestParam(defaultValue = "20") int limit) {
+        try {
+            return AjaxResult.success(recommendService.recommend(deviceId, artists, seed, limit));
+        } catch (RuntimeException ex) {
+            return AjaxResult.error("推荐生成失败：" + ex.getMessage());
+        }
+    }
+
+    // ---------------------------------------------------------------- 我喜欢
+
+    /**
+     * 喜欢 / 取消喜欢。
+     *
+     * 幂等：重复点同一个方向也返回成功。{@code saved} 表示后端库写入结果，
+     * {@code syncs} 是各平台同步回执 —— 平台没登录不算失败。
+     */
+    @PostMapping("/like")
+    public AjaxResult like(@RequestBody LikeBody body) {
+        if (body == null || body.getId() == null || body.getId().isBlank()) {
+            return AjaxResult.error("缺少歌曲 id");
+        }
+        try {
+            return AjaxResult.success(userService.like(body));
+        } catch (RuntimeException ex) {
+            return AjaxResult.error("收藏失败：" + ex.getMessage());
+        }
+    }
+
+    /** 我喜欢的曲目。App 重装后靠它把喜欢恢复回来。 */
+    @GetMapping("/likes")
+    public AjaxResult likes(@RequestParam String deviceId,
+                            @RequestParam(defaultValue = "200") int limit) {
+        return AjaxResult.success(userService.likes(deviceId, limit));
+    }
+
+    // ---------------------------------------------------------------- 个人歌单
+
+    /** 合并各平台账号里的歌单。未登录的平台直接跳过。 */
+    @GetMapping("/playlists")
+    public AjaxResult playlists() {
+        return AjaxResult.success(userService.playlists());
+    }
+
+    /** 拉某个歌单的曲目；{@code name} 只是回显，客户端已经在卡片上有标题了。 */
+    @GetMapping("/playlist")
+    public AjaxResult playlist(@RequestParam String source,
+                               @RequestParam String id,
+                               @RequestParam(required = false) String name,
+                               @RequestParam(defaultValue = "200") int limit) {
+        try {
+            return AjaxResult.success(userService.playlist(source, id, name, limit));
+        } catch (RuntimeException ex) {
+            return AjaxResult.error("歌单读取失败：" + ex.getMessage());
+        }
     }
 
     /**

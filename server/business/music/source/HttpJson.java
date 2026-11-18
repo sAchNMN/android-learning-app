@@ -69,6 +69,41 @@ final class HttpJson {
     }
 
     /**
+     * 表单 POST。
+     *
+     * 网易云的「喜欢 / 取消喜欢」是老 web 接口，只认 POST + form 编码 + csrf_token，
+     * 用 GET 打会返回 404，所以单独补一个方法，而不是把 GET 硬改成万能方法。
+     */
+    static JSONObject postForm(String url, String body, Map<String, String> headers, int timeoutSeconds) {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(Math.max(2, timeoutSeconds)))
+                .header("User-Agent", DESKTOP_UA)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(body == null ? "" : body, StandardCharsets.UTF_8));
+        if (headers != null) {
+            headers.forEach((key, value) -> {
+                // Content-Type 已经设过，重复设置会被 JDK 拒绝
+                if (key != null && value != null && !value.isBlank() && !"Content-Type".equalsIgnoreCase(key)) {
+                    builder.header(key, value);
+                }
+            });
+        }
+        HttpResult result = send(builder.build(), url);
+        if (result.statusCode >= 400) {
+            throw new SourceHttpException("平台返回 HTTP " + result.statusCode, result.statusCode);
+        }
+        try {
+            JSONObject json = JSON.parseObject(result.body);
+            if (json == null) {
+                throw new SourceHttpException("平台返回空数据", result.statusCode);
+            }
+            return json;
+        } catch (JSONException ex) {
+            throw new SourceHttpException("平台返回了无法解析的数据", result.statusCode);
+        }
+    }
+
+    /**
      * 取一个可能 302 到 CDN 的地址，只读前两个字节确认「真的能播」。
      *
      * 网易云的 outer 链接对无版权/会员曲目会返回 404 或 HTML，
@@ -99,9 +134,13 @@ final class HttpJson {
                 }
             });
         }
+        return send(builder.build(), url);
+    }
+
+    private static HttpResult send(HttpRequest request, String url) {
         try {
             HttpResponse<String> response = CLIENT.send(
-                    builder.build(),
+                    request,
                     HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             HttpResult result = new HttpResult();
             result.statusCode = response.statusCode();

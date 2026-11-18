@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -13,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -22,7 +24,6 @@ import com.szc.learning.R
 import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.databinding.ActivityMainBinding
 import com.szc.learning.music.ui.MusicViewModel
-import com.szc.learning.music.ui.home.HomeFragment
 import com.szc.learning.music.ui.library.LibraryFragment
 import com.szc.learning.music.ui.mine.MineFragment
 import com.szc.learning.music.ui.now.NowPlayingActivity
@@ -33,22 +34,24 @@ import kotlinx.coroutines.launch
 import kotlin.math.max
 
 /**
- * 主页面：五个 tab + 常驻迷你播放器。
+ * 主页面：四个 tab + 常驻迷你播放器。
  *
- * 五个 tab 的顺序刻意对齐参考产品：首页 / 播放 / 推荐 / 本地 / 我的。
- * 第二个 tab 从「MV 短视频流」改成了真正的播放器：大封面、内嵌歌词、上下滑切歌。
+ * tab 顺序：播放 / 推荐 / 本地 / 我的。
  *
- * Fragment 用 show/hide 而不是 replace —— 切回首页时滚动位置还在，
- * 这对"边听边翻"的用法是必要的。Fragment 也是懒创建的：
- * 播放器页一旦创建就会读当前曲目的歌词，不能让它开机就跟着启动。
+ * 首页已经拿掉：它原本只是把「每日推荐 + 歌单 + 好歌」堆在一起，
+ * 而这些内容现在全部落在推荐页（并且是真·在线推荐，不再是本地洗牌），
+ * 留一个首页只会让用户多点一次。默认落在推荐页，打开就有歌可听。
+ *
+ * Fragment 用 show/hide 而不是 replace —— 切回来时滚动位置还在。
+ * Fragment 懒创建：播放器页一旦创建就会读当前曲目的歌词，不能让它开机就跟着启动。
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MusicViewModel by viewModels()
 
-    private val tags = listOf(TAG_HOME, TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
-    private var currentTab = 0
+    private val tags = listOf(TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
+    private var currentTab = DEFAULT_TAB
     private var hasTrack = false
 
     private var insetTop = 0
@@ -91,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         bindMiniPlayer()
         observePlayer()
 
-        val restored = savedInstanceState?.getInt(KEY_TAB, 0) ?: 0
+        val restored = savedInstanceState?.getInt(KEY_TAB, DEFAULT_TAB) ?: DEFAULT_TAB
         showTab(restored)
         val animationsEnabled = android.provider.Settings.Global.getFloat(
             contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
@@ -99,8 +102,14 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null && animationsEnabled) {
             val launch = LaunchAnimationView(this)
             binding.root.addView(launch, android.view.ViewGroup.LayoutParams(-1, -1))
-            launch.reveal { if (!isFinishing && !isDestroyed) requestAudioPermission() }
+            // 锚到第一帧再起动画：onCreate 到首帧在慢设备上可能差好几秒，
+            // 提前 start() 会让动画的 startTime 过期，首帧一到就直接跳到终态（看起来像没播）。
+            launch.doOnPreDraw {
+                launchStartedAt = SystemClock.uptimeMillis()
+                launch.reveal { if (!isFinishing && !isDestroyed) requestAudioPermission() }
+            }
         } else {
+            launchStartedAt = 0L
             requestAudioPermission()
         }
     }
@@ -158,7 +167,6 @@ class MainActivity : AppCompatActivity() {
     private fun setupTabBar() {
         binding.tabBar.setItems(
             listOf(
-                BottomNavBar.Item(R.drawable.ic_nav_home, getString(R.string.tab_home)),
                 BottomNavBar.Item(R.drawable.ic_nav_player, getString(R.string.tab_mv)),
                 BottomNavBar.Item(R.drawable.ic_nav_discover, getString(R.string.tab_recommend)),
                 BottomNavBar.Item(R.drawable.ic_nav_local, getString(R.string.tab_local)),
@@ -192,11 +200,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createFragment(tag: String): Fragment = when (tag) {
-        TAG_PLAYER -> PlayerFragment()
         TAG_RECOMMEND -> RecommendFragment()
         TAG_LOCAL -> LibraryFragment()
         TAG_MINE -> MineFragment()
-        else -> HomeFragment()
+        else -> PlayerFragment()
     }
 
     /** 切到播放器时整页变深色：状态栏/导航栏图标转白、底部条换成深色玻璃。 */
@@ -218,7 +225,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun isPlayerTab(): Boolean = tags[currentTab] == TAG_PLAYER
 
-    /** 供各页面跳 tab：首页的"视频"、我的页的"本地音乐"等。 */
+    /** 供各页面跳 tab：我的页的"本地音乐""推荐"等。 */
     fun openTab(index: Int) {
         if (index == currentTab) return
         showTab(index)
@@ -227,6 +234,8 @@ class MainActivity : AppCompatActivity() {
     fun openLocalTab() = openTab(INDEX_LOCAL)
 
     fun openRecommendTab() = openTab(INDEX_RECOMMEND)
+
+    fun openPlayerTab() = openTab(INDEX_PLAYER)
 
     // ---------------------------------------------------------------- 播放
 
@@ -285,16 +294,44 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val KEY_TAB = "aurora.tab"
 
-        const val INDEX_HOME = 0
-        const val INDEX_PLAYER = 1
-        const val INDEX_RECOMMEND = 2
-        const val INDEX_LOCAL = 3
-        const val INDEX_MINE = 4
+        /** 打开先落在推荐页：播放器页在没歌可播时是空的，不适合当默认首屏。 */
+        const val DEFAULT_TAB = 1
 
-        private const val TAG_HOME = "tab_home"
+        const val INDEX_PLAYER = 0
+        const val INDEX_RECOMMEND = 1
+        const val INDEX_LOCAL = 2
+        const val INDEX_MINE = 3
+
         private const val TAG_PLAYER = "tab_player"
         private const val TAG_RECOMMEND = "tab_recommend"
         private const val TAG_LOCAL = "tab_local"
         private const val TAG_MINE = "tab_mine"
+
+        /** 与 [LaunchAnimationView.reveal] 里的 1200ms 一致，改一处要改两处。 */
+        private const val LAUNCH_REVEAL_MS = 1200L
+
+        /**
+         * 启动层开始淡出的时间点（占整段动画的比例）。
+         * [LaunchAnimationView] 用 `alpha = (1 - progress) / 0.18` 收尾，约在 82% 处开始淡出。
+         */
+        private const val LAUNCH_FADE_START = 0.82f
+
+        /** 这次启动有没有播启动动画；0 表示没播（热启动 / 保存过状态）。 */
+        @Volatile
+        private var launchStartedAt = 0L
+
+        /**
+         * 首屏内容入场应当等待多久（毫秒）。
+         *
+         * 目的不是「等启动动画播完」，而是让内容恰好在启动层**开始淡出**时动起来：
+         * 两个动画重叠一小段，淡出时露出来的就是已经在飞的内容，中间没有空档。
+         * 数据比启动动画更晚到（网络慢）时返回 0，直接播。
+         */
+        fun entranceDelayMs(): Long {
+            val started = launchStartedAt
+            if (started <= 0L) return 0L
+            val fadeAt = started + (LAUNCH_REVEAL_MS * LAUNCH_FADE_START).toLong()
+            return (fadeAt - SystemClock.uptimeMillis()).coerceIn(0L, LAUNCH_REVEAL_MS)
+        }
     }
 }

@@ -3,31 +3,10 @@
     <string name="app_name">Aurora</string>
 
     <!-- ================= 底部导航 ================= -->
-    <string name="tab_home">首页</string>
     <string name="tab_mv">播放</string>
     <string name="tab_recommend">推荐</string>
     <string name="tab_local">本地</string>
     <string name="tab_mine">我的</string>
-
-    <!-- ================= 首页 ================= -->
-    <string name="home_music">音乐</string>
-    <string name="home_video">播放</string>
-    <string name="home_search_hint">搜索歌曲、歌手、专辑</string>
-    <string name="home_quick_daily">每日推荐</string>
-    <string name="home_quick_chart">排行榜</string>
-    <string name="home_quick_artist">歌手</string>
-    <string name="home_quick_favorite">我的喜欢</string>
-    <string name="home_quick_local">本地音乐</string>
-    <string name="home_playlists">你的歌单补给站</string>
-    <string name="home_more_playlists">更多歌单</string>
-    <string name="home_good_songs">优质好歌</string>
-    <string name="home_good_songs_sub">戴上耳机，挑几首慢慢听</string>
-    <string name="home_play_all">播放全部</string>
-    <string name="home_hero_label">今日推荐</string>
-    <string name="home_hero_mv">精选</string>
-    <string name="home_hero_empty_title">开始听歌</string>
-    <string name="home_hero_empty_sub">云端与本地曲库已就绪</string>
-    <string name="home_empty">还没有歌曲，去本地或云端看看</string>
 
     <!-- ================= 歌单 ================= -->
     <string name="playlist_tracks">%1$d 首</string>
@@ -41,27 +20,43 @@
     <string name="tag_recent">最近</string>
     <string name="tag_favorite">喜欢</string>
     <string name="tag_artist">歌手</string>
+    <string name="tag_source">音源</string>
 
     <!-- ================= 播放器 / 播放器页 ================= -->
 
     <!-- ================= 推荐 ================= -->
     <string name="recommend_title">推荐</string>
-    <string name="recommend_subtitle">按你的口味，每天更新</string>
+    <string name="recommend_subtitle">按你的口味，从音源里挑歌</string>
+    <string name="recommend_subtitle_taste">根据 %1$s 推荐</string>
+    <string name="recommend_subtitle_fresh">还没有足够的口味，先按平台热歌推荐</string>
+    <string name="recommend_subtitle_offline">网络不可用，显示上次的推荐</string>
     <string name="recommend_refresh">换一批</string>
     <string name="recommend_daily_tag">每日推荐</string>
     <string name="recommend_daily_title">今天为你挑了 %1$d 首</string>
-    <string name="recommend_daily_subtitle">结合最近的播放和收藏生成</string>
+    <string name="recommend_daily_subtitle">结合收藏、最近播放和音源推荐流生成</string>
     <string name="recommend_daily_play">播放每日推荐</string>
+    <string name="recommend_tracks">为你推荐</string>
+    <string name="recommend_track_count">%1$d 首</string>
+    <string name="recommend_like">喜欢</string>
+    <string name="recommend_empty">暂时没拿到推荐</string>
+    <string name="recommend_empty_hint">检查音源管理里是否启用了平台，或稍后重试</string>
     <string name="recommend_playlists">推荐歌单</string>
     <string name="recommend_more">全部</string>
     <string name="recommend_playlist_count">%1$d 个歌单</string>
-    <string name="recommend_artists">热门歌手</string>
-    <string name="recommend_charts">排行榜</string>
-    <string name="recommend_chart_play">播放榜单</string>
-    <string name="recommend_footer">推荐每天更新一次</string>
-    <string name="chart_hot">热歌榜</string>
-    <string name="chart_new">新歌榜</string>
-    <string name="chart_local">本地榜</string>
+    <string name="recommend_source_playlists">来自音源</string>
+    <string name="recommend_source_empty">在音源管理里登录后，这里会列出你的歌单</string>
+    <string name="recommend_footer">推荐结果会缓存在本机，断网时仍可查看</string>
+
+    <!-- ================= 收藏同步 ================= -->
+    <string name="like_synced">已收藏，已同步到%1$s</string>
+    <string name="like_local_only">已收藏，仅本机与后台记录：%1$s</string>
+    <string name="like_sync_failed">已收藏，同步失败：%1$s</string>
+    <string name="like_backend_missing">已收藏，后端未记录</string>
+    <string name="sync_done">已同步 %1$d 首喜欢 · %2$d 个歌单</string>
+    <string name="sync_failed">同步失败：%1$s</string>
+    <string name="sync_running">正在同步…</string>
+    <string name="sync_playlist_empty">这个歌单在平台上没有可读曲目</string>
+    <string name="play_unavailable">这几首暂时都换不到播放地址</string>
 
     <!-- ================= 本地 ================= -->
     <string name="local_title">本地</string>
@@ -117,6 +112,7 @@
     <string name="mine_empty_favorites">还没有收藏，去听几首吧</string>
     <string name="mine_minutes">%1$d 分钟</string>
     <string name="mine_tracks">%1$d 首</string>
+    <string name="mine_subtitle_synced">%1$d 首 · 已同步 %2$d 个歌单</string>
 
     <!-- ================= 搜索 ================= -->
     <string name="search_title">搜索</string>
@@ -181,11 +177,6 @@
     <string name="duration_m">%1$d 分钟</string>
 
     <!-- ================= 旧页面过渡用，删掉旧文件后一并清理 ================= -->
-    <string name="home_title">聆听</string>
-    <string name="home_recent">最近播放</string>
-    <string name="home_recommend">为你推荐</string>
-    <string name="home_continue">接着听</string>
-    <string name="home_see_all">全部</string>
     <string name="tab_search">搜索</string>
     <string name="tab_cloud">云端</string>
     <string name="tab_library">资料库</string>
@@ -301,4 +292,8 @@
     
 
     <string name="mine_entry_sources">音源管理</string>
+    <string name="mine_entry_sync">同步音源</string>
+    <string name="mine_sync_card">音源同步</string>
+    <string name="mine_sync_hint">喜欢与歌单会自动同步</string>
+    <string name="mine_sync_detail">%1$d 首喜欢 · %2$d 个歌单</string>
 </resources>

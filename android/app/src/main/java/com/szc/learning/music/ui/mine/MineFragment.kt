@@ -18,6 +18,7 @@ import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentMineBinding
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.music.ui.common.CoverArt
 import com.szc.learning.music.ui.common.showAbout
 import com.szc.learning.music.ui.common.showListenStats
@@ -115,6 +116,19 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
                 ) { _, _, _, _, _ -> Unit }.collect { render() }
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 同步回新歌单/新喜欢时，卡片上的数字要跟着变
+                viewModel.syncedPlaylists.collect { render() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.syncMessage.collect { message -> context?.toast(message) }
+            }
+        }
+        // 进「我的」页自动同步一次（5 分钟内不重复请求，见 ViewModel 的 TTL）
+        viewModel.syncLibrary()
         render()
     }
 
@@ -141,7 +155,12 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
         binding.statRecent.text = recent.size.toString()
 
         binding.mineName.setText(R.string.mine_user)
-        binding.mineSubtitle.text = getString(R.string.mine_tracks, all.size)
+        val syncedCount = viewModel.syncedPlaylists.value.size
+        binding.mineSubtitle.text = if (syncedCount > 0) {
+            getString(R.string.mine_subtitle_synced, all.size, syncedCount)
+        } else {
+            getString(R.string.mine_tracks, all.size)
+        }
         binding.mineFavoritesCount.text = getString(R.string.mine_count, favorites.size)
 
         recentAdapter.submitList(recent.take(10))
@@ -165,6 +184,11 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
 
             MineEntryAdapter.KEY_SOURCES -> SourceActivity.start(requireContext())
 
+            MineEntryAdapter.KEY_SYNC -> {
+                requireContext().toast(R.string.sync_running)
+                viewModel.syncLibrary(force = true)
+            }
+
             MineEntryAdapter.KEY_RESCAN -> {
                 viewModel.refreshLocal()
                 requireContext().toast(R.string.local_rescanned)
@@ -184,7 +208,10 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
             requireContext().toast(R.string.mine_empty_favorites)
             return
         }
-        viewModel.play(favorites, 0)
+        // 收藏里可能是在线曲目，交给 playTracks 先换地址
+        viewModel.playTracks(favorites, 0) { event ->
+            if (event is OnlinePlayEvent.Failed) requireContext().toast(event.message)
+        }
     }
 
     private fun mainActivity(): MainActivity? = activity as? MainActivity

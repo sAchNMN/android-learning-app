@@ -6,6 +6,9 @@
 | 文件 | 内容 |
 | --- | --- |
 | `05_music_schema.sql` | `biz_music_track` 云端曲库表 + 8 条演示数据（接入步骤见 `docs/cloud-music.md`） |
+| `06_music_source.sql` | `biz_music_source` 音源开关 / 优先级 / Cookie |
+| `07_music_user.sql` | `biz_music_user_like` 跨音源「我喜欢」（按 deviceId 归属，同时是推荐的口味来源） |
+| `08_music_cover.sql` | 云端曲库封面回填（`cover` 指向 `/profile/music/cover/0X.jpg`，图片由 `server/tools/fetch_cover.py` 抓取） |
 
 历史脚本（外卖点餐，已下线）：
 

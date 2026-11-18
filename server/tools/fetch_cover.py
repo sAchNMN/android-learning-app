@@ -173,7 +173,7 @@ def main():
             print(f"  ✗ {tid} 下载失败：{e}")
         time.sleep(0.5)
 
-    print("\n-- 把下面几行贴进 MySQL，或合并进 sql/07_music_cover.sql")
+    print("\n-- 把下面几行贴进 MySQL，或合并进 sql/08_music_cover.sql")
     for tid, rel in updates:
         print(f"UPDATE biz_music_track SET cover = '{rel}' WHERE id = {tid};")
     print(f"\n图片目录：{COVER_DIR}")

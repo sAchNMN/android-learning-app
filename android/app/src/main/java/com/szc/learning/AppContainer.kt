@@ -5,11 +5,13 @@ import com.szc.learning.core.network.ApiClient
 import com.szc.learning.core.network.AuthRepository
 import com.szc.learning.core.network.SessionStore
 import com.szc.learning.core.network.music.MusicRepository
+import com.szc.learning.music.data.DeviceIdStore
 import com.szc.learning.music.data.FavoritesStore
 import com.szc.learning.music.data.ListenStatsStore
 import com.szc.learning.music.data.LocalMusicRepository
 import com.szc.learning.music.data.LyricsRepository
 import com.szc.learning.music.data.RecentStore
+import com.szc.learning.music.data.RecommendCacheStore
 import com.szc.learning.music.player.PlayerController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,8 +51,14 @@ class AppContainer(context: Context) {
     /** 最近播放：数据量极小，SharedPreferences 足够，不必上 DataStore。 */
     val recentStore: RecentStore = RecentStore(context)
 
-    /** 收藏：同样只存曲目稳定键。 */
+    /** 收藏：存完整曲目，在线曲目也要能还原。 */
     val favoritesStore: FavoritesStore = FavoritesStore(context)
+
+    /** 设备号：后端用它归属「我喜欢」，App 没有登录体系。 */
+    val deviceIdStore: DeviceIdStore = DeviceIdStore(context)
+
+    /** 推荐结果缓存：断网时推荐页回放上一次的结果，而不是空白。 */
+    val recommendCacheStore: RecommendCacheStore = RecommendCacheStore(context)
 
     /** 听歌时长：累计真实播放秒数，用于"我的"页的小统计。 */
     val listenStatsStore: ListenStatsStore = ListenStatsStore(context)

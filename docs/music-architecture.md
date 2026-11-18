@@ -9,18 +9,49 @@
 android/
 ├── core:common    纯数据与工具：MusicTrack 统一模型、AppResult、Logger
 ├── core:network   Retrofit 唯一出口：ApiClient / AuthApi / MusicApi+Repository
-├── app            UI + 播放：media3、五个 tab、播放器竖滑、正在播放
+├── app            UI + 播放：media3、四个 tab、播放器竖滑、正在播放
 └── feature:demo   贪吃蛇，未参与构建
 ```
 
 依赖方向单向：`app → core:network → core:common`。`core` 之间不互相依赖。
+
+## 页面结构
+
+```
+播放 / 推荐 / 本地 / 我的      底部悬浮玻璃导航，默认落在「推荐」
+```
+
+首页已移除：它原本只是「每日推荐 + 歌单 + 好歌」的堆叠，而这些内容现在都在推荐页，
+并且是**真·在线推荐**。少一个 tab，用户少点一次。
+`MainActivity` 用 show/hide 切 Fragment，索引常量 `INDEX_*` 与 `DEFAULT_TAB` 都在它的 companion 里。
+
+## 首屏入场动画
+
+推荐页沿用旧首页那一套 `springEnter`（解析弹簧：从下方飞入 + 同帧渐显，落点带回弹），
+按 top → bottom 错峰：标题 20ms / 副标题 70 / 每日卡 120 / 分区标题 180 /
+曲目行 220+40×n / 音源歌单 400 / 本机歌单 500 / footer 560。
+只播一次（`entrancePlayed`），切 tab 回来不重播。
+
+两个必须记住的点：
+
+1. **动画要锚在第一帧**。`ValueAnimator` 的 `startTime` 是 `start()` 那一刻，
+   而慢设备/模拟器从 `onCreate` 到首帧可能差 6–10 秒 —— 提前 start 的动画在第一帧到达时
+   已经"过期"，会直接跳到终态，看起来像没播。所以启动动画和页面入场都包在
+   `doOnPreDraw { }` 里再起，冷启动实测能稳定看到。
+2. **和启动页重叠，而不是排队**。内容入场的 delay 由 `MainActivity.entranceDelayMs()` 给：
+   它算出启动层大约何时开始淡出（`LaunchAnimationView` 用 `alpha=(1-progress)/0.18`，
+   约 82% 处淡出），让内容恰好在那一刻动起来。启动层淡完露出来的就是已经在飞的列表，
+   中间没有"先看 logo、再从头播一遍"的空档。
+
+列表行是网络来的，页面入场时可能一条都没有，所以 `animateRows` 挂在
+`submitList` 的提交回调上补播一次，并做最多 3 次 `post` 重试等排版完成。
 
 ## 播放链路
 
 ```
 Fragment/Activity
    ↓ 只调方法，不碰 ExoPlayer
-MusicViewModel (Activity 作用域，五个 tab 共享)
+MusicViewModel (Activity 作用域，四个 tab 共享)
    ↓
 PlayerController  ←── StateFlow<PlayerUiState> ──→ UI 订阅
    ↓ MediaController（异步连接）
@@ -56,9 +87,38 @@ ExoPlayer
 - 一页只加载当前曲目的歌词，并预取前后页；所有页面共用 `offscreenPageLimit = 1`，
   没有视频解码器，滑动的成本只有封面和文字。
 
+## 推荐与收藏同步
+
+推荐页不再用「把本机曲库按日期洗牌」充数 —— 那是假推荐。现在的链路是：
+
+```
+本机算口味：收藏曲目的歌手（权重 ×2）+ 最近播放的歌手，取前 3
+        ↓ artists
+后端 /app/music/recommend：按歌手聚合搜索 + 补平台推荐流 + 去重 + 排除已喜欢
+        ↓ List<OnlineTrack>
+RecommendFragment 渲染；结果写进 RecommendCacheStore（断网回放上一次）
+```
+
+要点：
+
+- **口味在客户端算**：后端不需要知道用户的一切，只要「给这些歌手找歌」。
+  客户端传空时后端才退回「后台喜欢表里最多的歌手」，再空就纯平台推荐流。
+- **洗牌按天稳定**：同一自然日多次进入顺序一致，不会闪；点「换一批」传新的 `seed` 才变。
+- **播放要换地址**：推荐结果都是在线曲目（`uri` 为空）。`MusicViewModel.playTracks`
+  会并行解析前 5 首的播放地址再整队塞给播放器，所以「播放全部」是真的能连着播，
+  而不是只播一首。
+- **红心三级同步**：`FavoritesStore`（本机，立即）→ `POST /app/music/like`（后端落库）
+  → 平台 API（网易云 `/api/radio/like`，需 Cookie）。平台失败只 toast 提示，
+  不影响本机状态；成功提示「已收藏，已同步到网易云」。
+- **「我的」页自动同步**：进入即调 `syncLibrary()`，把后端喜欢的曲目并回本地、
+  把各平台歌单拉成卡片（5 分钟内不重复请求）。重装 App 后点赞不会丢。
+
+`FavoritesStore` 存的是**完整曲目**而不是只存键：推荐页收藏的是在线曲目，
+它不在本地/云端曲库里，只存键的话下次打开还原不出标题、封面和酷狗的取址参数。
+
 ## 曲目模型
 
-`MusicTrack` 是本地与云端的统一模型，靠 `source` 区分，`uri` 分别是
+`MusicTrack` 是本地、云端与在线的统一模型，靠 `source` 区分：
 `content://media/external/audio/media/{id}` 和 `https://.../profile/music/xx.mp3`。
 
 界面上任何地方都不写 `if (source == LOCAL)` —— 分叉只发生在数据层。

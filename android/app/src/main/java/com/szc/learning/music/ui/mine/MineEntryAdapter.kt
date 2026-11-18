@@ -51,6 +51,7 @@ class MineEntryAdapter(
         const val KEY_STATS = "stats"
         const val KEY_RESCAN = "rescan"
         const val KEY_SOURCES = "sources"
+        const val KEY_SYNC = "sync"
         const val KEY_ABOUT = "about"
 
         fun defaults(): List<MineEntry> = listOf(
@@ -59,6 +60,7 @@ class MineEntryAdapter(
             MineEntry(KEY_LOCAL, R.drawable.ic_nav_local, R.string.mine_entry_local),
             MineEntry(KEY_CLOUD, R.drawable.ic_music_note, R.string.mine_entry_cloud),
             MineEntry(KEY_PLAYER, R.drawable.ic_nav_player, R.string.mine_entry_mv),
+            MineEntry(KEY_SYNC, R.drawable.ic_share, R.string.mine_entry_sync),
             MineEntry(KEY_STATS, R.drawable.ic_chart, R.string.mine_entry_stats),
             MineEntry(KEY_SOURCES, R.drawable.ic_source, R.string.mine_entry_sources),
             MineEntry(KEY_RESCAN, R.drawable.ic_refresh, R.string.mine_entry_rescan),

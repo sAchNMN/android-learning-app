@@ -4,7 +4,10 @@
 > 外卖时代的 app 端代码已全部移除，只在 `master` 的 118a4be 之前的历史里。
 
 ## 当前形态
-- App：本地曲库（MediaStore）+ 云端曲库（若依 `/app/music/tracks`）双源播放
+- App：本地曲库（MediaStore）+ 云端曲库（若依 `/app/music/tracks`）+ 在线音源（网易云/酷狗）三源
+- 页面：**四个 tab：播放 / 推荐 / 本地 / 我的**，默认落推荐页。首页已于 2026-11-18 下线
+- 推荐：客户端算口味歌手 → 后端 `/app/music/recommend` 聚合搜索 + 平台推荐流；结果本地缓存兜底
+- 收藏：本机（存完整曲目）→ 后端 `biz_music_user_like`（按 deviceId）→ 平台（仅网易云）
 - 设计：iOS 液态玻璃 + 极光底，浅色优先，深色可用
 - 播放内核：media3 ExoPlayer + MediaSessionService（后台播放、通知栏、锁屏控制）
 - 分支：`feat/music-glass` 是当前开发线；master 已收拢全部旧分支
