@@ -40,3 +40,7 @@ desktop.ini
 
 # local backend run log
 server/backend-run.log
+
+# ---------- 临时素材（启动动画抽帧 / 录屏）----------
+frames/
+/*.mp4
