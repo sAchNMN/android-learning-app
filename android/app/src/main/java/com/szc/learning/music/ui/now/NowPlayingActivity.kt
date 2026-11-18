@@ -31,7 +31,6 @@ import com.szc.learning.databinding.DialogQueueBinding
 import com.szc.learning.music.data.LrcParser
 import com.szc.learning.music.data.LyricLine
 import com.szc.learning.music.data.LyricSheet
-import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.common.bindArt
@@ -188,13 +187,8 @@ class NowPlayingActivity : AppCompatActivity() {
         binding.nowPlay.contentDescription =
             getString(if (state.isPlaying) R.string.player_pause else R.string.player_play)
 
-        val accent = themeColor(R.attr.auAccent)
-        val idle = themeColor(R.attr.auOnDarkSecondary)
         val mode = state.playMode
         binding.nowMode.setImageResource(mode.iconRes)
-        binding.nowMode.imageTintList = ColorStateList.valueOf(
-            if (mode == PlayMode.SEQUENCE) idle else accent,
-        )
         binding.nowMode.contentDescription = getString(
             R.string.player_mode_switch,
             getString(mode.labelRes),

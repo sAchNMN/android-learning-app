@@ -252,13 +252,8 @@ class PlayerAdapter(
                 if (playing) R.string.player_pause else R.string.player_play,
             )
 
-            val accent = context.themeColor(R.attr.auAccent)
-            val normal = context.themeColor(R.attr.auOnDark)
             val mode = value?.playMode ?: PlayMode.SEQUENCE
             binding.playerMode.setImageResource(mode.iconRes)
-            binding.playerMode.imageTintList = ColorStateList.valueOf(
-                if (mode == PlayMode.SEQUENCE) normal else accent,
-            )
             binding.playerMode.contentDescription = context.getString(
                 R.string.player_mode_switch,
                 context.getString(mode.labelRes),
