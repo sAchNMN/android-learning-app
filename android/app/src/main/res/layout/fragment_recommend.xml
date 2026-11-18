@@ -24,6 +24,7 @@
 
         <!-- 标题 -->
         <LinearLayout
+            android:id="@+id/recommendHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="bottom"
@@ -144,6 +145,7 @@
 
         <!-- 为你推荐 -->
         <LinearLayout
+            android:id="@+id/recommendTracksHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -239,6 +241,7 @@
 
         <!-- 推荐歌单（本机拼的） -->
         <LinearLayout
+            android:id="@+id/recommendPlaylistsHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -275,6 +278,7 @@
             android:scrollbars="none" />
 
         <TextView
+            android:id="@+id/recommendFooter"
             style="@style/Text.Caption"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

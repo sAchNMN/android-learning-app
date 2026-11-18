@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -13,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -100,8 +102,14 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null && animationsEnabled) {
             val launch = LaunchAnimationView(this)
             binding.root.addView(launch, android.view.ViewGroup.LayoutParams(-1, -1))
-            launch.reveal { if (!isFinishing && !isDestroyed) requestAudioPermission() }
+            // 锚到第一帧再起动画：onCreate 到首帧在慢设备上可能差好几秒，
+            // 提前 start() 会让动画的 startTime 过期，首帧一到就直接跳到终态（看起来像没播）。
+            launch.doOnPreDraw {
+                launchStartedAt = SystemClock.uptimeMillis()
+                launch.reveal { if (!isFinishing && !isDestroyed) requestAudioPermission() }
+            }
         } else {
+            launchStartedAt = 0L
             requestAudioPermission()
         }
     }
@@ -298,5 +306,32 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_RECOMMEND = "tab_recommend"
         private const val TAG_LOCAL = "tab_local"
         private const val TAG_MINE = "tab_mine"
+
+        /** 与 [LaunchAnimationView.reveal] 里的 1200ms 一致，改一处要改两处。 */
+        private const val LAUNCH_REVEAL_MS = 1200L
+
+        /**
+         * 启动层开始淡出的时间点（占整段动画的比例）。
+         * [LaunchAnimationView] 用 `alpha = (1 - progress) / 0.18` 收尾，约在 82% 处开始淡出。
+         */
+        private const val LAUNCH_FADE_START = 0.82f
+
+        /** 这次启动有没有播启动动画；0 表示没播（热启动 / 保存过状态）。 */
+        @Volatile
+        private var launchStartedAt = 0L
+
+        /**
+         * 首屏内容入场应当等待多久（毫秒）。
+         *
+         * 目的不是「等启动动画播完」，而是让内容恰好在启动层**开始淡出**时动起来：
+         * 两个动画重叠一小段，淡出时露出来的就是已经在飞的内容，中间没有空档。
+         * 数据比启动动画更晚到（网络慢）时返回 0，直接播。
+         */
+        fun entranceDelayMs(): Long {
+            val started = launchStartedAt
+            if (started <= 0L) return 0L
+            val fadeAt = started + (LAUNCH_REVEAL_MS * LAUNCH_FADE_START).toLong()
+            return (fadeAt - SystemClock.uptimeMillis()).coerceIn(0L, LAUNCH_REVEAL_MS)
+        }
     }
 }

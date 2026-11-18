@@ -25,6 +25,27 @@ android/
 并且是**真·在线推荐**。少一个 tab，用户少点一次。
 `MainActivity` 用 show/hide 切 Fragment，索引常量 `INDEX_*` 与 `DEFAULT_TAB` 都在它的 companion 里。
 
+## 首屏入场动画
+
+推荐页沿用旧首页那一套 `springEnter`（解析弹簧：从下方飞入 + 同帧渐显，落点带回弹），
+按 top → bottom 错峰：标题 20ms / 副标题 70 / 每日卡 120 / 分区标题 180 /
+曲目行 220+40×n / 音源歌单 400 / 本机歌单 500 / footer 560。
+只播一次（`entrancePlayed`），切 tab 回来不重播。
+
+两个必须记住的点：
+
+1. **动画要锚在第一帧**。`ValueAnimator` 的 `startTime` 是 `start()` 那一刻，
+   而慢设备/模拟器从 `onCreate` 到首帧可能差 6–10 秒 —— 提前 start 的动画在第一帧到达时
+   已经"过期"，会直接跳到终态，看起来像没播。所以启动动画和页面入场都包在
+   `doOnPreDraw { }` 里再起，冷启动实测能稳定看到。
+2. **和启动页重叠，而不是排队**。内容入场的 delay 由 `MainActivity.entranceDelayMs()` 给：
+   它算出启动层大约何时开始淡出（`LaunchAnimationView` 用 `alpha=(1-progress)/0.18`，
+   约 82% 处淡出），让内容恰好在那一刻动起来。启动层淡完露出来的就是已经在飞的列表，
+   中间没有"先看 logo、再从头播一遍"的空档。
+
+列表行是网络来的，页面入场时可能一条都没有，所以 `animateRows` 挂在
+`submitList` 的提交回调上补播一次，并做最多 3 次 `post` 重试等排版完成。
+
 ## 播放链路
 
 ```
