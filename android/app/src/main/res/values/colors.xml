@@ -1,50 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      这里只放"绝对色"：直接压在封面图/视频上的白字和黑遮罩。
+      它们不能跟着主题变 —— 底下是照片，不是画布。
+      其余一切颜色都在 colors_theme_*.xml + attrs.xml 里，组件用 ?attr/au*。
+    -->
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
-
-    <!-- ================= 画布 ================= -->
-    <!-- 极光底：几乎白，带一点点冷紫，让玻璃有东西可"折" -->
-    <color name="canvas">#F7F6FB</color>
-    <color name="canvas_deep">#EFEEF6</color>
-
-    <!-- ================= 玻璃材质 ================= -->
-    <!-- 玻璃不是纯半透明白：顶部亮、底部沉，才有厚度 -->
-    <color name="glass_tint">#FFFFFFFF</color>
-    <color name="glass_tint_strong">#FFFFFFFF</color>
-    <color name="glass_rim">#FFFFFFFF</color>
-    <!-- 深色玻璃（压在封面图上时用，例如迷你播放器） -->
-    <color name="glass_tint_dark">#FF101014</color>
-
-    <!-- ================= 文字 ================= -->
-    <color name="ink">#0B0B0F</color>
-    <color name="ink_secondary">#6B6B75</color>
-    <color name="ink_tertiary">#A6A6B0</color>
-    <color name="ink_inverse">#FFFFFFFF</color>
-
-    <!-- ================= 强调色 ================= -->
-    <color name="accent">#12121A</color>
-    <color name="accent_on">#FFFFFFFF</color>
-    <color name="accent_pink">#FF6FA5</color>
-    <color name="accent_violet">#8B7BFF</color>
-    <color name="accent_cyan">#57E0CE</color>
-    <color name="accent_amber">#FFC46B</color>
-    <color name="accent_rose">#FF8A7A</color>
-
-    <!-- 进度条渐变 -->
-    <color name="progress_start">#FF6FA5</color>
-    <color name="progress_mid">#9B7BFF</color>
-    <color name="progress_end">#57E0CE</color>
-
-    <!-- ================= 分隔 ================= -->
-    <color name="hairline">#14000000</color>
-    <color name="hairline_light">#1FFFFFFF</color>
-    <color name="scrim">#66000000</color>
-
-    <!-- ================= 兼容旧主题 ================= -->
-    <color name="brand_primary">#12121A</color>
-    <color name="brand_on_primary">#FFFFFFFF</color>
-    <color name="brand_primary_container">#EFEEF6</color>
-    <color name="brand_on_primary_container">#0B0B0F</color>
-    <color name="avatar_background">#12121A</color>
 </resources>

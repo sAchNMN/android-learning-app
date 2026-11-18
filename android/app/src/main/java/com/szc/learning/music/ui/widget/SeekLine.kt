@@ -1,5 +1,6 @@
 package com.szc.learning.music.ui.widget
 
+import com.szc.learning.ui.theme.themeColor
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
@@ -17,9 +18,10 @@ import com.szc.learning.R
  * 播放进度条。一根能拖的线。
  *
  * 自绘而不是用 SeekBar：SeekBar 的 thumb 是 Drawable，做不出
- * 「进度线是渐变、拖到哪 thumb 就在哪、并且 thumb 带玻璃质感」这一套；
- * 而且系统 SeekBar 的触摸区域只有线那么高，手指根本按不准。
- * 这里控件高度就是触摸高度（28dp），线只有 4dp，手感和观感分开。
+ * 「进度是渐变、拖到哪 thumb 就在哪」这一套；而且系统 SeekBar 的触摸区域
+ * 只有线那么高，手指按不准。这里控件高度就是触摸高度，线只有 2~4dp。
+ *
+ * 控件在两种底色上都要用：浅色页面用淡墨轨道，深色播放器用白色半透明轨道。
  */
 class SeekLine @JvmOverloads constructor(
     context: Context,
@@ -39,11 +41,18 @@ class SeekLine @JvmOverloads constructor(
             invalidate()
         }
 
-    /** 深色底（正在播放页）上用白色轨道，浅色底上用淡墨色轨道。 */
+    /** 深色底（正在播放页 / 播放器页）上用白色半透明轨道。 */
     var onDark: Boolean = false
         set(value) {
             field = value
             applyTrackColor()
+            invalidate()
+        }
+
+    /** 白底上圆点会"消失"，加一圈主题色描边把它拎出来。 */
+    var knobRing: Boolean = false
+        set(value) {
+            field = value
             invalidate()
         }
 
@@ -53,10 +62,16 @@ class SeekLine @JvmOverloads constructor(
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val progressPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // 圆点只在正在播放页（深底、压着封面）出现，用绝对白，不跟主题
         color = ContextCompat.getColor(context, R.color.white)
     }
     private val knobShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = withAlpha(android.graphics.Color.BLACK, 0.22f)
+    }
+    private val knobRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = context.dp(1.2f)
+        color = context.themeColor(R.attr.auAccent)
     }
 
     init {
@@ -65,9 +80,9 @@ class SeekLine @JvmOverloads constructor(
 
     private fun applyTrackColor() {
         trackPaint.color = if (onDark) {
-            withAlpha(android.graphics.Color.WHITE, 0.20f)
+            withAlpha(context.themeColor(R.attr.auOnDark), 0.22f)
         } else {
-            withAlpha(ContextCompat.getColor(context, R.color.ink), 0.14f)
+            withAlpha(context.themeColor(R.attr.auInk), 0.14f)
         }
     }
 
@@ -86,9 +101,9 @@ class SeekLine @JvmOverloads constructor(
         progressPaint.shader = LinearGradient(
             0f, 0f, w.toFloat(), 0f,
             intArrayOf(
-                ContextCompat.getColor(context, R.color.progress_start),
-                ContextCompat.getColor(context, R.color.progress_mid),
-                ContextCompat.getColor(context, R.color.progress_end),
+                context.themeColor(R.attr.auProgressStart),
+                context.themeColor(R.attr.auProgressMid),
+                context.themeColor(R.attr.auProgressEnd),
             ),
             floatArrayOf(0f, 0.5f, 1f),
             Shader.TileMode.CLAMP,
@@ -113,6 +128,9 @@ class SeekLine @JvmOverloads constructor(
             val cx = (w * fraction).coerceIn(knobRadius, w - knobRadius)
             canvas.drawCircle(cx, cy + context.dp(1f), knobRadius, knobShadow)
             canvas.drawCircle(cx, cy, knobRadius, knobPaint)
+            if (knobRing) {
+                canvas.drawCircle(cx, cy, knobRadius - knobRingPaint.strokeWidth / 2f, knobRingPaint)
+            }
         }
     }
 

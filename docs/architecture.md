@@ -1,5 +1,8 @@
 # 架构说明
 
+> **历史文档。** 这份文档写于外卖点餐时期（顾客端 4 tab / 骑手端），
+> 相关客户端代码已移除。当前结构以 [`music-architecture.md`](music-architecture.md) 为准。
+
 > **设计基线：顾客端 4 个 tab + 骑手端 3 个 tab，两端拆成两个 APK。**
 > 顾客端已落地底部导航骨架（`MainActivity` + 首页 / 购物车 / 订单 / 我的 4 个 tab，
 > 购物车为进程内 `CartStore`）；确认订单、地址管理等二级页与 `rider` 模块尚未实现。

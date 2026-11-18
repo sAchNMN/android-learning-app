@@ -64,6 +64,11 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME) @Target(ElementType.TYPE)
 public @interface Service { String value() default ""; }'
 
+mk org/springframework/stereotype/Component.java 'package org.springframework.stereotype;
+import java.lang.annotation.*;
+@Retention(RetentionPolicy.RUNTIME) @Target(ElementType.TYPE)
+public @interface Component { String value() default ""; }'
+
 mk org/springframework/transaction/annotation/Transactional.java 'package org.springframework.transaction.annotation;
 import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME) @Target({ElementType.TYPE, ElementType.METHOD})
@@ -104,7 +109,7 @@ for a in PathVariable RequestParam RequestBody; do
     mk "org/springframework/web/bind/annotation/$a.java" "package org.springframework.web.bind.annotation;
 import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME) @Target(ElementType.PARAMETER)
-public @interface $a { String value() default \"\"; boolean required() default true; }"
+public @interface $a { String value() default \"\"; boolean required() default true; String defaultValue() default \"\"; }"
 done
 
 # ---------- MyBatis ----------
@@ -127,6 +132,35 @@ public @interface Options {
     boolean useGeneratedKeys() default false;
     String keyProperty() default "";
     String keyColumn() default "";
+}'
+
+# ---------- fastjson2（在线音源解析） ----------
+mk com/alibaba/fastjson2/JSON.java 'package com.alibaba.fastjson2;
+public class JSON {
+    public static JSONObject parseObject(String text) { return null; }
+}'
+
+mk com/alibaba/fastjson2/JSONException.java 'package com.alibaba.fastjson2;
+public class JSONException extends RuntimeException {
+    public JSONException(String message) { super(message); }
+}'
+
+mk com/alibaba/fastjson2/JSONObject.java 'package com.alibaba.fastjson2;
+public class JSONObject {
+    public JSONObject getJSONObject(String key) { return null; }
+    public JSONArray getJSONArray(String key) { return null; }
+    public String getString(String key) { return null; }
+    public int getIntValue(String key) { return 0; }
+    public long getLongValue(String key) { return 0L; }
+    public Object get(String key) { return null; }
+}'
+
+mk com/alibaba/fastjson2/JSONArray.java 'package com.alibaba.fastjson2;
+public class JSONArray {
+    public boolean isEmpty() { return true; }
+    public int size() { return 0; }
+    public JSONObject getJSONObject(int index) { return null; }
+    public Object get(int index) { return null; }
 }'
 
 # ---------- 编译 ----------

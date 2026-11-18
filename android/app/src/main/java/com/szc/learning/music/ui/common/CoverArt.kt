@@ -14,25 +14,57 @@ import kotlin.math.abs
  * 无封面时的兜底封面。
  *
  * 不画灰色方块 —— 一排灰色方块会让整个界面立刻廉价。
- * 这里按「艺人+标题」的哈希从固定色板里取一对颜色做斜向渐变，
- * 同一首歌永远是同一张图（可复现），但不同歌之间又有区分度。
+ * 这里按「艺人+标题」的哈希从主题色板里取一对颜色做斜向渐变，
+ * 同一首歌永远是同一张图（可复现），不同歌之间又有区分度。
  * 再叠一层左上镜面高光和底部压暗，观感和真封面放一起不违和。
+ *
+ * 色板来自当前主题的 4 个色斑色（不是写死的彩虹）：换主题时兜底封面跟着变，
+ * 页面上的大块颜色才始终是"同一个 App"。这是配色里最容易翻车的地方 ——
+ * 内容色和品牌色各走一套，界面就会像四个 App 的截图拼起来。
  */
 object CoverArt {
 
-    private val palette = intArrayOf(
-        0xFFFF8FB1.toInt(),
-        0xFF8B7BFF.toInt(),
-        0xFF57E0CE.toInt(),
-        0xFFFFC46B.toInt(),
-        0xFF7AC6FF.toInt(),
-        0xFFFF9E80.toInt(),
-        0xFFB6A0FF.toInt(),
-        0xFF6FE3B8.toInt(),
+    /** 主题色板。默认值是极光主题的近似值，[configure] 会用真实主题覆盖。 */
+    private var palette = intArrayOf(
+        0xFFAAB2E4.toInt(),
+        0xFFC69BD8.toInt(),
+        0xFF7FB3E8.toInt(),
+        0xFF7DC4C6.toInt(),
+        0xFFB8AEE0.toInt(),
+        0xFFD4A6CC.toInt(),
+        0xFF95BCE8.toInt(),
+        0xFF93CBC9.toInt(),
     )
 
     private val cache = object : LruCache<String, Bitmap>(32) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+    }
+
+    /**
+     * 跟着当前主题重算色板。换主题时要连缓存一起清，否则旧图还是旧颜色。
+     * 由 ThemeManager.applyPalette 调用，所以每个 Activity 进来都会拿到对的颜色。
+     *
+     * 整块色板只围绕品牌色相 ±60° 展开 —— 不这么做的后果就是上面截图里
+     * 那种"紫色按钮配一屏青色封面"的拼盘感。
+     */
+    fun configure(accent: Int, dark: Boolean) {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(accent, hsv)
+        // 色相只敢动 ±8°：封面的面积远大于按钮，色相一散就成拼盘。
+        // 区分度靠明度做，不靠色相 —— 这也是高级感的主要来源。
+        val offsets = floatArrayOf(-8f, -4f, 0f, 4f, 8f, -2f, 2f, 6f)
+        // 深色下封面要压到中低明度：深底上放接近白的大色块会直接抢掉整个界面
+        val top = if (dark) 0.56f else 0.93f
+        val step = if (dark) 0.045f else 0.06f
+        val saturationFactor = if (dark) 0.52f else 0.40f
+        palette = IntArray(offsets.size) { index ->
+            // 封面是"大色块"，彩度必须比按钮低得多，否则整页都在喊
+            val saturation = (hsv[1] * saturationFactor).coerceIn(0.12f, 0.26f)
+            val value = (top - step * (index % 4)).coerceIn(0.30f, 0.93f)
+            val hue = ((hsv[0] + offsets[index]) + 360f) % 360f
+            Color.HSVToColor(floatArrayOf(hue, saturation, value))
+        }
+        cache.evictAll()
     }
 
     fun of(seed: String, sizePx: Int): Bitmap {
@@ -49,18 +81,19 @@ object CoverArt {
         val second = palette[(hash / palette.size + 3) % palette.size]
         val s = size.toFloat()
 
-        // 底色：从左上到右下，两色过渡
-        paint.shader = LinearGradient(
-            0f, 0f, s, s,
-            blend(first, second, 0.88f),
-            second,
-            Shader.TileMode.CLAMP,
-        )
+        // 底色：两色过渡。方向按哈希翻一次 —— 同一色族里靠"光从哪来"制造区分度，
+        // 比换色相高级，也不会把页面拆成好几个配色
+        val flip = (hash / 7) % 2 == 0
+        paint.shader = if (flip) {
+            LinearGradient(0f, 0f, s, s, blend(first, second, 0.88f), second, Shader.TileMode.CLAMP)
+        } else {
+            LinearGradient(s, 0f, 0f, s, blend(first, second, 0.88f), second, Shader.TileMode.CLAMP)
+        }
         canvas.drawRect(0f, 0f, s, s, paint)
 
-        // 左上高光
+        // 左上高光（方向跟着渐变一起翻，看起来才像同一束光）
         paint.shader = RadialGradient(
-            s * 0.22f, s * 0.16f, s * 0.85f,
+            if (flip) s * 0.22f else s * 0.78f, s * 0.16f, s * 0.85f,
             withAlpha(Color.WHITE, 0.24f),
             Color.TRANSPARENT,
             Shader.TileMode.CLAMP,

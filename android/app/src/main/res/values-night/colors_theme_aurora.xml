@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题「极光」aurora · 深色（tools/theme/gen_palette.py 生成，勿手改） -->
+<resources>
+    <color name="theme_aurora_canvas">#191B25</color>
+    <color name="theme_aurora_surface">#252731</color>
+    <color name="theme_aurora_surface_sunken">#14151D</color>
+    <color name="theme_aurora_surface_pressed">#373843</color>
+    <color name="theme_aurora_hero_placeholder">#33353F</color>
+    <color name="theme_aurora_ink">#EBECF5</color>
+    <color name="theme_aurora_ink_secondary">#A9AAB1</color>
+    <color name="theme_aurora_ink_tertiary">#919298</color>
+    <color name="theme_aurora_ink_inverse">#1B1C25</color>
+    <color name="theme_aurora_accent">#94A0FF</color>
+    <color name="theme_aurora_accent_on">#191B24</color>
+    <color name="theme_aurora_accent_soft">#2D3158</color>
+    <color name="theme_aurora_accent_deep">#AFBAFF</color>
+    <color name="theme_aurora_accent_cyan">#59C2D4</color>
+    <color name="theme_aurora_hairline">#21FFFFFF</color>
+    <color name="theme_aurora_hairline_dark">#2EFFFFFF</color>
+    <color name="theme_aurora_scrim">#B8000000</color>
+    <color name="theme_aurora_nav_pill">#343641</color>
+    <color name="theme_aurora_dark_canvas">#0E1019</color>
+    <color name="theme_aurora_on_dark">#F9FAFD</color>
+    <color name="theme_aurora_on_dark_secondary">#B6B7BD</color>
+    <color name="theme_aurora_dark_pill">#29FFFFFF</color>
+    <color name="theme_aurora_like">#F26C83</color>
+    <color name="theme_aurora_progress_start">#9DA9FF</color>
+    <color name="theme_aurora_progress_mid">#8792FF</color>
+    <color name="theme_aurora_progress_end">#757EF0</color>
+    <color name="theme_aurora_tag_brand_bg">#30355E</color>
+    <color name="theme_aurora_tag_brand_text">#B3BDFF</color>
+    <color name="theme_aurora_tag_warm_bg">#4D351F</color>
+    <color name="theme_aurora_tag_warm_text">#EFAE75</color>
+    <color name="theme_aurora_tag_neutral_bg">#353742</color>
+    <color name="theme_aurora_success">#6FC087</color>
+    <color name="theme_aurora_warning">#ECAC5F</color>
+    <color name="theme_aurora_danger">#EB7770</color>
+    <color name="theme_aurora_blob_a">#7A81AF</color>
+    <color name="theme_aurora_blob_b">#9379A4</color>
+    <color name="theme_aurora_blob_c">#5F8AAC</color>
+    <color name="theme_aurora_blob_d">#4D9293</color>
+</resources>

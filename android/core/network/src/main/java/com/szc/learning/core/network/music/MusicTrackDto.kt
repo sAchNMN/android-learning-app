@@ -19,4 +19,5 @@ data class MusicTrackDto(
     @SerializedName("durationMs") val durationMs: Long = 0,
     @SerializedName("url") val url: String? = null,
     @SerializedName("cover") val cover: String? = null,
+    @SerializedName("lyrics") val lyrics: String? = null,
 )

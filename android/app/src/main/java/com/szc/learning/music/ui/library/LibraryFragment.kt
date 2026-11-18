@@ -2,178 +2,274 @@ package com.szc.learning.music.ui.library
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
+import com.szc.learning.core.common.music.formatDuration
+import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentLibraryBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.track.GroupAdapter
 import com.szc.learning.music.ui.track.TrackAdapter
 import com.szc.learning.music.ui.track.TrackGroup
+import com.szc.learning.music.ui.widget.ShimmerSkeletonView
+import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.main.MainActivity
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
- * 资料库：本地音频，三种视角（歌曲 / 专辑 / 艺人）。
+ * 本地音乐。
  *
- * 数据全部来自 MediaStore，不维护本地索引表；权限没给时整页只显示一个"允许"，
- * 不做半残的列表。
+ * 四个视图共用一份扫描结果：歌曲 / 歌手 / 专辑 / 文件夹。
+ * 歌手、专辑、文件夹都不再单独查询 MediaStore，而是在内存里 groupBy，
+ * 十几百首歌的规模这么干最省事，也不会出现"列表里有、点进去空的"。
  */
 class LibraryFragment : Fragment(R.layout.fragment_library) {
+
+    private enum class Mode { SONGS, ARTISTS, ALBUMS, FOLDERS }
+
+    private enum class Sort { TITLE, ARTIST, DURATION }
 
     private var _binding: FragmentLibraryBinding? = null
     private val binding get() = requireNotNull(_binding)
 
-    private val viewModel: MusicViewModel by lazy { ViewModelProvider(requireActivity())[MusicViewModel::class.java] }
+    private val viewModel: MusicViewModel by lazy {
+        ViewModelProvider(requireActivity())[MusicViewModel::class.java]
+    }
 
-    private val songAdapter = TrackAdapter { index -> viewModel.playLocal(index) }
+    private var mode = Mode.SONGS
+    private var sort = Sort.TITLE
+    private var query = ""
+
+    private val trackAdapter = TrackAdapter { index ->
+        val tracks = visibleTracks()
+        if (index in tracks.indices) viewModel.play(tracks, index)
+    }
+
     private val groupAdapter = GroupAdapter { group ->
         viewModel.play(group.tracks, 0)
     }
-
-    private var localTracks: List<MusicTrack> = emptyList()
-    private var mode = MODE_SONGS
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentLibraryBinding.bind(view)
 
-        binding.songList.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = songAdapter
-            setHasFixedSize(true)
-        }
+        binding.localList.layoutManager = LinearLayoutManager(requireContext())
+        binding.localList.adapter = trackAdapter
+        binding.localList.itemAnimator = null
 
-        binding.segment.setItems(
+        binding.localTabs.setItems(
             listOf(
-                getString(R.string.library_songs),
-                getString(R.string.library_albums),
-                getString(R.string.library_artists),
+                getString(R.string.local_songs),
+                getString(R.string.local_artists),
+                getString(R.string.local_albums),
+                getString(R.string.local_folders),
             ),
         )
-        binding.segment.onSelected = { index ->
-            mode = index
+        binding.localSkeleton.style = ShimmerSkeletonView.Style.LIBRARY
+        installInsets()
+        binding.localTabs.onSelected = { index ->
+            mode = Mode.entries[index]
             render()
         }
 
-        binding.grantButton.setOnClickListener {
+        binding.localSearch.doAfterTextChanged {
+            query = it?.toString().orEmpty().trim()
+            render()
+        }
+        binding.localRescan.setOnClickListener { rescan() }
+        binding.localPlayAll.setOnClickListener {
+            val tracks = visibleTracks()
+            if (tracks.isNotEmpty()) viewModel.play(tracks, 0)
+        }
+        binding.localSort.setOnClickListener { showSortDialog() }
+        binding.localGrant.setOnClickListener {
             (activity as? MainActivity)?.requestAudioPermission()
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.local.collect { list ->
-                    localTracks = list
-                    render()
-                }
+                combine(viewModel.local, viewModel.localLoading) { _, _ -> Unit }
+                    .collect { render() }
             }
         }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.localLoading.collect { loading ->
-                    if (loading) binding.storageLine.setText(R.string.library_scanning)
-                }
-            }
+        render()
+    }
+
+    /**
+     * 顶部固定栏避开状态栏；底部列表内容可以滚到手势条下面，
+     * 但最后一行会停在 dock 上方。
+     */
+    private fun installInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(top = bars.top)
+            binding.localList.updatePadding(
+                bottom = view.context.dp(156f).toInt() + bars.bottom,
+            )
+            binding.localSkeleton.updatePadding(
+                top = view.context.dp(4f).toInt(),
+                bottom = view.context.dp(156f).toInt() + bars.bottom,
+            )
+            insets
         }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun render() {
         val granted = (activity as? MainActivity)?.audioPermissionGranted() ?: true
-        binding.permissionPanel.visibility = if (granted) View.GONE else View.VISIBLE
-        binding.storageLine.visibility = if (granted) View.VISIBLE else View.INVISIBLE
+        val all = viewModel.local.value
+        val visible = visibleTracks()
+        val loading = granted && all.isEmpty() && query.isEmpty() &&
+            viewModel.localLoading.value
 
-        if (!granted) {
-            binding.songList.visibility = View.GONE
-            binding.libraryEmpty.visibility = View.GONE
+        binding.localSkeleton.visibility = if (loading) View.VISIBLE else View.GONE
+        if (loading) {
+            binding.localEmpty.visibility = View.GONE
+            binding.localList.visibility = View.INVISIBLE
+            binding.localSummary.text = ""
             return
         }
 
-        binding.songList.visibility = View.VISIBLE
-        binding.storageLine.text = summary(localTracks)
+        val totalMs = visible.sumOf { it.durationMs }
+        binding.localSummary.text = getString(
+            R.string.local_summary,
+            visible.size,
+            formatDuration(totalMs),
+        )
 
-        val empty = localTracks.isEmpty()
-        binding.libraryEmpty.visibility = if (empty) View.VISIBLE else View.GONE
-        binding.libraryEmpty.setText(R.string.library_empty)
-
-        when (mode) {
-            MODE_ALBUMS -> bindGroups(groupByAlbum())
-            MODE_ARTISTS -> bindGroups(groupByArtist())
-            else -> bindSongs()
+        val empty = !granted || visible.isEmpty()
+        binding.localEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+        binding.localList.visibility = if (empty) View.INVISIBLE else View.VISIBLE
+        if (empty) {
+            binding.localGrant.visibility = if (granted) View.GONE else View.VISIBLE
+            if (!granted) {
+                binding.localEmptyTitle.setText(R.string.local_permission)
+                binding.localEmptyHint.setText(R.string.local_permission_hint)
+            } else if (query.isNotEmpty()) {
+                binding.localEmptyTitle.setText(R.string.local_search_empty)
+                binding.localEmptyHint.setText(R.string.search_tip)
+            } else {
+                binding.localEmptyTitle.setText(R.string.local_empty)
+                binding.localEmptyHint.setText(R.string.local_empty_hint)
+            }
         }
-    }
 
-    private fun bindSongs() {
-        val list = binding.songList
-        if (list.adapter !== songAdapter) list.adapter = songAdapter
-        songAdapter.submitList(localTracks)
-        list.scrollToPosition(0)
-    }
-
-    private fun bindGroups(groups: List<TrackGroup>) {
-        val list = binding.songList
-        if (list.adapter !== groupAdapter) list.adapter = groupAdapter
-        groupAdapter.submitList(groups)
-        list.scrollToPosition(0)
-    }
-
-    private fun groupByAlbum(): List<TrackGroup> = localTracks
-        .groupBy { it.album.ifBlank { getString(R.string.player_unknown_album) } }
-        .map { (album, tracks) ->
-            TrackGroup(
-                key = "album:$album",
-                title = album,
-                subtitle = tracks.first().artist.ifBlank {
-                    getString(R.string.player_unknown_artist)
-                },
-                tracks = tracks,
-            )
-        }
-        .sortedBy { it.title.lowercase() }
-
-    private fun groupByArtist(): List<TrackGroup> = localTracks
-        .groupBy { it.artist.ifBlank { getString(R.string.player_unknown_artist) } }
-        .map { (artist, tracks) ->
-            TrackGroup(
-                key = "artist:$artist",
-                title = artist,
-                subtitle = tracks.map { it.album }.distinct().joinToString(" · ").take(40),
-                tracks = tracks,
-            )
-        }
-        .sortedBy { it.title.lowercase() }
-
-    /** "128 首 · 8 小时 12 分"，数字在前，单位在后，读起来最短。 */
-    private fun summary(tracks: List<MusicTrack>): String {
-        val totalMs = tracks.sumOf { it.durationMs }
-        val hours = totalMs / 3_600_000
-        val minutes = (totalMs % 3_600_000) / 60_000
-        val duration = if (hours > 0) {
-            getString(R.string.duration_hm, hours, minutes)
+        if (mode == Mode.SONGS) {
+            if (binding.localList.adapter !== trackAdapter) {
+                binding.localList.adapter = trackAdapter
+            }
+            trackAdapter.submitList(visible)
         } else {
-            getString(R.string.duration_m, minutes.coerceAtLeast(1))
+            if (binding.localList.adapter !== groupAdapter) {
+                binding.localList.adapter = groupAdapter
+            }
+            groupAdapter.submitList(buildGroups(visible))
         }
-        return getString(R.string.library_summary, tracks.size, duration)
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 从系统设置里授权返回时不会走 onViewCreated，这里补一次状态刷新
-        if (_binding != null) render()
+    private fun buildGroups(tracks: List<MusicTrack>): List<TrackGroup> {
+        val unknown = getString(R.string.player_unknown_artist)
+        return when (mode) {
+            Mode.ARTISTS -> tracks
+                .groupBy { it.artist.ifBlank { unknown } }
+                .map { (name, list) ->
+                    TrackGroup(
+                        "artist:$name",
+                        name,
+                        list.sortedBy { it.title }
+                            .take(3)
+                            .joinToString(" / ") { it.title },
+                        list.sortedBy { it.title },
+                    )
+                }
+                .sortedBy { it.title }
+
+            Mode.ALBUMS -> tracks
+                .groupBy { it.album.ifBlank { getString(R.string.player_unknown_album) } }
+                .map { (album, list) ->
+                    TrackGroup(
+                        "album:$album",
+                        album,
+                        list.first().artist.ifBlank { unknown },
+                        list,
+                    )
+                }
+                .sortedBy { it.title }
+
+            Mode.FOLDERS -> tracks
+                .groupBy { it.folder.ifBlank { getString(R.string.local_unknown_folder) } }
+                .map { (folder, list) ->
+                    // 路径当标题太长，标题只留最后一级，完整路径放副标题
+                    val name = folder.trimEnd('/').substringAfterLast('/').ifBlank { folder }
+                    TrackGroup(
+                        "folder:$folder",
+                        name,
+                        folder,
+                        list.sortedBy { it.title },
+                    )
+                }
+                .sortedBy { it.title }
+
+            Mode.SONGS -> emptyList()
+        }
+    }
+
+    private fun visibleTracks(): List<MusicTrack> {
+        val keyword = query
+        val filtered = viewModel.local.value.filter { track ->
+            keyword.isEmpty() ||
+                track.title.contains(keyword, ignoreCase = true) ||
+                track.artist.contains(keyword, ignoreCase = true) ||
+                track.album.contains(keyword, ignoreCase = true) ||
+                track.folder.contains(keyword, ignoreCase = true)
+        }
+        return when (sort) {
+            Sort.TITLE -> filtered.sortedBy { it.title }
+            Sort.ARTIST -> filtered.sortedWith(compareBy({ it.artist }, { it.title }))
+            Sort.DURATION -> filtered.sortedByDescending { it.durationMs }
+        }
+    }
+
+    private fun showSortDialog() {
+        val labels = arrayOf(
+            getString(R.string.local_sort_default),
+            getString(R.string.local_sort_artist),
+            getString(R.string.local_sort_duration),
+        )
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.local_sort)
+            .setSingleChoiceItems(labels, sort.ordinal) { dialog, which ->
+                sort = Sort.entries[which]
+                dialog.dismiss()
+                render()
+            }
+            .show()
+    }
+
+    private fun rescan() {
+        val activity = activity as? MainActivity ?: return
+        if (!activity.audioPermissionGranted()) {
+            activity.requestAudioPermission()
+            return
+        }
+        viewModel.refreshLocal()
+        requireContext().toast(R.string.local_rescanned)
     }
 
     override fun onDestroyView() {
         _binding = null
         super.onDestroyView()
-    }
-
-    private companion object {
-        const val MODE_SONGS = 0
-        const val MODE_ALBUMS = 1
-        const val MODE_ARTISTS = 2
     }
 }

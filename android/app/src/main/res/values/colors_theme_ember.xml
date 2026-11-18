@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题「余烬」ember · 浅色（tools/theme/gen_palette.py 生成，勿手改） -->
+<resources>
+    <color name="theme_ember_canvas">#F8F3EF</color>
+    <color name="theme_ember_surface">#FFFEFE</color>
+    <color name="theme_ember_surface_sunken">#F4ECE7</color>
+    <color name="theme_ember_surface_pressed">#E9E0DB</color>
+    <color name="theme_ember_hero_placeholder">#ECE2DD</color>
+    <color name="theme_ember_ink">#211711</color>
+    <color name="theme_ember_ink_secondary">#675D57</color>
+    <color name="theme_ember_ink_tertiary">#776E68</color>
+    <color name="theme_ember_ink_inverse">#FFFDFC</color>
+    <color name="theme_ember_accent">#AC532D</color>
+    <color name="theme_ember_accent_on">#FFFDFC</color>
+    <color name="theme_ember_accent_soft">#FFE8DF</color>
+    <color name="theme_ember_accent_deep">#84330B</color>
+    <color name="theme_ember_accent_cyan">#3AB0C2</color>
+    <color name="theme_ember_hairline">#E8DDD6</color>
+    <color name="theme_ember_hairline_dark">#1FFFFFFF</color>
+    <color name="theme_ember_scrim">#8C000000</color>
+    <color name="theme_ember_nav_pill">#E8DAD0</color>
+    <color name="theme_ember_dark_canvas">#180C05</color>
+    <color name="theme_ember_on_dark">#FDF9F7</color>
+    <color name="theme_ember_on_dark_secondary">#BCB4AF</color>
+    <color name="theme_ember_dark_pill">#33FFFFFF</color>
+    <color name="theme_ember_like">#D54563</color>
+    <color name="theme_ember_progress_start">#B15732</color>
+    <color name="theme_ember_progress_mid">#AC532E</color>
+    <color name="theme_ember_progress_end">#C96E4A</color>
+    <color name="theme_ember_tag_brand_bg">#FFE7DF</color>
+    <color name="theme_ember_tag_brand_text">#913E1A</color>
+    <color name="theme_ember_tag_warm_bg">#FFEEE1</color>
+    <color name="theme_ember_tag_warm_text">#944E12</color>
+    <color name="theme_ember_tag_neutral_bg">#F7ECE6</color>
+    <color name="theme_ember_success">#287B46</color>
+    <color name="theme_ember_warning">#A16500</color>
+    <color name="theme_ember_danger">#B74441</color>
+    <color name="theme_ember_blob_a">#DFA696</color>
+    <color name="theme_ember_blob_b">#D9AB88</color>
+    <color name="theme_ember_blob_c">#E0A4A3</color>
+    <color name="theme_ember_blob_d">#CCB281</color>
+</resources>

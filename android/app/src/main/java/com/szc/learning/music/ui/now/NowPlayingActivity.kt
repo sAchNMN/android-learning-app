@@ -1,123 +1,117 @@
 package com.szc.learning.music.ui.now
 
-import android.content.res.ColorStateList
-import android.graphics.Color
+import android.content.Intent
+import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
-import android.view.MotionEvent
 import android.view.View
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
-import coil.load
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szc.learning.R
+import com.szc.learning.ui.theme.themeColor
+import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.formatDuration
 import com.szc.learning.databinding.ActivityNowPlayingBinding
 import com.szc.learning.databinding.DialogQueueBinding
 import com.szc.learning.music.player.PlayerUiState
 import com.szc.learning.music.ui.MusicViewModel
-import com.szc.learning.music.ui.common.CoverArt
 import com.szc.learning.music.ui.common.bindArt
+import com.szc.learning.music.ui.motion.installSpringPress
+import com.szc.learning.music.ui.motion.springHaptic
+import com.szc.learning.music.ui.motion.springPop
 import com.szc.learning.music.ui.track.TrackAdapter
+import com.szc.learning.music.ui.widget.dp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /**
  * 正在播放。
  *
- * 三个不显眼但决定质感的东西：
- * 1. 背景是**同一张封面放大 4 倍再高斯模糊**，再压一层黑 —— 所以整页颜色随歌曲走
- * 2. 主键是页面上唯一实心白的元素，视线自然落在它上面
- * 3. 向下拖拽可以收起，拖到 15% 高度松手就退出，和 iOS 一致
+ * 深色是刻意的：从播放器页滑进来、或从浅色首页点开，都进入同一个"看演出"的状态。
+ * 背景不是纯黑，而是当前封面的模糊放大 + 一层深色渐变，
+ * 换歌的时候整页色调会跟着封面慢慢换。
  */
 class NowPlayingActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityNowPlayingBinding
     private val viewModel: MusicViewModel by viewModels()
 
-    private var durationMs = 0L
-    private var lastTrackKey: String? = null
-    private var downY = 0f
-    private var downX = 0f
+    private var boundKey: String? = null
+    private var currentTrack: MusicTrack? = null
+    private var lyricJob: Job? = null
+    private var lyricText: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // 主题要在 super 之前套上：晚一步，窗口会先按清单里的默认主题创建
+        ThemeManager.applyPalette(this)
         super.onCreate(savedInstanceState)
+        // 放在 super 之后：AppCompat 这时才把亮暗写进 resources，
+        // enableEdgeToEdge 读到的才是最终模式，状态栏图标不会反色
+        enableEdgeToEdge()
         binding = ActivityNowPlayingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        applyWindowInsets()
-        sizeCover()
-        setupControls()
-        setupDragToDismiss()
-        observe()
-    }
+        // 导航栏保持透明：不要系统给手势条下面加那层白色蒙版
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.isNavigationBarContrastEnforced = false
+        }
 
-    private fun applyWindowInsets() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+        ViewCompat.setOnApplyWindowInsetsListener(binding.nowRoot) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val base = (8 * resources.displayMetrics.density).toInt()
-            // 顶栏只让出状态栏，底栏让出导航栏；中间的舞台不参与，保持居中
-            binding.topBar.updatePadding(top = bars.top)
-            binding.volumeRow.updatePadding(bottom = bars.bottom + base)
+            view.updatePadding(bottom = bars.bottom)
+            binding.nowTopBar.updatePadding(top = bars.top + view.context.dp(8f).toInt())
             insets
         }
-    }
-
-    /**
-     * 封面按屏宽定尺寸，保证正方形且左右留白一致。
-     * 写死 dp 会在小屏上超出、大屏上缩成一小块，所以按可用宽度算，再封顶 340dp。
-     */
-    private fun sizeCover() {
-        val density = resources.displayMetrics.density
-        val available = resources.displayMetrics.widthPixels - (48 * density).toInt()
-        val size = minOf(available, (340 * density).toInt())
-        binding.nowCover.layoutParams = binding.nowCover.layoutParams.apply {
-            width = size
-            height = size
-        }
-    }
-
-    private fun setupControls() {
-        binding.btnCollapse.setOnClickListener { closeWithTransition() }
-
-        binding.btnPlay.setOnClickListener { viewModel.toggle() }
-        binding.btnNext.setOnClickListener { viewModel.next() }
-        binding.btnPrev.setOnClickListener { viewModel.previous() }
-        binding.btnShuffle.setOnClickListener { viewModel.toggleShuffle() }
-        binding.btnRepeat.setOnClickListener { viewModel.cycleRepeat() }
-        binding.btnQueue.setOnClickListener { showQueue() }
 
         binding.nowSeek.showKnob = true
         binding.nowSeek.onDark = true
-        binding.nowSeek.onSeek = { fraction ->
-            binding.timePosition.text = formatDuration((durationMs * fraction).toLong())
-        }
         binding.nowSeek.onSeekFinished = { fraction -> viewModel.seekToFraction(fraction) }
 
-        binding.volumeLine.showKnob = true
-        binding.volumeLine.onDark = true
-        binding.volumeLine.progress = INITIAL_VOLUME
-        binding.volumeLine.onSeek = { fraction ->
-            binding.volumeLine.progress = fraction
-            viewModel.setVolume(fraction)
+        binding.nowCollapse.setOnClickListener { finish() }
+        binding.nowPlay.setOnClickListener { viewModel.toggle() }
+        binding.nowNext.setOnClickListener { viewModel.next() }
+        binding.nowPrev.setOnClickListener { viewModel.previous() }
+        binding.nowShuffle.setOnClickListener { viewModel.toggleShuffle() }
+        binding.nowRepeat.setOnClickListener { viewModel.cycleRepeat() }
+        binding.nowQueue.setOnClickListener { showQueue() }
+        binding.nowShare.setOnClickListener { currentTrack?.let { share(it) } }
+        binding.nowMore.setOnClickListener { currentTrack?.let { showMore(it) } }
+        binding.nowFavorite.setOnClickListener { currentTrack?.let { toggleFavorite(it) } }
+        binding.nowLyric.setOnClickListener {
+            lyricText?.takeIf { it.isNotBlank() }?.let { showLyrics(it) }
         }
-        viewModel.setVolume(INITIAL_VOLUME)
-    }
+        listOf(
+            binding.nowCollapse,
+            binding.nowQueue,
+            binding.nowPlay,
+            binding.nowNext,
+            binding.nowPrev,
+            binding.nowShuffle,
+            binding.nowRepeat,
+            binding.nowShare,
+            binding.nowMore,
+            binding.nowFavorite,
+        ).forEach { it.installSpringPress(0.86f) }
 
-    private fun observe() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.playerState.collect { state -> render(state) }
@@ -125,128 +119,168 @@ class NowPlayingActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 在线曲目没有内嵌歌词，走 `/app/music/lyric`；本地/云端仍由仓库解析。
+     * 只取一行做预览，点一下看全文。
+     */
+    private fun loadLyric(track: MusicTrack) {
+        lyricJob?.cancel()
+        lyricText = null
+        binding.nowLyric.text = getString(R.string.player_lyrics_loading)
+        lyricJob = lifecycleScope.launch {
+            val text = viewModel.lyrics(track)
+            // 加载期间已经切歌：这次结果作废，不能盖掉新歌的歌词
+            if (currentTrack?.key != track.key) return@launch
+            lyricText = text
+            binding.nowLyric.text =
+                text?.let { firstLyricLine(it) } ?: getString(R.string.player_lyric_placeholder)
+        }
+    }
+
+    /** 去掉 `[00:12.34]` 时间码，取第一句真正有内容的歌词（跳过作词/作曲这类署名行）。 */
+    private fun firstLyricLine(text: String): String? = text.lineSequence()
+        .map { it.replace(Regex("^\\[[^\\]]*\\]"), "").trim() }
+        .firstOrNull { line ->
+            line.isNotEmpty() && LYRIC_META.none { line.startsWith(it) }
+        }
+
+    private fun showLyrics(text: String) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.player_lyrics_title)
+            .setMessage(text)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
     private fun render(state: PlayerUiState) {
         val track = state.track
         if (track == null) {
-            // 队列被清空（比如后台服务被系统杀掉），这一页就没有意义了
-            finish()
+            // 在线曲目是先 startActivity 再等 MediaController 回传当前曲目：
+            // 队列已经建好但状态还没到的那一帧不能直接关页，否则用户点完歌只看到一闪
+            if (state.queueSize == 0) {
+                finish()
+            }
             return
         }
+        val changed = currentTrack?.key != track.key
+        currentTrack = track
+        if (changed) loadLyric(track)
 
-        if (lastTrackKey != track.key) {
-            lastTrackKey = track.key
-            binding.nowTitle.text = track.title
-            binding.nowArtist.text = track.artist.ifBlank {
-                getString(R.string.player_unknown_artist)
-            }
-            binding.nowCover.bindArt(track, sizePx = 800)
-            renderBackdrop(track)
+        binding.nowTitle.text = track.title
+        binding.nowArtist.text = track.artist.ifBlank {
+            getString(R.string.player_unknown_artist)
         }
-
-        durationMs = state.durationMs
-        binding.timePosition.text = formatDuration(state.positionMs)
-        binding.timeDuration.text = formatDuration(state.durationMs)
+        binding.nowPosition.text = formatDuration(state.positionMs)
+        binding.nowDuration.text = formatDuration(state.durationMs)
         binding.nowSeek.progress = state.progress
 
-        binding.btnPlay.setImageResource(
-            if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
-        )
-        binding.btnPlay.contentDescription =
+        binding.nowPlay.setImageResource(if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+        binding.nowPlay.contentDescription =
             getString(if (state.isPlaying) R.string.player_pause else R.string.player_play)
 
-        val active = Color.WHITE
-        val idle = Color.argb(120, 255, 255, 255)
-        binding.btnShuffle.imageTintList =
-            ColorStateList.valueOf(if (state.shuffle) active else idle)
-        binding.btnRepeat.imageTintList =
-            ColorStateList.valueOf(if (state.repeatMode == 0) idle else active)
+        val accent = themeColor(R.attr.auAccent)
+        val idle = themeColor(R.attr.auOnDarkSecondary)
+        binding.nowShuffle.imageTintList =
+            android.content.res.ColorStateList.valueOf(if (state.shuffle) accent else idle)
+        binding.nowRepeat.imageTintList = android.content.res.ColorStateList.valueOf(
+            if (state.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF) accent else idle,
+        )
+
+        if (boundKey != track.key) {
+            boundKey = track.key
+            binding.nowCover.bindArt(track, sizePx = 900)
+            binding.nowBackdrop.bindArt(track, sizePx = 1400)
+            applyBackdropBlur()
+            renderFavorite(track)
+        }
     }
 
-    /**
-     * 背景：封面原图铺满 + 高斯模糊 + 压暗。
-     * 31 以下没有 RenderEffect，退化成本身就不清晰的放大图，视觉上也能接受。
-     */
-    private fun renderBackdrop(track: MusicTrack) {
-        val fallback = BitmapDrawable(resources, CoverArt.of(track.key, 320))
-        val art = track.artUri
-        if (art.isNullOrBlank()) {
-            binding.backdrop.setImageDrawable(fallback)
-        } else {
-            binding.backdrop.load(art) {
-                placeholder(fallback)
-                error(fallback)
-                fallback(fallback)
-                crossfade(220)
+    private fun applyBackdropBlur() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        binding.nowBackdrop.setRenderEffect(
+            RenderEffect.createBlurEffect(48f, 48f, Shader.TileMode.CLAMP),
+        )
+        binding.nowBackdrop.scaleX = 1.12f
+        binding.nowBackdrop.scaleY = 1.12f
+    }
+
+    private fun renderFavorite(track: MusicTrack) {
+        val favorite = viewModel.isFavorite(track.key)
+        binding.nowFavorite.setImageResource(
+            if (favorite) R.drawable.ic_heart_filled else R.drawable.ic_heart,
+        )
+        binding.nowFavorite.imageTintList = android.content.res.ColorStateList.valueOf(
+            themeColor(if (favorite) R.attr.auLike else R.attr.auOnDark),
+        )
+    }
+
+    private fun toggleFavorite(track: MusicTrack) {
+        val favorite = viewModel.toggleFavorite(track)
+        renderFavorite(track)
+        // 收藏是"心跳"：先缩一下，再用一次明显过冲弹回来
+        binding.nowFavorite.springPop(
+            startScale = if (favorite) 0.66f else 0.82f,
+            durationSeconds = if (favorite) 0.62f else 0.46f,
+            bounce = if (favorite) 0.52f else 0.3f,
+        )
+        binding.nowFavorite.springHaptic()
+        toast(if (favorite) R.string.player_added_favorite else R.string.player_removed_favorite)
+    }
+
+    private fun share(track: MusicTrack) {
+        val text = getString(
+            R.string.player_share_text,
+            track.title,
+            track.artist.ifBlank { getString(R.string.player_unknown_artist) },
+        )
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        startActivity(Intent.createChooser(send, getString(R.string.player_share)))
+    }
+
+    private fun showMore(track: MusicTrack) {
+        val favorite = viewModel.isFavorite(track.key)
+        val actions = arrayOf(
+            getString(if (favorite) R.string.player_unlike else R.string.player_like),
+            getString(R.string.player_queue),
+            getString(R.string.player_share),
+        )
+        MaterialAlertDialogBuilder(this)
+            .setItems(actions) { _, which ->
+                when (which) {
+                    0 -> toggleFavorite(track)
+                    1 -> showQueue()
+                    else -> share(track)
+                }
             }
-        }
-        binding.backdrop.alpha = BACKDROP_ALPHA
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            binding.backdrop.setRenderEffect(
-                android.graphics.RenderEffect.createBlurEffect(
-                    60f, 60f, Shader.TileMode.CLAMP,
-                ),
-            )
-        }
+            .show()
     }
 
     private fun showQueue() {
         val dialog = BottomSheetDialog(this)
         val sheet = DialogQueueBinding.inflate(layoutInflater)
-        val queue = viewModel.queue.value
+        dialog.setContentView(sheet.root)
 
-        val adapter = TrackAdapter { index -> viewModel.playAt(index) }
+        val queue = viewModel.queue.value
+        sheet.queueCount.text = getString(R.string.queue_count, queue.size)
+        val adapter = TrackAdapter(activeKey = viewModel.playerState.value.track?.key) { index ->
+            viewModel.playAt(index)
+            dialog.dismiss()
+        }
         sheet.queueList.layoutManager = LinearLayoutManager(this)
         sheet.queueList.adapter = adapter
         adapter.submitList(queue)
 
-        dialog.setContentView(sheet.root)
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         dialog.show()
     }
 
-    /** 向下拖：跟手位移 + 透明度衰减，松手时按位移决定关闭还是回弹。 */
-    private fun setupDragToDismiss() {
-        binding.nowRoot.setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downY = event.rawY
-                    downX = event.rawX
-                    false
-                }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val dy = event.rawY - downY
-                    val dx = abs(event.rawX - downX)
-                    if (dy > 0f && dx < dy) {
-                        view.translationY = dy
-                        view.alpha = (1f - dy / (view.height * 0.75f)).coerceIn(0.35f, 1f)
-                        true
-                    } else {
-                        false
-                    }
-                }
-
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (view.translationY > view.height * DISMISS_FRACTION) {
-                        closeWithTransition()
-                    } else {
-                        view.animate().translationY(0f).alpha(1f).setDuration(180).start()
-                    }
-                    false
-                }
-
-                else -> false
-            }
-        }
-    }
-
-    private fun closeWithTransition() {
-        finish()
+    private fun toast(resId: Int) {
+        Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
     }
 
     private companion object {
-        const val BACKDROP_ALPHA = 0.92f
-        const val INITIAL_VOLUME = 0.8f
-        const val DISMISS_FRACTION = 0.15f
+        val LYRIC_META = listOf("作词", "作曲", "编曲", "制作人", "混音", "母带", "录音", "出品", "监制")
     }
 }

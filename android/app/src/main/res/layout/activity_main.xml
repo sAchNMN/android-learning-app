@@ -1,30 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   主界面骨架。
-  三层就够：极光底 → 页面容器 → 底部悬浮层（迷你播放器 + tab 栏）。
-  悬浮层不占内容高度，内容区域的底部内边距由各页面自己留（见各 fragment 的 paddingBottom），
-  这样滚动到末尾时内容不会被 tab 栏挡住。
+  页面层铺满整屏（含状态栏和手势条区域），由各页面自己用 insets 给标题让位；
+  顶部一层很淡的渐隐保证状态栏图标可读，底部 dock 自己避开导航指示线。
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
-    <com.szc.learning.music.ui.widget.AuroraBackground
-        android:id="@+id/aurora"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    android:layout_height="match_parent"
+    android:background="?attr/auCanvas">
 
     <FrameLayout
         android:id="@+id/tabContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 内容滚到底部时的渐隐层，压在玻璃栏下面 -->
-    <View
+    <com.szc.learning.music.ui.widget.TopEdgeFadeView
+        android:id="@+id/topFade"
         android:layout_width="match_parent"
-        android:layout_height="176dp"
-        android:layout_gravity="bottom"
-        android:background="@drawable/bg_dock_scrim" />
+        android:layout_height="112dp"
+        android:layout_gravity="top" />
 
     <LinearLayout
         android:id="@+id/dock"
@@ -32,21 +27,20 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:paddingStart="14dp"
-        android:paddingTop="0dp"
-        android:paddingEnd="14dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:paddingBottom="10dp">
 
         <com.szc.learning.music.ui.widget.MiniPlayerView
             android:id="@+id/miniPlayer"
             android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:layout_marginBottom="10dp"
+            android:layout_height="60dp"
+            android:layout_marginBottom="8dp"
             android:visibility="gone" />
 
-        <com.szc.learning.music.ui.widget.GlassTabBar
+        <com.szc.learning.music.ui.widget.BottomNavBar
             android:id="@+id/tabBar"
             android:layout_width="match_parent"
-            android:layout_height="62dp" />
+            android:layout_height="64dp" />
     </LinearLayout>
 </FrameLayout>

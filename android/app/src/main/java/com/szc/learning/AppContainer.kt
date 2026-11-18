@@ -5,7 +5,10 @@ import com.szc.learning.core.network.ApiClient
 import com.szc.learning.core.network.AuthRepository
 import com.szc.learning.core.network.SessionStore
 import com.szc.learning.core.network.music.MusicRepository
+import com.szc.learning.music.data.FavoritesStore
+import com.szc.learning.music.data.ListenStatsStore
 import com.szc.learning.music.data.LocalMusicRepository
+import com.szc.learning.music.data.LyricsRepository
 import com.szc.learning.music.data.RecentStore
 import com.szc.learning.music.player.PlayerController
 import kotlinx.coroutines.CoroutineScope
@@ -40,8 +43,17 @@ class AppContainer(context: Context) {
     /** 本地曲库：运行时读 MediaStore，不落库。 */
     val localMusicRepository: LocalMusicRepository = LocalMusicRepository(context)
 
+    /** 内嵌歌词：只在当前播放曲目需要时解析 ID3，解析结果按曲目缓存。 */
+    val lyricsRepository: LyricsRepository = LyricsRepository(context)
+
     /** 最近播放：数据量极小，SharedPreferences 足够，不必上 DataStore。 */
     val recentStore: RecentStore = RecentStore(context)
+
+    /** 收藏：同样只存曲目稳定键。 */
+    val favoritesStore: FavoritesStore = FavoritesStore(context)
+
+    /** 听歌时长：累计真实播放秒数，用于"我的"页的小统计。 */
+    val listenStatsStore: ListenStatsStore = ListenStatsStore(context)
 
     /** 全局唯一播放器。 */
     val playerController: PlayerController = PlayerController(context, appScope)

@@ -116,7 +116,8 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.recyclerview)
-    implementation(libs.androidx.swiperefreshlayout)
+    // 首页轮播 + MV 竖向翻页都靠它（竖滑 ViewPager2 就是抖音那套交互）
+    implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.kotlinx.coroutines.android)

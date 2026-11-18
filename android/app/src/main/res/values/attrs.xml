@@ -1,24 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-      GlassView 的可调参数。默认值就是"标准玻璃"：
-      顶部 62% 白、底部 26% 白、边缘提亮 85%，这组数值在浅色画布上最像折射。
+      主题调色板属性。组件、布局、drawable 只准引用 ?attr/au*，
+      不准直接引用 @color/theme_* —— 这是"换主题不用改 UI"的前提。
     -->
-    <declare-styleable name="GlassView">
-        <attr name="glassCorner" format="dimension" />
-        <attr name="glassTint" format="color" />
-        <attr name="glassTopAlpha" format="float" />
-        <attr name="glassBottomAlpha" format="float" />
-        <attr name="glassRimAlpha" format="float" />
-        <attr name="glassRimWidth" format="dimension" />
-        <attr name="glassSheenAlpha" format="float" />
-        <attr name="glassBlobAlpha" format="float" />
-        <attr name="glassDepth" format="float" />
-        <attr name="glassDark" format="boolean" />
-        <attr name="glassElevation" format="dimension" />
-    </declare-styleable>
+    <attr name="auCanvas" format="color" />
+    <attr name="auSurface" format="color" />
+    <attr name="auSurfaceSunken" format="color" />
+    <attr name="auSurfacePressed" format="color" />
+    <attr name="auHeroPlaceholder" format="color" />
+    <attr name="auInk" format="color" />
+    <attr name="auInkSecondary" format="color" />
+    <attr name="auInkTertiary" format="color" />
+    <attr name="auInkInverse" format="color" />
+    <attr name="auAccent" format="color" />
+    <attr name="auAccentOn" format="color" />
+    <attr name="auAccentSoft" format="color" />
+    <attr name="auAccentDeep" format="color" />
+    <attr name="auAccentCyan" format="color" />
+    <attr name="auHairline" format="color" />
+    <attr name="auHairlineDark" format="color" />
+    <attr name="auScrim" format="color" />
+    <attr name="auNavPill" format="color" />
+    <attr name="auDarkCanvas" format="color" />
+    <attr name="auOnDark" format="color" />
+    <attr name="auOnDarkSecondary" format="color" />
+    <attr name="auDarkPill" format="color" />
+    <attr name="auLike" format="color" />
+    <attr name="auProgressStart" format="color" />
+    <attr name="auProgressMid" format="color" />
+    <attr name="auProgressEnd" format="color" />
+    <attr name="auTagBrandBg" format="color" />
+    <attr name="auTagBrandText" format="color" />
+    <attr name="auTagWarmBg" format="color" />
+    <attr name="auTagWarmText" format="color" />
+    <attr name="auTagNeutralBg" format="color" />
+    <attr name="auSuccess" format="color" />
+    <attr name="auWarning" format="color" />
+    <attr name="auDanger" format="color" />
+    <attr name="auBlobA" format="color" />
+    <attr name="auBlobB" format="color" />
+    <attr name="auBlobC" format="color" />
+    <attr name="auBlobD" format="color" />
 
-    <declare-styleable name="AuroraBackground">
-        <attr name="auroraIntensity" format="float" />
-    </declare-styleable>
+    <!--
+      排版只有五档：Display / Title / Section / RowTitle / Body / Caption。
+      字号越大字距越紧，小字反而放松，否则挤成一团。
+    -->
 </resources>

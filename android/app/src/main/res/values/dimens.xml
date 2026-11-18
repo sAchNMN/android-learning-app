@@ -17,20 +17,25 @@
 
     <!-- 左右统一留白：所有页面同一根竖线，视觉才对得齐 -->
     <dimen name="gutter">20dp</dimen>
+    <dimen name="gutter_card">16dp</dimen>
 
-    <!-- 圆角阶梯：封面 20 / 卡片 24 / 大封面 28 / 胶囊 999 -->
-    <dimen name="radius_sm">12dp</dimen>
-    <dimen name="radius_md">18dp</dimen>
-    <dimen name="radius_lg">24dp</dimen>
-    <dimen name="radius_xl">30dp</dimen>
+    <!-- 圆角阶梯 -->
+    <dimen name="radius_sm">10dp</dimen>
+    <dimen name="radius_md">16dp</dimen>
+    <dimen name="radius_lg">20dp</dimen>
+    <dimen name="radius_xl">26dp</dimen>
     <dimen name="radius_pill">999dp</dimen>
 
     <!-- 控件 -->
-    <dimen name="tab_bar_height">62dp</dimen>
-    <dimen name="mini_player_height">58dp</dimen>
-    <dimen name="row_height">64dp</dimen>
-    <dimen name="cover_row">48dp</dimen>
+    <dimen name="nav_bar_height">64dp</dimen>
+    <dimen name="mini_player_height">60dp</dimen>
+    <dimen name="dock_inset">150dp</dimen>
+    <dimen name="row_height">62dp</dimen>
+    <dimen name="cover_row">46dp</dimen>
     <dimen name="icon">24dp</dimen>
     <dimen name="icon_sm">18dp</dimen>
-    <dimen name="play_button">64dp</dimen>
+    <dimen name="play_button">56dp</dimen>
+    <dimen name="search_height">44dp</dimen>
+    <dimen name="hero_height">176dp</dimen>
+    <dimen name="playlist_card_size">140dp</dimen>
 </resources>

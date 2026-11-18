@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <!-- 品牌色渐变：取同一色相的两级明度，换主题时整块跟着换 -->
+    <gradient
+        android:angle="0"
+        android:endColor="?attr/auProgressEnd"
+        android:startColor="?attr/auProgressStart" />
+    <corners android:radius="20dp" />
+</shape>

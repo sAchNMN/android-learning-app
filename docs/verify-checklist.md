@@ -1,5 +1,8 @@
 # P2 后端上线自检清单
 
+> **历史文档。** 内容针对外卖时期的 takeout 表与接口，当前音乐版只需要
+> `05_music_schema.sql` 与 `/app/music/tracks`，结构见 [`music-architecture.md`](music-architecture.md)。
+
 分 6 步，每步都有「怎么验」和「失败了看什么」。按顺序做，不要跳。
 
 ## 当前验证状态（截至 2026-11-17）

@@ -1,32 +1,33 @@
 package com.szc.learning.music.ui.widget
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.content.ContextCompat
 import com.google.android.material.imageview.ShapeableImageView
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.music.ui.common.bindArt
+import com.szc.learning.music.ui.glass.GlassSurfaceView
+import com.szc.learning.music.ui.motion.installSpringJelly
+import com.szc.learning.music.ui.motion.springEnter
 
 /**
  * 悬浮迷你播放器。
  *
- * 它是"播放状态"和"当前页面"之间唯一的常驻纽扣：
- * 无论切到哪个 tab 都在，点一下展开成全屏播放页。
+ * 它是"播放状态"和"当前页面"之间唯一的常驻纽扣：无论切到哪个 tab 都在，
+ * 点一下展开成全屏播放页。
  *
- * 自带布局（不是被 include 进来的），这样 activity_main.xml 里只有一行，
- * 内部结构和逻辑也就不用散落在 Activity 里。
+ * 材质与底部导航同源（[GlassSurfaceView]）：半透明玻璃让身后滚动的列表透出来，
+ * 等于把这一条 60dp 的"遮挡带"还给了内容；文字靠磨砂底色 + 描边保持可读。
+ * 按下去时镜面光斑跟着手指走，松手淡出 —— 这是玻璃"液态"的来源。
  */
 class MiniPlayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
-) : GlassView(context, attrs) {
+) : GlassSurfaceView(context, attrs) {
 
     var onOpen: (() -> Unit)? = null
     var onPlayToggle: (() -> Unit)? = null
@@ -38,8 +39,13 @@ class MiniPlayerView @JvmOverloads constructor(
     private val playButton: ImageButton
     private val progressLine: SeekLine
     private var lastTrackKey: String? = null
+    private var shown = false
 
     init {
+        // 和底部导航的 26dp 形成一组圆角阶梯：小的更圆，大的更方
+        cornerRadiusDp = 20f
+        lensFollowTouch = true
+
         LayoutInflater.from(context).inflate(R.layout.view_mini_player, this, true)
         cover = findViewById(R.id.miniCover)
         title = findViewById(R.id.miniTitle)
@@ -47,37 +53,15 @@ class MiniPlayerView @JvmOverloads constructor(
         playButton = findViewById(R.id.miniPlay)
         progressLine = findViewById(R.id.miniProgress)
 
-        corner = context.dp(19f)
-        elevation = context.dp(12f)
-        // 迷你播放器下面永远压着封面和文字，必须近乎不透明，否则两行字叠在一起看不清
-        topAlpha = 0.94f
-        bottomAlpha = 0.80f
-        rimAlpha = 1f
-        sheenAlpha = 0.26f
-
-        // 进度线不接收触摸，整条 pill 都是"展开"的热区
+        // 进度线不接收触摸，整条卡片都是"展开"的热区
         progressLine.isClickable = false
         progressLine.isEnabled = false
 
         playButton.setOnClickListener { onPlayToggle?.invoke() }
         findViewById<View>(R.id.miniNext).setOnClickListener { onNext?.invoke() }
         setOnClickListener { onOpen?.invoke() }
-        attachPressFeedback()
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun attachPressFeedback() {
-        setOnTouchListener { view, event ->
-            when (event.actionMasked) {
-                android.view.MotionEvent.ACTION_DOWN ->
-                    view.animate().scaleX(0.975f).scaleY(0.975f).setDuration(110).start()
-
-                android.view.MotionEvent.ACTION_UP,
-                android.view.MotionEvent.ACTION_CANCEL ->
-                    view.animate().scaleX(1f).scaleY(1f).setDuration(160).start()
-            }
-            false
-        }
+        // 按下时纵向压得比横向多，松手过冲弹回 —— 果冻感来自非等比缩放
+        installSpringJelly(pressedScale = 0.96f, squash = 0.02f)
     }
 
     fun bind(
@@ -86,10 +70,26 @@ class MiniPlayerView @JvmOverloads constructor(
         progress: Float,
     ) {
         if (track == null) {
-            visibility = View.GONE
+            if (visibility != View.GONE) {
+                visibility = View.GONE
+                shown = false
+                alpha = 1f
+                translationY = 0f
+            }
             return
         }
-        visibility = View.VISIBLE
+        if (visibility != View.VISIBLE) {
+            visibility = View.VISIBLE
+            if (!shown) {
+                shown = true
+                springEnter(
+                    delayMs = 40L,
+                    distanceDp = 26f,
+                    durationSeconds = 0.52f,
+                    bounce = 0.3f,
+                )
+            }
+        }
 
         title.text = track.title
         artist.text = track.artist.ifBlank {

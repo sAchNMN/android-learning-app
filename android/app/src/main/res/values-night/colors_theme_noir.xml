@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题「墨色」noir · 深色（tools/theme/gen_palette.py 生成，勿手改） -->
+<resources>
+    <color name="theme_noir_canvas">#191C1F</color>
+    <color name="theme_noir_surface">#25282B</color>
+    <color name="theme_noir_surface_sunken">#131619</color>
+    <color name="theme_noir_surface_pressed">#363A3D</color>
+    <color name="theme_noir_hero_placeholder">#323639</color>
+    <color name="theme_noir_ink">#EAEDF0</color>
+    <color name="theme_noir_ink_secondary">#A9ABAD</color>
+    <color name="theme_noir_ink_tertiary">#909294</color>
+    <color name="theme_noir_ink_inverse">#1B1D20</color>
+    <color name="theme_noir_accent">#A1AAB4</color>
+    <color name="theme_noir_accent_on">#191C1F</color>
+    <color name="theme_noir_accent_soft">#323639</color>
+    <color name="theme_noir_accent_deep">#B9C0C7</color>
+    <color name="theme_noir_accent_cyan">#59C2D4</color>
+    <color name="theme_noir_hairline">#21FFFFFF</color>
+    <color name="theme_noir_hairline_dark">#2EFFFFFF</color>
+    <color name="theme_noir_scrim">#B8000000</color>
+    <color name="theme_noir_nav_pill">#34373A</color>
+    <color name="theme_noir_dark_canvas">#0E1114</color>
+    <color name="theme_noir_on_dark">#F9FAFB</color>
+    <color name="theme_noir_on_dark_secondary">#B6B7BA</color>
+    <color name="theme_noir_dark_pill">#29FFFFFF</color>
+    <color name="theme_noir_like">#F26C83</color>
+    <color name="theme_noir_progress_start">#AAB2BB</color>
+    <color name="theme_noir_progress_mid">#96A0AA</color>
+    <color name="theme_noir_progress_end">#838D98</color>
+    <color name="theme_noir_tag_brand_bg">#363A3E</color>
+    <color name="theme_noir_tag_brand_text">#BDC3CA</color>
+    <color name="theme_noir_tag_warm_bg">#4D351F</color>
+    <color name="theme_noir_tag_warm_text">#EFAE75</color>
+    <color name="theme_noir_tag_neutral_bg">#35383C</color>
+    <color name="theme_noir_success">#6FC087</color>
+    <color name="theme_noir_warning">#ECAC5F</color>
+    <color name="theme_noir_danger">#EB7770</color>
+    <color name="theme_noir_blob_a">#788695</color>
+    <color name="theme_noir_blob_b">#788695</color>
+    <color name="theme_noir_blob_c">#788695</color>
+    <color name="theme_noir_blob_d">#788695</color>
+</resources>

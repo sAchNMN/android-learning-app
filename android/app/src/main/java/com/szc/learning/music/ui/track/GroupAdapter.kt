@@ -1,10 +1,12 @@
 package com.szc.learning.music.ui.track
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.databinding.ItemTrackBinding
 import com.szc.learning.music.ui.common.bindArt
@@ -42,7 +44,16 @@ class GroupAdapter(
         fun bind(group: TrackGroup) {
             binding.trackTitle.text = group.title
             binding.trackArtist.text = group.subtitle
-            binding.trackDuration.text = group.tracks.size.toString()
+            binding.trackArtist.visibility =
+                if (group.subtitle.isBlank() || group.subtitle == group.title) {
+                    View.GONE
+                } else {
+                    View.VISIBLE
+                }
+            binding.trackDuration.text = binding.root.context.getString(
+                R.string.playlist_tracks,
+                group.tracks.size,
+            )
             group.coverTrack?.let { binding.trackCover.bindArt(it, sizePx = 160) }
             binding.root.setOnClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) onClick(group)

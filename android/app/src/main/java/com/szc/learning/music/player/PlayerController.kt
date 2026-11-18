@@ -181,6 +181,15 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             putString(KEY_ALBUM, album)
             putString(KEY_ART, artUri)
             putString(KEY_SOURCE, source.name)
+            putString(KEY_FOLDER, folder)
+            // 在线曲目从 MediaItem 还原时必须靠这些字段，不能从 mediaId 反推：
+            // ONLINE 的 key 是 "ONLINE:平台:id"，直接 substringAfter 会把平台名当成 id 的一部分
+            putString(KEY_TRACK_ID, id)
+            putString(KEY_SOURCE_KEY, sourceKey)
+            putString(KEY_HASH, hash)
+            putString(KEY_ALBUM_ID, albumId)
+            putString(KEY_ALBUM_AUDIO_ID, albumAudioId)
+            putBoolean(KEY_PLAYABLE, playable)
         }
         return MediaItem.Builder()
             .setMediaId(key)
@@ -206,7 +215,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             ?.let { runCatching { TrackSource.valueOf(it) }.getOrNull() }
             ?: TrackSource.LOCAL
         return MusicTrack(
-            id = mediaId.substringAfter(':', mediaId),
+            id = extras?.getString(KEY_TRACK_ID) ?: mediaId.substringAfter(':', mediaId),
             title = meta.title?.toString().orEmpty(),
             artist = meta.artist?.toString().orEmpty(),
             album = extras?.getString(KEY_ALBUM).orEmpty(),
@@ -214,6 +223,12 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             uri = localConfiguration?.uri?.toString().orEmpty(),
             artUri = extras?.getString(KEY_ART),
             source = source,
+            folder = extras?.getString(KEY_FOLDER).orEmpty(),
+            sourceKey = extras?.getString(KEY_SOURCE_KEY).orEmpty(),
+            hash = extras?.getString(KEY_HASH).orEmpty(),
+            albumId = extras?.getString(KEY_ALBUM_ID).orEmpty(),
+            albumAudioId = extras?.getString(KEY_ALBUM_AUDIO_ID).orEmpty(),
+            playable = extras?.getBoolean(KEY_PLAYABLE, true) ?: true,
         )
     }
 
@@ -222,6 +237,13 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         const val KEY_ALBUM = "aurora.album"
         const val KEY_ART = "aurora.art"
         const val KEY_SOURCE = "aurora.source"
+        const val KEY_FOLDER = "aurora.folder"
+        const val KEY_TRACK_ID = "aurora.trackId"
+        const val KEY_SOURCE_KEY = "aurora.sourceKey"
+        const val KEY_HASH = "aurora.hash"
+        const val KEY_ALBUM_ID = "aurora.albumId"
+        const val KEY_ALBUM_AUDIO_ID = "aurora.albumAudioId"
+        const val KEY_PLAYABLE = "aurora.playable"
 
         const val RESTART_THRESHOLD_MS = 3_000L
         const val POSITION_INTERVAL_PLAYING_MS = 350L

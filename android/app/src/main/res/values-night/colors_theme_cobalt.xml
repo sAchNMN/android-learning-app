@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题「深海」cobalt · 深色（tools/theme/gen_palette.py 生成，勿手改） -->
+<resources>
+    <color name="theme_cobalt_canvas">#151D23</color>
+    <color name="theme_cobalt_surface">#212930</color>
+    <color name="theme_cobalt_surface_sunken">#10161C</color>
+    <color name="theme_cobalt_surface_pressed">#323A42</color>
+    <color name="theme_cobalt_hero_placeholder">#2E363E</color>
+    <color name="theme_cobalt_ink">#E7EEF4</color>
+    <color name="theme_cobalt_ink_secondary">#A6ABB0</color>
+    <color name="theme_cobalt_ink_tertiary">#8E9397</color>
+    <color name="theme_cobalt_ink_inverse">#171E24</color>
+    <color name="theme_cobalt_accent">#71AAFF</color>
+    <color name="theme_cobalt_accent_on">#171C23</color>
+    <color name="theme_cobalt_accent_soft">#1B355C</color>
+    <color name="theme_cobalt_accent_deep">#98C1FF</color>
+    <color name="theme_cobalt_accent_cyan">#59C2D4</color>
+    <color name="theme_cobalt_hairline">#21FFFFFF</color>
+    <color name="theme_cobalt_hairline_dark">#2EFFFFFF</color>
+    <color name="theme_cobalt_scrim">#B8000000</color>
+    <color name="theme_cobalt_nav_pill">#2F383F</color>
+    <color name="theme_cobalt_dark_canvas">#0A1118</color>
+    <color name="theme_cobalt_on_dark">#F8FAFC</color>
+    <color name="theme_cobalt_on_dark_secondary">#B3B8BC</color>
+    <color name="theme_cobalt_dark_pill">#29FFFFFF</color>
+    <color name="theme_cobalt_like">#F26C83</color>
+    <color name="theme_cobalt_progress_start">#7FB3FF</color>
+    <color name="theme_cobalt_progress_mid">#5C9EFF</color>
+    <color name="theme_cobalt_progress_end">#3688FD</color>
+    <color name="theme_cobalt_tag_brand_bg">#1C3963</color>
+    <color name="theme_cobalt_tag_brand_text">#9DC5FF</color>
+    <color name="theme_cobalt_tag_warm_bg">#4D351F</color>
+    <color name="theme_cobalt_tag_warm_text">#EFAE75</color>
+    <color name="theme_cobalt_tag_neutral_bg">#313940</color>
+    <color name="theme_cobalt_success">#6FC087</color>
+    <color name="theme_cobalt_warning">#ECAC5F</color>
+    <color name="theme_cobalt_danger">#EB7770</color>
+    <color name="theme_cobalt_blob_a">#6A86AF</color>
+    <color name="theme_cobalt_blob_b">#528EA3</color>
+    <color name="theme_cobalt_blob_c">#807FAE</color>
+    <color name="theme_cobalt_blob_d">#4D9199</color>
+</resources>

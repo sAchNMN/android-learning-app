@@ -40,12 +40,33 @@
             </intent-filter>
         </activity>
 
-        <!-- 正在播放：从迷你播放器上滑进入，单实例，避免连点叠出好几层 -->
         <activity
             android:name=".music.ui.now.NowPlayingActivity"
             android:exported="false"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Aurora" />
+
+        <!-- 搜索：独立整屏，带键盘 -->
+        <activity
+            android:name=".music.ui.search.SearchActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- 收藏 / 最近播放 / 云端热歌的通用列表页 -->
+        <activity
+            android:name=".music.ui.track.TrackListActivity"
+            android:exported="false" />
+
+        <!-- 音源管理：平台开关、优先级、Cookie -->
+        <activity
+            android:name=".music.ui.source.SourceActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".music.ui.source.CookieLoginActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- MediaSessionService 负责后台播放与通知栏/锁屏控制 -->
         <service

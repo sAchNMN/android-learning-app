@@ -1,21 +1,22 @@
-# android-learning-app
+# android-learning-app · Aurora 音乐
 
-Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程骨架。
-仓库按「一个仓管全栈」组织，三端各占一个顶层目录。
+Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程，当前业务只有一个：
+**一个干净的音乐播放器**，没有短视频流，也没有视频素材依赖。
 
-> **当前业务：外卖点餐最小闭环。**
-> 看店 → 选菜 → 加购物车 → 下单 → 模拟支付 → 看订单。
-> 没有做商家端、骑手端、真实支付，也不追求还原美团的功能量。
+> 不做广告、不做会员/积分/签到、不做听书。
+> 首页、推荐、本地、我的都是围绕「听歌」这一件事，第二个 tab 是整屏播放器，
+> 上下滑切歌，并展示音频文件里的封面和内嵌歌词。
 
 ## 技术栈
 
 | 层 | 技术 | 说明 |
 | --- | --- | --- |
 | 移动端 | Kotlin、AGP 9.3、compileSdk 37、minSdk 24 | XML View 体系，MVVM，无 Compose |
-| 网络 | Retrofit 2.11 + OkHttp 4.12 + Gson | 统一信封解析、Bearer 认证、错误码映射 |
-| 状态 | Kotlin Coroutines + StateFlow + DataStore | 无 LiveData、无 Hilt |
+| 播放 | media3 ExoPlayer + MediaSessionService | 后台播放、通知栏/锁屏/耳机键 |
+| 网络 | Retrofit 2.11 + OkHttp 4.12 + Gson | 统一信封解析、错误码映射 |
+| 状态 | Kotlin Coroutines + StateFlow | 无 LiveData、无 Hilt |
+| 图片 | Coil | 本地专辑图走自定义 Fetcher |
 | 服务端 | RuoYi-Vue 3.9.2（Spring Boot 4.1 + MyBatis-Plus） | 独立部署，源码不入库 |
-| 管理端 | RuoYi-Vue3 3.9.2（Vue 3.5 + Vite 6 + Element Plus） | 若依自带后台页面 |
 | 数据库 | MySQL 8.0+ | 字符集 utf8mb4 |
 | 缓存 | Redis 5.0+ | 若依 token 存储，**必须启动** |
 
@@ -24,10 +25,10 @@ Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程骨架。
 ```
 .
 ├── android/                 【移动端】Gradle 根工程，Studio 打开这里
-│   ├── app/                 壳：Application、依赖容器、登录页、首页
+│   ├── app/                 壳 + 全部 UI：五个 tab、播放器、正在播放、搜索
 │   ├── core/
-│   │   ├── common/          结果封装、UI 状态、日志、View 扩展
-│   │   └── network/         Retrofit、拦截器、若依协议适配
+│   │   ├── common/          MusicTrack 统一模型、结果封装、日志、View 扩展
+│   │   └── network/         Retrofit、拦截器、音乐接口
 │   └── feature/
 │       └── demo/            贪吃蛇（已从构建摘除，代码保留）
 ├── server/                  【服务端】若依后端
@@ -37,48 +38,67 @@ Android 客户端 + RuoYi-Vue 后端 + MySQL 的三层工程骨架。
 │   ├── start-backend.sh     启动后端
 │   └── docker-compose.yml   MySQL + Redis（备选，需 Docker）
 ├── admin/                   【后台管理端】RuoYi-Vue3
-│   ├── RuoYi-Vue3/          源码（独立 clone，不入库）
-│   └── README.md            管理端启动说明
-├── sql/                     业务表与初始化数据
+├── sql/                     业务表与初始化数据（音乐表在 05_music_schema.sql）
 └── docs/                    接口契约、架构说明
 ```
 
-## 业务闭环
+## 五个 tab
 
-```
-App 首页 ──点外卖──> 店铺列表 ──> 店铺详情（菜品 + 购物车）
-                                      │
-                                      └─去结算→ 填收货信息 → 提交订单
-                                                              │
-我的订单 <─────────────────────────────────────────────────────┘
-   └─去支付（模拟）→ 状态 待支付 → 已支付
-```
+| tab | 内容 |
+| --- | --- |
+| 首页 | 大标题 + 搜索、蓝色渐变 hero（自动轮播）、快捷入口、歌单横滑、推荐歌曲 |
+| 播放 | 整屏竖向翻页播放器：大封面、内嵌歌词、进度/传输控制，上下滑切歌 |
+| 推荐 | 每日推荐大卡、编辑歌单、歌手、排行榜 |
+| 本地 | 歌曲/歌手/专辑/文件夹四个视图，搜索、排序、播放全部 |
+| 我的 | 听歌统计、常用入口、我喜欢的音乐、最近播放、音源管理 |
 
-数据表 4 张：`takeout_shop` / `takeout_dish` / `takeout_order` / `takeout_order_item`。
-订单明细对菜名和单价做快照，菜品改价不影响历史订单。
+播放中的歌会在底部悬浮 mini player 上露出；点进正在播放是深色沉浸页，
+封面虚化背景、队列、收藏、分享。搜索与收藏/最近/云端列表都是独立二级页。
 
-接口清单见 [`docs/api.md`](docs/api.md) 第 3 节。
+### 在线音源
+
+搜索页输入 ≥2 个字会先出「在线」结果（网易云 / 酷狗混排、带平台胶囊），
+下面接「我的音乐」。点一首后由后端取播放地址，会员/版权不可播时自动换到
+另一平台并提示换了谁；「我的 → 音源管理」控制平台开关、优先级和 Cookie。
+Cookie 支持**半自动登录**：在 App 内打开平台网页登录，检测到登录态后自动保存，
+不用再去浏览器 F12 复制。后端聚合的方式、接口字段和已知边界见
+[`docs/music-sources.md`](docs/music-sources.md)。
+
+### 封面与歌词检测
+
+- **封面**：本地音频的封面在 ID3 的 `APIC` 帧里。`LocalMusicRepository` 把
+  `artUri` 设成音频文件自己的 `content://` uri，由全局 Coil 的
+  `AudioArtFetcher` 用 `loadThumbnail` 取出；取不到时退回
+  `MediaMetadataRetriever.embeddedPicture`，再取不到才用 `CoverArt` 生成渐变图。
+- **歌词**：`LyricsRepository` 按需读取 ID3v2 的 `USLT`（非同步）或
+  `SYLT`（同步）帧，兼容 v2.2/v2.3/v2.4 和常见文本编码，也认
+  `TXXX:LYRICS`。播放器页只解析当前曲目并预取前后页，结果按曲目缓存，
+  不会在曲库加载时逐首打开文件。
+- 云端曲目优先使用接口可选的 `lyrics` 字段；没有时显示「没有找到内嵌歌词」。
+  播放器页最多显示 5 行，点歌词可查看全文。
 
 ## 快速开始
 
 ### 1. 中间件
 
-本机已有 MySQL 26.10 跑在 3306，Redis 用便携版：
+本机 MySQL 跑在 3306，Redis 用便携版：
 
 ```bash
 ./server/start-redis.sh
 ```
 
-建库导表（只在首次或重建时做）：
+首次建库导表：
 
 ```bash
 MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 "$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 "$MYSQL" -uroot -p ry-vue < server/RuoYi-Vue/sql/ry_20260417.sql
 "$MYSQL" -uroot -p ry-vue < server/RuoYi-Vue/sql/quartz.sql
-"$MYSQL" -uroot -p ry-vue < sql/01_takeout_schema.sql
-"$MYSQL" -uroot -p ry-vue < sql/02_takeout_data.sql
+"$MYSQL" -uroot -p ry-vue < sql/05_music_schema.sql
+"$MYSQL" --default-character-set=utf8mb4 -uroot -p ry-vue < sql/06_music_source.sql
 ```
+
+云端曲库还要把 mp3 放到后端的 `profile/music/`，详见 [`docs/cloud-music.md`](docs/cloud-music.md)。
 
 ### 2. 起服务端
 
@@ -89,17 +109,7 @@ MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 **不要直接 `java -jar`**：本机环境会把端口顶到 8066（被其它服务占用），
 脚本里显式带了 `--server.port=8080`。详见 [`server/README.md`](server/README.md)。
 
-### 3. 起管理端（可选）
-
-```bash
-cd admin/RuoYi-Vue3
-npm install
-npm run dev
-```
-
-默认 `http://localhost`。详见 [`admin/README.md`](admin/README.md)。
-
-### 4. 跑客户端
+### 3. 跑客户端
 
 用 Android Studio 打开 **`android/` 目录**（不是仓库根，Gradle 根在这里）。
 
@@ -108,39 +118,64 @@ cd android
 ./gradlew :app:installDebug
 ```
 
-`installDebug` 会自动先跑 `adbReverse` 任务建好 `adb reverse tcp:8080 tcp:8080`，
-再把包装进设备，所以一条命令即可。登录账号 `admin / admin123`。
+`installDebug` 会自动先跑 `adbReverse` 建好 `adb reverse tcp:8080 tcp:8080`，
+再把包装进设备。**App 不需要登录**，启动直接进首页；没网时本地曲库照样能用。
+装完如果首页没有云端歌曲，先确认后端和 `adb reverse` 都在。
 
-> 改了代码想只看编译结果就 `assembleDebug`，但它**不装包** —— 模拟器跑的还是旧 APK。
-> 判断依据：登录页底部的「接口地址」文字。
+> 只编译不装包用 `assembleDebug`。模拟器跑的还是旧 APK 时，
+> 以首页有没有出现云端歌为准。
 
-## 接口约定
+## 接口
 
-详见 [`docs/api.md`](docs/api.md)。三条容易踩的：
+- 曲库：`GET http://127.0.0.1:8080/app/music/tracks`，返回 10 首云端曲目；
+  本地曲库走 MediaStore，与云端在数据层合并成统一的 `MusicTrack`。
+- 在线音源：`/app/music/search`、`/play`、`/lyric`、`/sources`。App 只调本站接口，
+  不直连平台，也不接触 Cookie 原文。
+- 地址：debug 默认 `http://127.0.0.1:8080/`，配套 `adb reverse tcp:8080 tcp:8080`。
+  **不要用 `10.0.2.2`** —— 本机 QEMU 映射不生效，表现为 OkHttp 超时。
+- 真机/无线调试：`./gradlew :app:installDebug -PapiBaseUrl=http://192.168.1.10:8080/`，
+  并放行 Windows 防火墙 8080。
 
-1. 成功码是 **`code == 200`**，不是 0
-2. token 走 **`Authorization: Bearer <token>`**，`Bearer ` 前缀不能省
-3. **登录过期是 HTTP 200 + body `code:401`**，只看 HTTP 状态码会漏判
+## UI 设计
 
-接口地址：debug 默认 `http://127.0.0.1:8080/`，配套 `adb reverse tcp:8080 tcp:8080`
-（`installDebug` 自动执行）。**不要用 `10.0.2.2`** —— 本机 QEMU 的该映射不生效，
-表现为 OkHttp 连 15 秒超时、而宿主机 `curl 127.0.0.1:8080` 一切正常。
+设计基准是「白底 + 蓝 accent + 大字号中文标题」；底部导航和关键动效按
+Liquid Glass 的层次做，但性能优先：**不采样、不模糊背后的内容**，只画半透明层。
 
-真机/无线调试连不上 adb 时，改用电脑局域网 IP 覆盖：
-`./gradlew :app:installDebug -PapiBaseUrl=http://192.168.1.10:8080/`，
-并放行 Windows 防火墙 8080。
+| token | 值 | 用在哪 |
+| --- | --- | --- |
+| canvas | `#F5F6F8` | 页面底色 |
+| surface | `#FFFFFF` | 卡片、mini player、底部导航 |
+| ink | `#141419` | 主标题、曲名 |
+| secondary | `#70707B` | 副标题、歌手 |
+| accent | `#2F6BFF` | 主按钮、进度、选中态 |
+| accent_soft | `#E9F0FF` | 标签底、浅色按钮 |
+| dark canvas | `#0B0B11` | 正在播放 / 播放器 |
+
+底部导航是自绘的悬浮液态玻璃（`BottomNavBar`）：半透明底 + 竖向柔光 +
+边缘高光 + 半透明胶囊选中态。背后内容由系统直接合成，所以列表滚动、
+封面切换时透出来的画面是实时的，不会因为反复截屏/模糊而掉帧。
+播放器页整体切深色，导航条变深色玻璃；mini player、进度线、下划线 tab
+也都是自绘控件（`MiniPlayerView` / `SeekLine` / `UnderlineTabs`）。
+
+动效：
+- 冷启动首屏用 `ShimmerSkeletonView` 流光骨架，内容加载后骨架淡出；
+- 首页内容按 top → bottom 错峰入场，落点带 spring 回弹（`springEnter`）；
+- 点赞/收藏用解析弹簧（`SpringValue`）做缩放 + 回弹，不用生硬的 scale 动画；
+- 页面 edge-to-edge：内容可以滚到状态栏/导航栏下面，但顶部标题和底部内容
+  通过 inset + 顶部渐隐避开系统栏，不会被通知栏或手势条挡住。
+
+细节和取舍见 [`docs/music-architecture.md`](docs/music-architecture.md)。
 
 ## 开发约定
 
 | 项 | 约定 |
 | --- | --- |
-| 包名 | `com.szc.learning`，子模块 `com.szc.learning.core.*` / `.feature.*` |
+| 包名 | `com.szc.learning`，子模块 `com.szc.learning.core.*` / `.music.*` |
 | 命名 | 布局 `activity_*` / `fragment_*` / `item_*`，ViewModel 以 `ViewModel` 结尾 |
-| 依赖方向 | `app → feature → core`，`feature` 之间不允许互相依赖 |
+| 依赖方向 | `app → core:network → core:common`，`core` 之间不互相依赖 |
 | 异常处理 | 网络层统一返回 `AppResult`，不向上抛异常 |
-| 提交信息 | Conventional Commits，描述用中文，如 `feat: 增加xx功能` |
-
-分层依据、设计取舍、加新功能的步骤见 [`docs/architecture.md`](docs/architecture.md)。
+| 文案 | 所有用户可见文案进 `strings.xml`，不在代码里硬编码中文 |
+| 提交信息 | Conventional Commits，描述用中文，如 `feat: 增加播放器竖滑切歌` |
 
 ## 关于 `feature/demo`
 

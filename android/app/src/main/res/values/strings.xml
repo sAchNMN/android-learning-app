@@ -2,32 +2,193 @@
 <resources>
     <string name="app_name">Aurora</string>
 
-    <!-- 底部导航（图标为主，文字只做辅助识别） -->
+    <!-- ================= 底部导航 ================= -->
     <string name="tab_home">首页</string>
-    <string name="tab_search">搜索</string>
-    <string name="tab_cloud">云端</string>
-    <string name="tab_library">资料库</string>
+    <string name="tab_mv">播放</string>
+    <string name="tab_recommend">推荐</string>
+    <string name="tab_local">本地</string>
+    <string name="tab_mine">我的</string>
 
-    <!-- 首页 -->
+    <!-- ================= 首页 ================= -->
+    <string name="home_music">音乐</string>
+    <string name="home_video">播放</string>
+    <string name="home_search_hint">搜索歌曲、歌手、专辑</string>
+    <string name="home_quick_daily">每日推荐</string>
+    <string name="home_quick_chart">排行榜</string>
+    <string name="home_quick_artist">歌手</string>
+    <string name="home_quick_favorite">我的喜欢</string>
+    <string name="home_quick_local">本地音乐</string>
+    <string name="home_playlists">你的歌单补给站</string>
+    <string name="home_more_playlists">更多歌单</string>
+    <string name="home_good_songs">优质好歌</string>
+    <string name="home_good_songs_sub">戴上耳机，挑几首慢慢听</string>
+    <string name="home_play_all">播放全部</string>
+    <string name="home_hero_label">今日推荐</string>
+    <string name="home_hero_mv">精选</string>
+    <string name="home_hero_empty_title">开始听歌</string>
+    <string name="home_hero_empty_sub">云端与本地曲库已就绪</string>
+    <string name="home_empty">还没有歌曲，去本地或云端看看</string>
+
+    <!-- ================= 歌单 ================= -->
+    <string name="playlist_tracks">%1$d 首</string>
+    <string name="playlist_favorite_title">我喜欢的音乐</string>
+    <string name="playlist_cloud_title">云端热歌</string>
+    <string name="playlist_local_title">本地珍藏</string>
+    <string name="playlist_recent_title">最近播放</string>
+    <string name="playlist_artist_title">%1$s精选</string>
+    <string name="tag_cloud">云端</string>
+    <string name="tag_local">本地</string>
+    <string name="tag_recent">最近</string>
+    <string name="tag_favorite">喜欢</string>
+    <string name="tag_artist">歌手</string>
+
+    <!-- ================= 播放器 / 播放器页 ================= -->
+
+    <!-- ================= 推荐 ================= -->
+    <string name="recommend_title">推荐</string>
+    <string name="recommend_subtitle">按你的口味，每天更新</string>
+    <string name="recommend_refresh">换一批</string>
+    <string name="recommend_daily_tag">每日推荐</string>
+    <string name="recommend_daily_title">今天为你挑了 %1$d 首</string>
+    <string name="recommend_daily_subtitle">结合最近的播放和收藏生成</string>
+    <string name="recommend_daily_play">播放每日推荐</string>
+    <string name="recommend_playlists">推荐歌单</string>
+    <string name="recommend_more">全部</string>
+    <string name="recommend_playlist_count">%1$d 个歌单</string>
+    <string name="recommend_artists">热门歌手</string>
+    <string name="recommend_charts">排行榜</string>
+    <string name="recommend_chart_play">播放榜单</string>
+    <string name="recommend_footer">推荐每天更新一次</string>
+    <string name="chart_hot">热歌榜</string>
+    <string name="chart_new">新歌榜</string>
+    <string name="chart_local">本地榜</string>
+
+    <!-- ================= 本地 ================= -->
+    <string name="local_title">本地</string>
+    <string name="local_songs">歌曲</string>
+    <string name="local_artists">歌手</string>
+    <string name="local_albums">专辑</string>
+    <string name="local_folders">文件夹</string>
+    <string name="local_scan">重新扫描</string>
+    <string name="local_scanning">正在扫描…</string>
+    <string name="local_empty">还没有本地音乐</string>
+    <string name="local_empty_hint">把音乐放进设备，或点右上角重新扫描</string>
+    <string name="local_permission">需要读取音频权限</string>
+    <string name="local_permission_hint">允许后就能读到设备里的音乐，只在本机使用</string>
+    <string name="local_grant">授予权限</string>
+    <string name="local_search_hint">搜索本地歌曲</string>
+    <string name="local_rescanned">已重新扫描</string>
+    <string name="local_play_all">播放全部</string>
+    <string name="local_sort">排序</string>
+    <string name="local_sort_default">默认（标题）</string>
+    <string name="local_sort_artist">歌手</string>
+    <string name="local_sort_duration">时长</string>
+    <string name="local_search_empty">没有匹配的本地歌曲</string>
+    <string name="local_count">%1$d 首</string>
+    <string name="local_folder_count">%1$d 首</string>
+    <string name="local_summary">%1$d 首 · %2$s</string>
+    <string name="local_unknown_folder">其他</string>
+
+    <!-- ================= 我的 ================= -->
+    <string name="mine_title">我的</string>
+    <string name="mine_user">音乐爱好者</string>
+    <string name="mine_subtitle">本地音乐爱好者</string>
+    <string name="mine_listen_minutes">听歌时长</string>
+    <string name="mine_favorites">我的喜欢</string>
+    <string name="mine_recent">最近播放</string>
+    <string name="mine_stats_title">我的数据</string>
+    <string name="mine_stats_body">累计听歌 %1$d 分钟\n收藏 %2$d 首 · 最近播放 %3$d 首</string>
+    <string name="mine_about_title">关于 Aurora</string>
+    <string name="mine_about_body">Aurora 是一个本地音乐播放器练习项目。\n\n· 无广告、无会员、无付费模块\n· 音乐优先，歌词与封面随后\n· 数据只保存在本机</string>
+    <string name="mine_ok">知道了</string>
+    <string name="mine_rescan">重新扫描本地音乐</string>
+    <string name="mine_entry_favorites">我的喜欢</string>
+    <string name="mine_entry_recent">最近播放</string>
+    <string name="mine_entry_local">本地音乐</string>
+    <string name="mine_entry_cloud">云端热歌</string>
+    <string name="mine_entry_mv">播放器</string>
+    <string name="mine_entry_stats">听歌统计</string>
+    <string name="mine_entry_rescan">重新扫描</string>
+    <string name="mine_entry_about">关于</string>
+    <string name="mine_favorites_card">我喜欢的音乐</string>
+    <string name="mine_recent_card">最近播放</string>
+    <string name="mine_footer">Aurora · 无广告 · 本地学习项目</string>
+    <string name="mine_count">%1$d 首</string>
+    <string name="mine_empty_favorites">还没有收藏，去听几首吧</string>
+    <string name="mine_minutes">%1$d 分钟</string>
+    <string name="mine_tracks">%1$d 首</string>
+
+    <!-- ================= 搜索 ================= -->
+    <string name="search_title">搜索</string>
+    <string name="search_hint">搜索歌曲、歌手、专辑</string>
+    <string name="search_cancel">取消</string>
+    <string name="search_empty">没有找到相关歌曲</string>
+    <string name="search_tip">试试歌名、歌手或专辑</string>
+    <string name="search_result_count">%1$d 个结果</string>
+    <string name="search_recent">最近搜索</string>
+    <string name="search_clear">清空</string>
+
+    <!-- ================= 播放器 ================= -->
+    <string name="player_play">播放</string>
+    <string name="player_title">播放器</string>
+    <string name="player_subtitle">上下滑动切歌</string>
+    <string name="player_page_count">%1$d / %2$d</string>
+    <string name="player_lyrics_loading">正在读取歌词…</string>
+    <string name="player_lyrics_none">没有找到内嵌歌词</string>
+    <string name="player_lyrics_title">歌词</string>
+    <string name="player_lyrics_hint">点歌词查看全文</string>
+    <string name="player_empty">还没有可播放的歌曲</string>
+    <string name="player_play_pause">播放/暂停</string>
+    <string name="player_album">专辑</string>
+    <string name="player_pause">暂停</string>
+    <string name="player_next">下一首</string>
+    <string name="player_previous">上一首</string>
+    <string name="player_shuffle">随机</string>
+    <string name="player_repeat">循环</string>
+    <string name="player_queue">播放队列</string>
+    <string name="player_like">收藏</string>
+    <string name="player_unlike">取消收藏</string>
+    <string name="player_added_favorite">已收藏</string>
+    <string name="player_removed_favorite">已取消收藏</string>
+    <string name="player_share">分享</string>
+    <string name="player_share_text">正在听《%1$s》- %2$s，来自 Aurora</string>
+    <string name="player_unknown_artist">未知歌手</string>
+    <string name="player_unknown_album">未知专辑</string>
+    <string name="player_collapse">收起</string>
+    <string name="player_lyric_placeholder">暂无歌词，安静听歌</string>
+    <string name="player_now_playing">正在播放</string>
+    <string name="player_queue_empty">队列是空的</string>
+    <string name="player_no_track">还没有在播放的歌曲</string>
+    <string name="queue_title">播放队列</string>
+    <string name="queue_count">%1$d 首</string>
+
+    <!-- ================= 列表页 ================= -->
+    <string name="track_list_play_all">播放全部</string>
+    <string name="track_list_empty">这里还没有歌曲</string>
+
+    <!-- ================= 通用 ================= -->
+    <string name="action_retry">重试</string>
+    <string name="action_back">返回</string>
+    <string name="action_more">更多</string>
+    <string name="action_cancel">取消</string>
+    <string name="loading">载入中</string>
+    <string name="duration_hm">%1$d 小时 %2$d 分</string>
+    <string name="duration_m">%1$d 分钟</string>
+
+    <!-- ================= 旧页面过渡用，删掉旧文件后一并清理 ================= -->
     <string name="home_title">聆听</string>
     <string name="home_recent">最近播放</string>
     <string name="home_recommend">为你推荐</string>
     <string name="home_continue">接着听</string>
     <string name="home_see_all">全部</string>
-
-    <!-- 搜索 -->
-    <string name="search_hint">歌曲、艺人、专辑</string>
+    <string name="tab_search">搜索</string>
+    <string name="tab_cloud">云端</string>
+    <string name="tab_library">资料库</string>
     <string name="search_genres">浏览分类</string>
-    <string name="search_empty">没有结果</string>
-    <string name="search_cancel">取消</string>
-
-    <!-- 云端 -->
     <string name="cloud_title">云端</string>
     <string name="cloud_empty">云端曲库是空的</string>
     <string name="cloud_offline">连不上云端</string>
     <string name="cloud_count">%1$d 首</string>
-
-    <!-- 资料库 -->
     <string name="library_title">资料库</string>
     <string name="library_songs">歌曲</string>
     <string name="library_albums">专辑</string>
@@ -38,24 +199,6 @@
     <string name="library_grant">允许</string>
     <string name="library_storage">%1$s / %2$s</string>
     <string name="library_summary">%1$d 首 · %2$s</string>
-    <string name="duration_hm">%1$d 小时 %2$d 分</string>
-    <string name="duration_m">%1$d 分钟</string>
-
-    <!-- 播放器 -->
-    <string name="now_playing">正在播放</string>
-    <string name="player_play">播放</string>
-    <string name="player_pause">暂停</string>
-    <string name="player_next">下一首</string>
-    <string name="player_previous">上一首</string>
-    <string name="player_shuffle">随机播放</string>
-    <string name="player_repeat">循环模式</string>
-    <string name="player_queue">队列</string>
-    <string name="player_like">喜欢</string>
-    <string name="player_collapse">收起</string>
-    <string name="player_unknown_artist">未知艺人</string>
-    <string name="player_unknown_album">未知专辑</string>
-
-    <!-- 分类 -->
     <string name="genre_pop">流行</string>
     <string name="genre_electronic">电子</string>
     <string name="genre_jazz">爵士</string>
@@ -68,9 +211,85 @@
     <string name="genre_soul">灵魂</string>
     <string name="genre_soundtrack">原声</string>
     <string name="genre_world">世界</string>
+    <string name="theme_button">切换主题</string>
+    <string name="theme_title">外观</string>
+    <string name="theme_subtitle">主题与亮暗模式，只换配色不动布局</string>
+    <string name="theme_mode_title">亮暗模式</string>
+    <string name="theme_mode_system">跟随系统</string>
+    <string name="theme_mode_light">浅色</string>
+    <string name="theme_mode_dark">深色</string>
+    <string name="theme_palette_title">主题配色</string>
+    <string name="theme_aurora">极光</string>
+    <string name="theme_aurora_note">冷中性 · 靛紫</string>
+    <string name="theme_ember">余烬</string>
+    <string name="theme_ember_note">暖中性 · 赤陶</string>
+    <string name="theme_sage">苔原</string>
+    <string name="theme_sage_note">青灰 · 鼠尾草绿</string>
+    <string name="theme_cobalt">深海</string>
+    <string name="theme_cobalt_note">冷中性 · 钴蓝</string>
+    <string name="theme_noir">墨色</string>
+    <string name="theme_noir_note">近单色 · 明度分层</string>
 
-    <!-- 通用 -->
-    <string name="action_retry">重试</string>
-    <string name="action_back">返回</string>
-    <string name="loading">载入中</string>
+    <!-- 玻璃材质 -->
+    <string name="glass_button">玻璃材质</string>
+    <string name="glass_title">玻璃材质</string>
+    <string name="glass_subtitle">播放栏与底部导航共用同一种材质，改一次全变</string>
+    <string name="glass_mode_title">材质</string>
+    <string name="glass_mode_liquid">液态玻璃</string>
+    <string name="glass_mode_liquid_note">背后内容被 GPU 实时折射与轻磨砂，边缘有色散，滚动不掉帧</string>
+    <string name="glass_mode_blur">高斯模糊</string>
+    <string name="glass_mode_blur_note">重度高斯模糊，背后内容完全化开，最接近毛玻璃</string>
+    <string name="glass_frost_title">磨砂程度</string>
+    <string name="glass_frost_value">%1$d%%</string>
+    <string name="glass_frost_hint">越高越厚、越不透；越低越通透，背后的内容越清楚</string>
+    <string name="glass_preview_title">夜色温柔</string>
+    <string name="glass_preview_artist">玻璃预览 · 拖动滑块</string>
+    <string name="glass_preview_hint">预览压在封面上，和播放栏在真实页面里的处境一致</string>
+
+    <!-- 在线音源（Mineradio 式多平台接入） -->
+    <string name="source_netease">网易云音乐</string>
+    <string name="source_kugou">酷狗音乐</string>
+    <string name="source_other">其它音源</string>
+    <string name="source_short_netease">网易云</string>
+    <string name="source_short_kugou">酷狗</string>
+    <string name="source_switched_notice">%1$s 不可播，已自动换到 %2$s</string>
+    <string name="source_manage_title">音源管理</string>
+    <string name="source_manage_subtitle">搜索与播放在服务端聚合，这里控制参与的平台</string>
+    <string name="source_cookie">登录 Cookie</string>
+    <string name="source_cookie_set">已配置</string>
+    <string name="source_cookie_unset">未配置</string>
+    <string name="source_cookie_dialog_title">%1$s 登录 Cookie</string>
+    <string name="source_cookie_dialog_hint">粘贴浏览器登录后的 Cookie，留空保存即清除</string>
+    <string name="source_cookie_help">怎么拿：浏览器登录对应平台 → F12 → Network → 随便点一个请求 → 复制请求头里的 Cookie 整段。只用于播放你自己账号有权播放的曲目，不会上传到第三方。</string>
+    <string name="source_login_action">登录获取（推荐）</string>
+    <string name="source_cookie_manual">手动粘贴 Cookie</string>
+    <string name="source_cookie_clear">清除登录态</string>
+    <string name="source_login_title">登录%1$s</string>
+    <string name="source_login_hint">在下面的网页里登录，成功后会自动读取并保存；Cookie 内容不会显示在 App 里</string>
+    <string name="source_login_clear_web">清除登录状态</string>
+    <string name="source_login_clear_confirm">会清掉本机 WebView 里保存的平台登录状态，下次需要重新登录。</string>
+    <string name="source_login_clear_done">已清除网页登录状态</string>
+    <string name="source_login_saved">已保存%1$s登录态</string>
+    <string name="source_login_cookie_cleared">已清除%1$s登录态</string>
+    <string name="source_login_failed">获取登录态失败，可以重试或手动粘贴 Cookie</string>
+    <string name="source_priority">优先级 %1$d</string>
+    <string name="source_enabled">已启用</string>
+    <string name="source_disabled">已停用</string>
+    <string name="source_move_up">上移</string>
+    <string name="source_move_down">下移</string>
+    <string name="source_saved">已保存</string>
+    <string name="action_save">保存</string>
+    <string name="source_save_failed">保存失败：%1$s</string>
+    <string name="source_empty">还没有可用的音源</string>
+    <string name="source_manage_footer">自动换源只在「同名 + 同歌手 + 时长接近」时发生，不会拿 Live 或伴奏顶替原曲。会员曲目需要对应平台的 Cookie。</string>
+
+    <string name="search_section_online">在线</string>
+    <string name="search_section_online_loading">在线搜索中…</string>
+    <string name="search_section_online_partial">%1$s 暂不可用</string>
+    <string name="search_section_mine">我的音乐</string>
+    <string name="search_online_failed">在线搜索不可用：%1$s</string>
+    <string name="search_online_tip">输入至少 2 个字，同时搜索网易云与酷狗</string>
+    
+
+    <string name="mine_entry_sources">音源管理</string>
 </resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 歌单横滑轨道：作为首页的一个条目出现，固定高度避免 wrap_content 被量成 0 -->
+<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playlistRail"
+    android:layout_width="match_parent"
+    android:layout_height="212dp"
+    android:clipToPadding="false"
+    android:overScrollMode="never"
+    android:paddingStart="20dp"
+    android:paddingEnd="8dp"
+    android:scrollbars="none" />

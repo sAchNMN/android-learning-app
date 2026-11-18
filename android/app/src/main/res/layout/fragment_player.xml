@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  播放器 tab：竖向 ViewPager2，一页一首歌。
+  没有视频，也没有每页一个播放器；真正的音频由全局 PlayerController 播放，
+  页面只负责把「封面 + 歌词 + 控制」画出来。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/auDarkCanvas">
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/playerPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 固定标题：翻页时标题不跟着走，页面里只滚动内容 -->
+    <LinearLayout
+        android:id="@+id/playerHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:letterSpacing="-0.02"
+                android:text="@string/player_title"
+                android:textColor="?attr/auOnDark"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:alpha="0.55"
+                android:text="@string/player_subtitle"
+                android:textColor="?attr/auOnDark"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/playerPageCount"
+            style="@style/Text.Numeric"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.55"
+            android:textColor="?attr/auOnDark"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/playerEmpty"
+        style="@style/Text.Body"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:text="@string/player_empty"
+        android:textColor="?attr/auOnDarkSecondary"
+        android:visibility="gone" />
+</FrameLayout>

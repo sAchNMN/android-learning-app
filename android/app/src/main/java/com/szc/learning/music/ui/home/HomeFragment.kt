@@ -1,7 +1,13 @@
 package com.szc.learning.music.ui.home
 
+import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.View
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnNextLayout
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -10,136 +16,263 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
+import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentHomeBinding
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.common.Playlists
+import com.szc.learning.music.ui.common.showAbout
+import com.szc.learning.music.ui.search.SearchActivity
+import com.szc.learning.music.ui.track.TrackListActivity
+import com.szc.learning.music.ui.motion.Motion
+import com.szc.learning.music.ui.widget.ShimmerSkeletonView
+import com.szc.learning.music.ui.widget.dp
+import com.szc.learning.ui.main.MainActivity
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 /**
- * 首页：一张主卡片 + 一条横滑 + 一张推荐列表。
+ * 首页。
  *
- * 刻意只留这三块 —— 音乐首页最容易犯的错是把歌单/榜单/电台全塞进来，
- * 结果每块都只看得到两首。留白比信息密度值钱。
+ * 结构对齐参考图：大标题 + 搜索 + 轮播 + 五个快捷入口 + 歌单补给站 + 优质好歌。
+ * 没有广告位、没有会员卡 —— 这是自用播放器，不塞运营模块。
  */
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = requireNotNull(_binding)
+    private var entrancePlayed = false
+    private var skeletonShown = false
+    private var skeletonSince = 0L
+    private var skeletonWaitScheduled = false
 
     private val viewModel: MusicViewModel by lazy {
         ViewModelProvider(requireActivity())[MusicViewModel::class.java]
     }
 
-    private lateinit var adapter: HomeAdapter
-
-    private var recentTracks: List<MusicTrack> = emptyList()
-    private var railTracks: List<MusicTrack> = emptyList()
-    private var recommend: List<MusicTrack> = emptyList()
-    private var heroTrack: MusicTrack? = null
+    private val adapter = HomeAdapter(
+        onSearch = { openSearch() },
+        onMenu = { showMenu() },
+        onVideo = { mainActivity()?.openTab(MainActivity.INDEX_PLAYER) },
+        onQuick = { action -> handleQuick(action) },
+        onHeroPlay = { track -> playTrack(track) },
+        onSectionAction = { tag -> handleSectionAction(tag) },
+        onPlaylist = { playlist -> viewModel.play(playlist.tracks, 0) },
+        onTrack = { track -> playTrack(track) },
+    )
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentHomeBinding.bind(view)
 
-        adapter = HomeAdapter(
-            onHeroClick = ::playHero,
-            onHeroPlay = ::playHero,
-            onSectionAction = { tag -> if (tag == TAG_RECENT) viewModel.loadCloud(force = true) },
-            onRailClick = { track ->
-                val index = railTracks.indexOfFirst { it.key == track.key }
-                if (index >= 0) viewModel.play(railTracks, index)
-            },
-            onRowClick = { track ->
-                val index = recommend.indexOfFirst { it.key == track.key }
-                if (index >= 0) viewModel.play(recommend, index)
-            },
-        )
-
         binding.homeList.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = this@HomeFragment.adapter
+            setHasFixedSize(true)
+            itemAnimator = null
         }
+        binding.homeSkeleton.style = ShimmerSkeletonView.Style.HOME
+        installInsets()
 
-        observe()
-    }
-
-    private fun observe() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.recent.collect { list ->
-                        recentTracks = list
-                        rebuild()
-                    }
-                }
-                launch { viewModel.cloud.collect { rebuild() } }
-                launch { viewModel.local.collect { rebuild() } }
-                launch {
-                    viewModel.playerState.collect { state ->
-                        val next = state.track
-                        if (next?.key != heroTrack?.key) {
-                            heroTrack = next
-                            rebuild()
-                        }
-                    }
-                }
+                combine(
+                    viewModel.cloud,
+                    viewModel.local,
+                    viewModel.recent,
+                    viewModel.favorites,
+                ) { _, _, _, _ -> Unit }.collect { rebuild() }
             }
         }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(viewModel.cloudLoading, viewModel.localLoading) { cloud, local ->
+                    cloud || local
+                }.collect { rebuild() }
+            }
+        }
+        rebuild()
     }
 
     /**
-     * 重建条目列表。
-     *
-     * 横滑在没有历史时退化成混合推荐，首页永远不会出现一条空轨道；
-     * 主卡片优先跟随"正在播放"，没有播放时用推荐第一首。
+     * 页面铺到整屏，标题用 status bar 的高度让位；列表底部再给 dock + 手势条留空间。
+     * `clipToPadding=false` 时滚动中的内容可以钻到状态栏/手势条下面。
      */
-    private fun rebuild() {
-        recommend = viewModel.mix(RECOMMEND_SIZE)
-        railTracks = recentTracks.ifEmpty { viewModel.mix(RAIL_SIZE) }
-
-        val hero = heroTrack
-            ?: viewModel.playerState.value.track
-            ?: recommend.firstOrNull()
-
-        val items = buildList {
-            add(HomeItem.Header(hero))
-            if (railTracks.isNotEmpty()) {
-                add(
-                    HomeItem.Section(
-                        title = getString(R.string.home_recent),
-                        action = getString(R.string.home_see_all),
-                        actionTag = TAG_RECENT,
-                    ),
-                )
-                add(HomeItem.Rail(railTracks))
-            }
-            if (recommend.isNotEmpty()) {
-                add(
-                    HomeItem.Section(
-                        title = getString(R.string.home_recommend),
-                        action = null,
-                        actionTag = TAG_RECOMMEND,
-                    ),
-                )
-                recommend.forEach { add(HomeItem.Row(it)) }
-            }
+    private fun installInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.homeList) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val top = bars.top + view.context.dp(6f).toInt()
+            val bottom = view.context.dp(156f).toInt() + bars.bottom
+            view.updatePadding(top = top, bottom = bottom)
+            binding.homeSkeleton.updatePadding(top = top, bottom = bottom)
+            insets
         }
-        adapter.submitList(items)
+        ViewCompat.requestApplyInsets(binding.homeList)
     }
 
-    private fun playHero() {
-        val state = viewModel.playerState.value
-        val hero = state.track ?: heroTrack ?: recommend.firstOrNull() ?: return
-        if (state.track?.key == hero.key) {
-            viewModel.toggle()
+    private fun rebuild() {
+        val context = context ?: return
+        val cloud = viewModel.cloud.value
+        val local = viewModel.local.value
+        val recent = viewModel.recent.value
+        val favorites = viewModel.favoriteTracks()
+        val all = viewModel.allTracks()
+
+        val loading = all.isEmpty() &&
+            (viewModel.cloudLoading.value || viewModel.localLoading.value)
+        if (!loading && skeletonShown) {
+            // 数据可能在一个很长的首帧里就回来了；骨架至少留一段时间，
+            // 并且同一时间只允许一个等待任务，避免后到的 rebuild 把骨架提前关掉。
+            if (skeletonWaitScheduled) return
+            val remaining = MIN_SKELETON_MS - (SystemClock.uptimeMillis() - skeletonSince)
+            if (remaining > 0L) {
+                skeletonWaitScheduled = true
+                binding.homeList.postDelayed({
+                    skeletonWaitScheduled = false
+                    if (isAdded) rebuild()
+                }, remaining)
+                return
+            }
+        }
+        if (loading) {
+            showSkeleton()
+            adapter.submitList(emptyList())
             return
         }
-        val index = recommend.indexOfFirst { it.key == hero.key }
-        if (index >= 0) {
-            viewModel.play(recommend, index)
-        } else {
-            viewModel.play(listOf(hero), 0)
+
+        val playlists = Playlists.build(context, cloud, local, recent, favorites)
+        val recommendation = all.take(HOME_TRACK_COUNT)
+
+        val items = mutableListOf<HomeItem>()
+        items += HomeItem.Header(all.take(HERO_COUNT))
+
+        if (playlists.isNotEmpty()) {
+            items += HomeItem.Section(
+                title = getString(R.string.home_playlists),
+                action = getString(R.string.home_more_playlists),
+                actionTag = HomeAdapter.ACTION_MORE_PLAYLISTS,
+            )
+            items += HomeItem.PlaylistRow(playlists)
+        }
+
+        if (recommendation.isNotEmpty()) {
+            items += HomeItem.Section(
+                title = getString(R.string.home_good_songs),
+                subtitle = getString(R.string.home_good_songs_sub),
+                action = getString(R.string.home_play_all),
+                actionTag = HomeAdapter.ACTION_PLAY_ALL,
+            )
+            recommendation.forEach { items += HomeItem.TrackRow(it) }
+        }
+
+        if (all.isEmpty() && !viewModel.cloudLoading.value) {
+            items += HomeItem.Empty(getString(R.string.home_empty))
+        }
+
+        val playEntrance = !entrancePlayed && all.isNotEmpty()
+        if (playEntrance) entrancePlayed = true
+        adapter.submitList(items) {
+            // 等列表真的有子项了再撤骨架：否则会先露出空白，再"啪"地出现终态。
+            binding.homeList.doOnNextLayout {
+                binding.homeList.post { revealHome(playEntrance) }
+            }
+            binding.homeList.requestLayout()
         }
     }
+
+    private fun revealHome(playEntrance: Boolean) {
+        val list = binding.homeList
+        if (!isAdded) return
+        if (list.childCount == 0) {
+            list.post { revealHome(playEntrance) }
+            return
+        }
+        if (playEntrance) adapter.prepareEntrance(list)
+        hideSkeleton()
+        if (playEntrance) adapter.playEntrance(list)
+    }
+
+    private fun showSkeleton() {
+        if (!skeletonShown) skeletonSince = SystemClock.uptimeMillis()
+        skeletonShown = true
+        binding.homeSkeleton.animate().cancel()
+        binding.homeSkeleton.alpha = 1f
+        binding.homeSkeleton.visibility = View.VISIBLE
+        binding.homeList.visibility = View.INVISIBLE
+    }
+
+    private fun hideSkeleton() {
+        if (!skeletonShown) {
+            binding.homeList.visibility = View.VISIBLE
+            return
+        }
+        skeletonShown = false
+        binding.homeList.visibility = View.VISIBLE
+        // 骨架最后淡出，而不是直接消失：内容正在从下方进场，硬切会留出一帧空白。
+        binding.homeSkeleton.animate().cancel()
+        if (Motion.animationsDisabled(requireContext())) {
+            binding.homeSkeleton.visibility = View.GONE
+            binding.homeSkeleton.alpha = 1f
+            return
+        }
+        binding.homeSkeleton.animate()
+            .alpha(0f)
+            .setDuration(180L)
+            .withEndAction {
+                binding.homeSkeleton.visibility = View.GONE
+                binding.homeSkeleton.alpha = 1f
+            }
+            .start()
+    }
+
+    private fun playTrack(track: MusicTrack) {
+        val queue = viewModel.allTracks()
+        val index = queue.indexOfFirst { it.key == track.key }
+        viewModel.play(queue, index.coerceAtLeast(0))
+    }
+
+    private fun handleQuick(action: QuickAction) {
+        when (action) {
+            QuickAction.FAVORITE -> TrackListActivity.startFavorites(requireContext())
+            QuickAction.LOCAL -> mainActivity()?.openLocalTab()
+            QuickAction.DAILY, QuickAction.CHART, QuickAction.ARTIST ->
+                mainActivity()?.openRecommendTab()
+        }
+    }
+
+    private fun handleSectionAction(tag: String) {
+        when (tag) {
+            HomeAdapter.ACTION_MORE_PLAYLISTS -> mainActivity()?.openRecommendTab()
+            HomeAdapter.ACTION_PLAY_ALL -> {
+                val queue = viewModel.allTracks().take(HOME_TRACK_COUNT)
+                viewModel.play(queue, 0)
+            }
+        }
+    }
+
+    private fun openSearch() {
+        startActivity(Intent(requireContext(), SearchActivity::class.java))
+    }
+
+    private fun showMenu() {
+        val items = arrayOf(
+            getString(R.string.mine_rescan),
+            getString(R.string.mine_about_title),
+        )
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> {
+                        viewModel.refreshLocal()
+                        requireContext().toast(R.string.local_rescanned)
+                    }
+
+                    else -> showAbout(requireContext())
+                }
+            }
+            .show()
+    }
+
+    private fun mainActivity(): MainActivity? = activity as? MainActivity
 
     override fun onDestroyView() {
         _binding = null
@@ -147,9 +280,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private companion object {
-        const val RECOMMEND_SIZE = 6
-        const val RAIL_SIZE = 8
-        const val TAG_RECENT = "recent"
-        const val TAG_RECOMMEND = "recommend"
+        const val HERO_COUNT = 3
+        const val HOME_TRACK_COUNT = 6
+        const val MIN_SKELETON_MS = 800L
     }
 }

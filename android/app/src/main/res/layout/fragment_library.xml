@@ -1,33 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 本地页：固定标题 + 搜索 + 概览 + 下划线分段 + 列表 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <TextView
-        style="@style/Text.Display"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/library_title" />
-
-    <TextView
-        android:id="@+id/storageLine"
-        style="@style/Text.Caption"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="4dp" />
-
-    <com.szc.learning.music.ui.widget.GlassSegmented
-        android:id="@+id/segment"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="38dp"
+        android:layout_height="wrap_content"
+        android:gravity="bottom"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/Text.Display"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/local_title"
+                android:textSize="28sp" />
+
+            <View
+                android:layout_width="22dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/bg_tab_underline" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/localRescan"
+            style="@style/Widget.IconButton"
+            android:layout_marginBottom="4dp"
+            android:contentDescription="@string/local_scan"
+            android:src="@drawable/ic_refresh"
+            app:tint="?attr/auInk" />
+    </LinearLayout>
+
+    <!-- 搜索 -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginEnd="20dp" />
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/bg_search_pill">
+
+        <ImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="15dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_search"
+            app:tint="?attr/auInkTertiary" />
+
+        <EditText
+            android:id="@+id/localSearch"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="43dp"
+            android:layout_marginEnd="12dp"
+            android:background="@null"
+            android:hint="@string/local_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingStart="0dp"
+            android:textColor="?attr/auInk"
+            android:textColorHint="?attr/auInkTertiary"
+            android:textSize="14sp" />
+    </FrameLayout>
+
+    <!-- 概览 + 操作 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="16dp">
+
+        <TextView
+            android:id="@+id/localSummary"
+            style="@style/Text.Caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/localPlayAll"
+            style="@style/Widget.PillButton"
+            android:text="@string/local_play_all" />
+
+        <ImageButton
+            android:id="@+id/localSort"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="10dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/local_sort"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_sort"
+            app:tint="?attr/auInkSecondary" />
+    </LinearLayout>
+
+    <com.szc.learning.music.ui.widget.UnderlineTabs
+        android:id="@+id/localTabs"
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:layout_marginTop="6dp" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -35,52 +131,66 @@
         android:layout_weight="1">
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/songList"
+            android:id="@+id/localList"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
             android:overScrollMode="never"
-            android:paddingStart="20dp"
-            android:paddingTop="10dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="150dp" />
-
-        <TextView
-            android:id="@+id/libraryEmpty"
-            style="@style/Text.Body"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center"
-            android:visibility="gone" />
+            android:paddingBottom="150dp"
+            android:scrollbars="none" />
 
         <LinearLayout
-            android:id="@+id/permissionPanel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
+            android:id="@+id/localEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:gravity="center"
             android:orientation="vertical"
+            android:paddingStart="40dp"
+            android:paddingEnd="40dp"
             android:visibility="gone">
 
-            <TextView
-                style="@style/Text.Body"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/library_permission" />
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:alpha="0.35"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_folder"
+                app:tint="?attr/auInkTertiary" />
 
             <TextView
-                android:id="@+id/grantButton"
+                android:id="@+id/localEmptyTitle"
                 style="@style/Text.RowTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:background="?attr/selectableItemBackground"
+                android:textColor="?attr/auInkSecondary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/localEmptyHint"
+                style="@style/Text.Caption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/localGrant"
+                style="@style/Widget.PillButton"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_tag_blue"
                 android:paddingStart="18dp"
-                android:paddingTop="9dp"
                 android:paddingEnd="18dp"
-                android:paddingBottom="9dp"
-                android:text="@string/library_grant" />
+                android:text="@string/local_grant"
+                android:textColor="?attr/auAccent"
+                android:visibility="gone" />
         </LinearLayout>
+
+        <com.szc.learning.music.ui.widget.ShimmerSkeletonView
+            android:id="@+id/localSkeleton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>

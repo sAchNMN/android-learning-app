@@ -26,12 +26,20 @@ class LocalMusicRepository(private val context: Context) {
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         }
 
+        // Android 10 起用 RELATIVE_PATH（"Music/"），之前只能从 DATA 的绝对路径里截目录名
+        val folderColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Audio.Media.RELATIVE_PATH
+        } else {
+            MediaStore.Audio.Media.DATA
+        }
+
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
             MediaStore.Audio.Media.DURATION,
+            folderColumn,
         )
 
         // IS_MUSIC 过滤掉铃声、通知音；20 秒以下基本是提示音
@@ -51,6 +59,13 @@ class LocalMusicRepository(private val context: Context) {
         val artistIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
         val albumIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
         val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+        val folderIndex = cursor.getColumnIndex(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Audio.Media.RELATIVE_PATH
+            } else {
+                MediaStore.Audio.Media.DATA
+            },
+        )
 
         while (cursor.moveToNext()) {
             val id = cursor.getLong(idIndex)
@@ -67,9 +82,20 @@ class LocalMusicRepository(private val context: Context) {
                 ).toString(),
                 artUri = audioUri(id).toString(),
                 source = TrackSource.LOCAL,
+                folder = folderOf(cursor.getStringOrNull(folderIndex)),
             )
         }
     }
+
+    /** "Music/Favorites/" → "Favorites"；拿不到就留空，由 UI 归到"未知文件夹"。 */
+    private fun folderOf(path: String?): String {
+        if (path.isNullOrBlank()) return ""
+        val normalized = path.trimEnd('/')
+        return normalized.substringAfterLast('/').ifBlank { normalized }
+    }
+
+    private fun Cursor.getStringOrNull(index: Int): String? =
+        if (index >= 0 && !isNull(index)) getString(index) else null
 
     /**
      * 封面地址直接复用音频自己的 uri。

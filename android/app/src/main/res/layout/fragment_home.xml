@@ -1,15 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  首页只有一棵 RecyclerView。
-  原来的写法是 NestedScrollView 里套两个 wrap_content 的 RecyclerView，
-  在 UNSPECIFIED 约束下会被量成 0 高度（列表直接消失）。
-  改成「一个列表 + 多种条目类型」，测量交给 RecyclerView 自己，滚动也更省。
+  首页：一棵 RecyclerView + 一层骨架屏。
+  列表 clipToPadding=false：滑起来内容会钻到状态栏和手势条下面，
+  但静止时第一行标题仍然落在安全区里。
 -->
-<androidx.recyclerview.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/homeList"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:clipToPadding="false"
-    android:overScrollMode="never"
-    android:paddingBottom="150dp"
-    android:scrollbars="none" />
+    android:background="?attr/auCanvas">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/homeList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingBottom="156dp"
+        android:scrollbars="none" />
+
+    <com.szc.learning.music.ui.widget.ShimmerSkeletonView
+        android:id="@+id/homeSkeleton"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+</FrameLayout>
