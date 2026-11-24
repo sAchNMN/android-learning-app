@@ -58,6 +58,15 @@
                 android:layout_weight="1" />
 
             <ImageButton
+                android:id="@+id/recommendRank"
+                style="@style/Widget.IconButton"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="4dp"
+                android:contentDescription="@string/rank_entry"
+                android:src="@drawable/ic_rank"
+                app:tint="?attr/auInk" />
+
+            <ImageButton
                 android:id="@+id/recommendSearch"
                 style="@style/Widget.IconButton"
                 android:layout_marginEnd="6dp"

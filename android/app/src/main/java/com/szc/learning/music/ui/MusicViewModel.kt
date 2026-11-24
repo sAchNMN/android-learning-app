@@ -18,6 +18,8 @@ import com.szc.learning.music.data.StoredPlaylist
 import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
 import com.szc.learning.music.ui.common.sourceLabel
+import com.szc.learning.music.ui.rank.RankType
+import com.szc.learning.music.ui.rank.RankUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -87,6 +89,58 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val recommendError: StateFlow<String?> = _recommendError.asStateFlow()
 
     private var lastRecommendAt = 0L
+
+    // ---------------------------------------------------------------- 榜单
+
+    private val _rank = MutableStateFlow(RankUiState())
+    val rank: StateFlow<RankUiState> = _rank.asStateFlow()
+
+    private var lastRankAt = 0L
+
+    /**
+     * 拉一次榜单。
+     *
+     * 没有离线降级：榜单是跨用户聚合，本机算出来的东西不是榜单 ——
+     * 显示一份"自己的播放次数排行"比显示"连不上"更误导。
+     * 失败时把原因原样带到 [RankUiState.message]，页面照实说。
+     *
+     * @param refresh 用户点了刷新 / 刚播完歌回到榜单，绕过 30 秒节流
+     */
+    fun loadRank(type: String = RankType.HOT, refresh: Boolean = false) {
+        if (_rank.value.loading) return
+        val current = _rank.value
+        if (!refresh && current.type == type && current.tracks.isNotEmpty() &&
+            System.currentTimeMillis() - lastRankAt < RANK_TTL_MS
+        ) {
+            return
+        }
+        _rank.value = current.copy(type = type, loading = true, message = null)
+        viewModelScope.launch {
+            when (val result = container.musicRepository.rank(type)) {
+                is AppResult.Success -> {
+                    val data = result.data
+                    _rank.value = RankUiState(
+                        type = type,
+                        loading = false,
+                        tracks = data.tracks,
+                        eventCount = data.eventCount,
+                        windowStart = data.windowStart,
+                        updatedAt = data.updatedAt,
+                        message = data.message,
+                    )
+                    lastRankAt = System.currentTimeMillis()
+                }
+
+                is AppResult.Failure -> _rank.value = current.copy(
+                    type = type,
+                    loading = false,
+                    tracks = emptyList(),
+                    eventCount = 0,
+                    message = result.message,
+                )
+            }
+        }
+    }
 
     // ---------------------------------------------------------------- 同步
 
@@ -1326,6 +1380,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
         /** 推荐结果的有效期：10 分钟内反复切 tab 不重复请求。 */
         const val RECOMMEND_TTL_MS = 10 * 60 * 1000L
+
+        /** 榜单节流 30 秒：和后台的聚合缓存同频，短时间内重复进页面不必再查。 */
+        const val RANK_TTL_MS = 30_000L
 
         /** 「我的」页自动同步的最小间隔。 */
         const val LIBRARY_SYNC_TTL_MS = 5 * 60 * 1000L

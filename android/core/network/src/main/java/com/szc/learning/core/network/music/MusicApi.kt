@@ -103,6 +103,28 @@ interface MusicApi {
     @GET("app/music/share/{code}")
     suspend fun resolveShare(@Path("code") code: String): AjaxResult<ShareResultDto>
 
+    // ---------------------------------------------------------------- 榜单
+
+    /**
+     * 上报一条播放事件。
+     *
+     * 返回值不看：埋点失败不该弹窗打断听歌。但接口仍然返回 `accepted`
+     * 与原因，方便在日志里回答"榜单为什么是空的"。
+     */
+    @POST("app/music/rank/event")
+    suspend fun reportListenEvent(@Body body: ListenEventRequest): AjaxResult<Any>
+
+    /**
+     * 榜单。
+     *
+     * @param type hot（热歌榜，默认）/ rising（飙升榜）
+     */
+    @GET("app/music/rank")
+    suspend fun rank(
+        @Query("type") type: String,
+        @Query("limit") limit: Int = 50,
+    ): AjaxResult<RankSnapshotDto>
+
     // ---------------------------------------------------------------- 歌曲评论
 
     /**

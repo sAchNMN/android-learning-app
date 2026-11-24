@@ -168,6 +168,35 @@ class MusicRepository(
 
     // ---------------------------------------------------------------- 个人歌单
 
+    // ---------------------------------------------------------------- 榜单
+
+    /**
+     * 上报一条播放事件。
+     *
+     * 调用方一律 fire-and-forget：失败只说明后端不在，不该影响播放。
+     * 返回 [AppResult] 而不是 Unit，是为了让调试时能在日志里看到原因。
+     */
+    suspend fun reportListenEvent(body: ListenEventRequest): AppResult<Unit> =
+        callUnit { api.reportListenEvent(body) }
+
+    /**
+     * 榜单。
+     *
+     * 后端把归一化、去重、排序都做完了，客户端拿到的是已经可以播的曲目。
+     * 这里没有本地兜底：榜单是跨用户聚合，单机算出来的东西不叫榜单。
+     */
+    suspend fun rank(type: String, limit: Int = DEFAULT_RANK_LIMIT): AppResult<RankSnapshot> =
+        callData { api.rank(type, limit) }.map { dto ->
+            RankSnapshot(
+                type = dto.type.orEmpty().ifBlank { type },
+                windowStart = dto.windowStart,
+                updatedAt = dto.updatedAt,
+                eventCount = dto.eventCount,
+                tracks = dto.tracks.orEmpty().mapNotNull { it.toRankedTrack() },
+                message = dto.message?.takeIf { it.isNotBlank() },
+            )
+        }
+
     // ---------------------------------------------------------------- 歌单分享码
 
     /**
@@ -342,5 +371,8 @@ class MusicRepository(
     private companion object {
         const val STREAM_PATH = "app/music/stream/"
         const val DEFAULT_UNPLAYABLE = "这首歌当前不可播放"
+
+        /** 榜单默认条数。后端上限 100，取 50 刚好够滚动一屏多一点。 */
+        const val DEFAULT_RANK_LIMIT = 50
     }
 }

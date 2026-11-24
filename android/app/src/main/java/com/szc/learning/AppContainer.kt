@@ -9,6 +9,7 @@ import com.szc.learning.music.data.DislikeStore
 import com.szc.learning.music.data.FavoritesRepository
 import com.szc.learning.music.data.FavoritesStore
 import com.szc.learning.music.data.ListenStatsStore
+import com.szc.learning.music.data.ListenEventReporter
 import com.szc.learning.music.data.LocalMusicRepository
 import com.szc.learning.music.data.LocalRecommendEngine
 import com.szc.learning.music.data.LoginStore
@@ -118,6 +119,23 @@ class AppContainer(context: Context) {
     /** 导入的分享歌单：码在后端，但「我导入过哪些」是本机事实，离线也要能看。 */
     val sharedPlaylistStore: SharedPlaylistStore = SharedPlaylistStore(context)
 
+    /** 全局唯一播放器。 */
+    val playerController: PlayerController = PlayerController(context, appScope)
+
+    /**
+     * 播放埋点：榜单的唯一数据来源。
+     *
+     * 挂在应用级作用域上而不是某个页面：用户在播放页以外的任何地方切歌，
+     * 这次播放同样该被记上。`start()` 只订阅状态流，不发请求。
+     */
+    val listenEventReporter: ListenEventReporter = ListenEventReporter(
+        state = playerController.state,
+        position = playerController.position,
+        repository = musicRepository,
+        deviceIds = deviceIdStore,
+        scope = appScope,
+    ).also { it.start() }
+
     /**
      * 收藏的写入口。监听通知栏红心的 PlaybackService 也要用它 ——
      * 服务在 UI 之外，拿不到 ViewModel，只能共享这一层。
@@ -129,11 +147,9 @@ class AppContainer(context: Context) {
         router = onlineSourceRouter,
         deviceIds = deviceIdStore,
         sources = sourceConfigStore,
+        listenEvents = listenEventReporter,
         scope = appScope,
     )
-
-    /** 全局唯一播放器。 */
-    val playerController: PlayerController = PlayerController(context, appScope)
 
     /**
      * 一起听。

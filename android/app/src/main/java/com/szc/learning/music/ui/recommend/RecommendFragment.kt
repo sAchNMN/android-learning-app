@@ -28,6 +28,7 @@ import com.szc.learning.music.ui.common.Playlists
 import com.szc.learning.music.ui.motion.Motion
 import com.szc.learning.music.ui.motion.springEnter
 import com.szc.learning.music.ui.playlist.PlaylistDetailActivity
+import com.szc.learning.music.ui.rank.RankActivity
 import com.szc.learning.music.ui.search.SearchActivity
 import com.szc.learning.music.ui.track.PlaylistRailAdapter
 import com.szc.learning.music.ui.widget.ShimmerSkeletonView
@@ -123,6 +124,9 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         }
 
         binding.recommendRefresh.setOnClickListener { viewModel.loadRecommendations(refresh = true) }
+        binding.recommendRank.setOnClickListener {
+            startActivity(Intent(requireContext(), RankActivity::class.java))
+        }
         binding.recommendSearch.setOnClickListener {
             startActivity(Intent(requireContext(), SearchActivity::class.java))
         }

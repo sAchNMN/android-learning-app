@@ -248,4 +248,21 @@
     <string name="room_host_badge">房主</string>
     <string name="room_me_badge">我</string>
     <string name="room_busy">正在连接…</string>
+
+    <!-- 排行榜 -->
+    <string name="rank_title">排行榜</string>
+    <string name="rank_tab_hot">热歌榜</string>
+    <string name="rank_tab_rising">飙升榜</string>
+    <string name="rank_refresh">刷新榜单</string>
+    <string name="rank_entry">排行榜</string>
+    <string name="rank_subtitle">近 24 小时 · %1$d 次播放 · %2$s 更新</string>
+    <string name="rank_subtitle_empty">近 24 小时 · 还没有播放记录</string>
+    <string name="rank_subtitle_rising">近 24 小时与前一个 24 小时的差值</string>
+    <string name="rank_empty_title">榜单还是空的</string>
+    <string name="rank_empty_hint">播几首歌，这里就有排名了。\n同一首歌曲听完算 3 分、红心 5 分、跳过 −2 分。</string>
+    <string name="rank_unavailable">榜单暂时查不了</string>
+    <string name="rank_score">热度 %1$d</string>
+    <!-- 用正负号而不是箭头：12sp 下 ↑ / ↓ 和数字 1 太像，飙升榜会读成「14」 -->
+    <string name="rank_delta_up">+%1$d</string>
+    <string name="rank_delta_down">-%1$d</string>
 </resources>
