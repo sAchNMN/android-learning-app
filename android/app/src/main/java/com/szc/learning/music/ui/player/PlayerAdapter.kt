@@ -4,6 +4,7 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
@@ -38,15 +39,31 @@ class PlayerAdapter(
     private val onSeek: (Float) -> Unit,
     private val onSeekTo: (Long) -> Unit,
     private val onShowLyrics: (MusicTrack, String) -> Unit,
+    private val onShowQueue: () -> Unit,
+    private val onDislike: (MusicTrack) -> Unit,
+    private val onShowComments: (MusicTrack) -> Unit,
 ) : RecyclerView.Adapter<PlayerAdapter.Holder>() {
 
     private var tracks: List<MusicTrack> = emptyList()
-    private val holders = mutableMapOf<Int, Holder>()
+
+    /**
+     * 存活中的 holder。
+     *
+     * 用 Set 存 holder 本身、靠 `boundPosition` 判断它是哪一页 —— 原来是
+     * `Map<position, holder>`，但 submit 每次都要 `clear()` 才能保证键不失效，
+     * 而 clear + 全量重绑正是「推荐追一批歌，当前页闪一下」的根源。
+     * 换成增量通知后，位置会变（插入/删除），键就不可靠了，只认 holder 自己记的位置。
+     */
+    private val holders = mutableSetOf<Holder>()
     private val lyrics = mutableMapOf<String, LyricSheet>()
     private var activePosition = 0
     private var state: PlayerUiState? = null
     private var topInsetPx = 0
     private var bottomInsetPx = 0
+
+    /** 当前页的播放进度与时长。进度来自独立流，只在 [setPosition] 里更新。 */
+    private var positionMs = 0L
+    private var durationMs = 0L
 
     init {
         setHasStableIds(true)
@@ -56,11 +73,34 @@ class PlayerAdapter(
 
     override fun getItemCount(): Int = tracks.size
 
+    /**
+     * 换一批曲目。
+     *
+     * 用 DiffUtil 而不是全量重绑：播放页的队列会「尾部追加」（歌曲推荐续流），
+     * 全量重绑会让 ViewPager2 把当前页拆了重建，用户看到的是闪一下、偶尔还跳回第一页。
+     * 增量通知下，尾部追加只是 `notifyItemRangeInserted`，当前页的 holder 完全不动。
+     *
+     * 比较依据是 `track.key`（跨来源唯一），内容相同就不重画 —— 同一首歌换了个
+     * 播放地址时 `key` 不变、`uri` 变，仍会正确刷新。
+     */
     fun submit(list: List<MusicTrack>) {
+        if (tracks == list) return
+        val old = tracks
+        val diff = DiffUtil.calculateDiff(
+            object : DiffUtil.Callback() {
+                override fun getOldListSize(): Int = old.size
+
+                override fun getNewListSize(): Int = list.size
+
+                override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                    old[oldItemPosition].key == list[newItemPosition].key
+
+                override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                    old[oldItemPosition] == list[newItemPosition]
+            },
+        )
         tracks = list
-        holders.clear()
-        @Suppress("NotifyDataSetChanged")
-        notifyDataSetChanged()
+        diff.dispatchUpdatesTo(this)
     }
 
     fun size(): Int = tracks.size
@@ -68,26 +108,39 @@ class PlayerAdapter(
     fun trackAt(position: Int): MusicTrack? = tracks.getOrNull(position)
 
     fun setActive(position: Int) {
+        if (activePosition != position) positionMs = 0L
         activePosition = position
-        holders.forEach { (index, holder) ->
-            holder.render(state, active = index == position)
+        holders.forEach { holder ->
+            holder.render(state, active = holder.boundPosition == position)
         }
+    }
+
+    /**
+     * 进度推进。只碰当前页的进度条、时间文字和歌词高亮。
+     *
+     * 走独立的 position 流而不是 [setState]：整份状态每 350ms 重建一次，
+     * ViewPager2 里所有存活页面都会被重绑一遍，滑动时会掉帧。
+     */
+    fun setPosition(position: Long) {
+        if (position == positionMs) return
+        positionMs = position
+        holders.firstOrNull { it.boundPosition == activePosition }?.renderPosition(position)
     }
 
     fun setState(value: PlayerUiState) {
         state = value
-        holders.forEach { (index, holder) ->
-            holder.render(value, active = index == activePosition)
+        holders.forEach { holder ->
+            holder.render(value, active = holder.boundPosition == activePosition)
         }
     }
 
     fun setFavorites(keys: Set<String>) {
-        holders.values.forEach { holder -> holder.renderFavorite(holder.track?.key in keys) }
+        holders.forEach { holder -> holder.renderFavorite(holder.track?.key in keys) }
     }
 
     fun setLyrics(key: String, text: String?) {
         lyrics[key] = LrcParser.parse(text)
-        holders.values
+        holders
             .filter { it.track?.key == key }
             .forEach { it.renderLyrics() }
     }
@@ -95,7 +148,7 @@ class PlayerAdapter(
     fun setInsets(topPx: Int, bottomPx: Int) {
         topInsetPx = topPx
         bottomInsetPx = bottomPx
-        holders.values.forEach { it.applyInsets() }
+        holders.forEach { it.applyInsets() }
     }
 
     fun release() {
@@ -107,20 +160,27 @@ class PlayerAdapter(
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         holder.bind(tracks[position], position)
-        holders[position] = holder
+        holders.add(holder)
     }
 
     override fun onViewAttachedToWindow(holder: Holder) {
         super.onViewAttachedToWindow(holder)
         val position = holder.boundPosition
         if (position == RecyclerView.NO_POSITION) return
-        holders[position] = holder
+        holders.add(holder)
         holder.render(state, active = position == activePosition)
     }
 
     override fun onViewRecycled(holder: Holder) {
-        holders.remove(holder.boundPosition)
+        holders.remove(holder)
         super.onViewRecycled(holder)
+    }
+
+    override fun onViewDetachedFromWindow(holder: Holder) {
+        // 滑出预加载窗口的页面也摘掉：ViewPager2 会保留一页在屏幕外，
+        // 留着它就会被 setState / setActive 反复重画（而且它已经不可见）
+        holders.remove(holder)
+        super.onViewDetachedFromWindow(holder)
     }
 
     inner class Holder(
@@ -156,6 +216,9 @@ class PlayerAdapter(
                     )
                 }
             }
+            binding.playerQueue.setOnClickListener { onShowQueue() }
+            binding.playerDislike.setOnClickListener { track?.let(onDislike) }
+            binding.playerComments.setOnClickListener { track?.let(onShowComments) }
             binding.playerLyrics.onLineClick = { line ->
                 val current = track
                 when {
@@ -175,6 +238,9 @@ class PlayerAdapter(
                 binding.playerNext,
                 binding.playerMode,
                 binding.playerFavorite,
+                binding.playerQueue,
+                binding.playerComments,
+                binding.playerDislike,
             ).forEach { it.installSpringPress(0.9f) }
         }
 
@@ -186,9 +252,6 @@ class PlayerAdapter(
             binding.playerTitle.text = item.title
             binding.playerArtist.text = item.artist.ifBlank {
                 context.getString(R.string.player_unknown_artist)
-            }
-            binding.playerAlbum.text = item.album.ifBlank {
-                context.getString(R.string.player_unknown_album)
             }
             binding.playerCover.bindArt(item, sizePx = 720)
             binding.playerBackdrop.bindArt(item, sizePx = 720)
@@ -225,21 +288,21 @@ class PlayerAdapter(
         fun renderLyrics() {
             val current = track ?: return
             val sheet = lyrics[current.key]
-            val context = binding.root.context
             when {
-                sheet == null -> binding.playerLyrics.showPlaceholder(
-                    context.getString(R.string.player_lyrics_loading),
-                )
-
-                sheet.isEmpty -> binding.playerLyrics.showPlaceholder(
-                    context.getString(R.string.player_lyrics_none),
-                )
+                // 加载中和没有歌词都留空：封面和标题已经够了，不用一句话解释空白
+                sheet == null || sheet.isEmpty -> binding.playerLyrics.showPlaceholder("")
 
                 else -> binding.playerLyrics.setSheet(
                     sheet,
-                    if (boundPosition == activePosition) state?.positionMs ?: 0L else 0L,
+                    if (boundPosition == activePosition) positionMs else 0L,
                 )
             }
+        }
+
+        /** 进度 tick 的唯一入口：只更新进度条、时间文字、歌词高亮。 */
+        fun renderPosition(position: Long) {
+            renderProgress(position, durationMs)
+            binding.playerLyrics.updateProgress(position)
         }
 
         fun render(value: PlayerUiState?, active: Boolean) {
@@ -259,14 +322,18 @@ class PlayerAdapter(
                 context.getString(mode.labelRes),
             )
 
-            val positionMs = if (active) value?.positionMs ?: 0L else 0L
-            val durationMs = if (active && (value?.durationMs ?: 0L) > 0L) {
+            val duration = if (active && (value?.durationMs ?: 0L) > 0L) {
                 value?.durationMs ?: 0L
             } else {
                 track?.durationMs ?: 0L
             }
-            renderProgress(positionMs, durationMs)
-            if (active) binding.playerLyrics.updateProgress(positionMs)
+            if (active) {
+                durationMs = duration
+                renderPosition(positionMs)
+            } else {
+                // 非当前页只画个静态的 0 进度，别把别人的时间算进来
+                renderProgress(0L, duration)
+            }
         }
 
         private fun renderProgress(positionMs: Long, durationMs: Long) {

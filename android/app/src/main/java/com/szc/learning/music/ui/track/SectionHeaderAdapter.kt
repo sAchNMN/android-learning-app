@@ -17,8 +17,16 @@ class SectionHeaderAdapter : RecyclerView.Adapter<SectionHeaderAdapter.Holder>()
 
     fun setTitle(text: CharSequence?) {
         if (title == text) return
+        val had = !title.isNullOrBlank()
+        val has = !text.isNullOrBlank()
         title = text
-        notifyDataSetChanged()
+        // 只有 0/1 条，没必要上 DiffUtil：按「多了 / 少了 / 换字」三种情况分别通知，
+        // 避免 notifyDataSetChanged 把整个 ConcatAdapter 的其它分区一起重绑
+        when {
+            !had && has -> notifyItemInserted(0)
+            had && !has -> notifyItemRemoved(0)
+            had && has -> notifyItemChanged(0)
+        }
     }
 
     override fun getItemCount(): Int = if (title.isNullOrBlank()) 0 else 1

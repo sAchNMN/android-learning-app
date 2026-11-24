@@ -15,6 +15,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnPreDraw
+import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -26,6 +27,7 @@ import com.szc.learning.databinding.ActivityMainBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.library.LibraryFragment
 import com.szc.learning.music.ui.mine.MineFragment
+import com.szc.learning.music.ui.common.showQueueSheet
 import com.szc.learning.music.ui.now.NowPlayingActivity
 import com.szc.learning.music.ui.player.PlayerFragment
 import com.szc.learning.music.ui.recommend.RecommendFragment
@@ -53,6 +55,9 @@ class MainActivity : AppCompatActivity() {
     private val tags = listOf(TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
     private var currentTab = DEFAULT_TAB
     private var hasTrack = false
+
+    /** 迷你条的进度比例要用时长算，状态里带上来的那个值会一直有效到下一次切歌。 */
+    private var miniDurationMs = 0L
 
     private var insetTop = 0
     private var insetBottom = 0
@@ -90,7 +95,6 @@ class MainActivity : AppCompatActivity() {
 
         applyWindowInsets()
         setupTabBar()
-        wireGlass()
         bindMiniPlayer()
         observePlayer()
 
@@ -119,23 +123,17 @@ class MainActivity : AppCompatActivity() {
         outState.putInt(KEY_TAB, currentTab)
     }
 
-    override fun onResume() {
-        super.onResume()
-        // 从正在播放/搜索页回来时，列表内容可能已经变了，玻璃重新采样一次
-        binding.tabBar.invalidateGlass()
-        binding.miniPlayer.refreshGlass()
+    override fun onStart() {
+        super.onStart()
+        // 回到前台静默对齐一次：喜欢的增删、音源账号里歌单的变化都在后台完成，
+        // 不给提示（TTL 在 ViewModel 里，5 分钟内不会重复请求）
+        viewModel.syncLibrary()
     }
 
-    /**
-     * 玻璃的模糊采样源统一指向页面容器 [ActivityMainBinding.tabContainer]。
-     *
-     * 不能指向窗口或 dock 自己：PixelCopy 式的整窗截图会把玻璃自身也截进去，
-     * 每采一次就糊一层，滚两下就变成一块不透明白板。tabContainer 在 dock 下面，
-     * 正好是"播放栏身后的内容"。
-     */
-    private fun wireGlass() {
-        binding.miniPlayer.backdropSource = binding.tabContainer
-        binding.tabBar.backdropSource = binding.tabContainer
+    override fun onResume() {
+        super.onResume()
+        // 从正在播放/搜索页回来时，主题/材质可能被改过，面板重画一次
+        binding.tabBar.invalidateGlass()
     }
 
     // ---------------------------------------------------------------- 布局
@@ -167,13 +165,20 @@ class MainActivity : AppCompatActivity() {
     private fun setupTabBar() {
         binding.tabBar.setItems(
             listOf(
-                BottomNavBar.Item(R.drawable.ic_nav_player, getString(R.string.tab_mv)),
+                BottomNavBar.Item(R.drawable.ic_nav_player, getString(R.string.tab_player)),
                 BottomNavBar.Item(R.drawable.ic_nav_discover, getString(R.string.tab_recommend)),
                 BottomNavBar.Item(R.drawable.ic_nav_local, getString(R.string.tab_local)),
                 BottomNavBar.Item(R.drawable.ic_nav_mine, getString(R.string.tab_mine)),
             ),
         )
         binding.tabBar.onSelected = { index -> showTab(index) }
+        // 渐隐层跟着 dock 的高度走：有无播放行、手势条 inset 不同，dock 高度都不同
+        binding.dock.addOnLayoutChangeListener { v, _, top, _, bottom, _, _, _, _ ->
+            val dockHeight = bottom - top
+            val lead = (36 * resources.displayMetrics.density).toInt()
+            binding.bottomFade.glassHeightPx = dockHeight
+            binding.bottomFade.updateLayoutParams { height = dockHeight + lead }
+        }
     }
 
     /** 首次进入某 tab 时才创建 Fragment，之后只切显隐。 */
@@ -209,10 +214,11 @@ class MainActivity : AppCompatActivity() {
     /** 切到播放器时整页变深色：状态栏/导航栏图标转白、底部条换成深色玻璃。 */
     private fun applyChrome() {
         val dark = isPlayerTab()
-        binding.tabBar.setDarkMode(dark)
         binding.topFade.visibility =
             if (dark) android.view.View.GONE else android.view.View.VISIBLE
-        binding.miniPlayer.visibility =
+        binding.bottomFade.visibility =
+            if (dark) android.view.View.GONE else android.view.View.VISIBLE
+        binding.tabBar.player.visibility =
             if (!dark && hasTrack) android.view.View.VISIBLE else android.view.View.GONE
 
         val controller = WindowCompat.getInsetsController(window, window.decorView)
@@ -220,7 +226,6 @@ class MainActivity : AppCompatActivity() {
         controller.isAppearanceLightNavigationBars = !dark
         layoutInsets()
         binding.tabBar.invalidateGlass()
-        binding.miniPlayer.refreshGlass()
     }
 
     private fun isPlayerTab(): Boolean = tags[currentTab] == TAG_PLAYER
@@ -240,26 +245,45 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------------------- 播放
 
     private fun bindMiniPlayer() {
-        binding.miniPlayer.onOpen = {
+        binding.tabBar.player.onOpen = {
             startActivity(Intent(this, NowPlayingActivity::class.java))
         }
-        binding.miniPlayer.onPlayToggle = { viewModel.toggle() }
-        binding.miniPlayer.onNext = { viewModel.next() }
+        binding.tabBar.player.onPlayToggle = { viewModel.toggle() }
+        binding.tabBar.player.onNext = { viewModel.next() }
+        // 左滑下一首、右滑上一首；「上一首」沿用 iOS 习惯（播过 3 秒先回本曲开头）
+        binding.tabBar.player.onPrevious = { viewModel.previous() }
+        binding.tabBar.player.onQueue = { showQueueSheet(this, viewModel) }
     }
 
     private fun observePlayer() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.playerState.collect { state ->
-                    binding.miniPlayer.bind(state.track, state.isPlaying, state.progress)
+                    miniDurationMs = state.durationMs
+                    binding.tabBar.player.bind(
+                        state.track,
+                        state.isPlaying,
+                        fractionOf(viewModel.position.value, state.durationMs),
+                    )
                     hasTrack = state.track != null
                     if (isPlayerTab()) {
-                        binding.miniPlayer.visibility = android.view.View.GONE
+                        binding.tabBar.player.visibility = android.view.View.GONE
                     }
                 }
             }
         }
+        // 进度单独一条流：只推进迷你条底部那条线，不重跑 bind
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.position.collect { position ->
+                    binding.tabBar.player.bindProgress(fractionOf(position, miniDurationMs))
+                }
+            }
+        }
     }
+
+    private fun fractionOf(positionMs: Long, durationMs: Long): Float =
+        if (durationMs <= 0L) 0f else (positionMs.toFloat() / durationMs).coerceIn(0f, 1f)
 
     // ---------------------------------------------------------------- 权限
 

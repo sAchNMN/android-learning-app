@@ -30,7 +30,10 @@ class SeekLine @JvmOverloads constructor(
 
     var progress: Float = 0f
         set(value) {
-            field = value.coerceIn(0f, 1f)
+            val next = value.coerceIn(0f, 1f)
+            // 位置回调里同一个毫秒值会重复到达，值没变就别再 invalidate
+            if (next == field) return
+            field = next
             invalidate()
         }
 
@@ -89,6 +92,14 @@ class SeekLine @JvmOverloads constructor(
     private val lineRect = RectF()
     private var dragging = false
     private var dragFraction = 0f
+
+    /**
+     * 用户正按着进度条拖。
+     *
+     * 进度现在是独立的 350ms 流，如果不问这一句，手指还按着就会被 ticker 的旧值顶回去，
+     * 表现为圆点在指下抖。页面在写 [progress] 前先查它。
+     */
+    val isSeeking: Boolean get() = dragging
 
     private val thickness: Float
         get() = if (showKnob) context.dp(4f) else context.dp(2f)

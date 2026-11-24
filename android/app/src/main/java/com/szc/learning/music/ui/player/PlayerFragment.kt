@@ -3,7 +3,6 @@ package com.szc.learning.music.ui.player
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
@@ -11,23 +10,29 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewpager2.widget.ViewPager2
 import com.szc.learning.R
+import com.szc.learning.core.common.HudToast
 import com.szc.learning.core.common.music.MusicTrack
-import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentPlayerBinding
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.OnlinePlayEvent
+import com.szc.learning.music.ui.comments.CommentSheet
+import com.szc.learning.music.ui.common.iconRes
 import com.szc.learning.music.ui.common.labelRes
+import com.szc.learning.music.ui.common.showQueueSheet
 import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.theme.themeColor
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 播放器 tab：整屏竖向翻页，上滑/下滑换歌。
+ * 播放器 tab：整屏竖向翻页，上滑/下滑换歌 —— 刷短视频的那套手势。
  *
- * 旧 MV 页的定位是「短视频流」；现在没有 MV 素材，也不再假装有视频。
- * 这里回到音乐播放器本身：大封面、内嵌歌词、进度和传输控制。
+ * 页面列表就是**当前播放队列** [MusicViewModel.feed]：从推荐页/本地页/歌单点播的
+ * 那批歌会原样出现在这里。只有用户把播放方式切到「歌曲推荐」、并且队列真正播到
+ * 最后一首时，才往后接实时推荐（换歌手扩散 / 换推荐批次）。其余模式播完就停或
+ * 循环，不会偷偷塞歌进来。
+ *
  * 音频始终由全局 PlayerController 播放，翻页只是把当前曲目切过去，
  * 所以离开这个 tab 后歌不会停。
  */
@@ -44,6 +49,9 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
     private var activeTrackKey: String? = null
     private var lyricsJob: Job? = null
 
+    /** 「暂时拿不到新歌」只提示一次；失败重试成功后要复位。 */
+    private var feedEndNotified = false
+
     private val adapter: PlayerAdapter = PlayerAdapter(
         favoriteKeys = { viewModel.favorites.value },
         onToggleFavorite = { track ->
@@ -55,13 +63,18 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         onPrevious = { viewModel.previous() },
         onNext = { viewModel.next() },
         onCyclePlayMode = {
-            viewModel.cyclePlayMode()
-            // 图标小，切完给个文字回执，否则用户不知道点到了哪种模式
-            toast(viewModel.playerState.value.playMode.labelRes)
+            // 用返回值而不是回读 state：state 由 media3 回调驱动，这一帧还是旧模式
+            viewModel.cyclePlayMode()?.let { toast(it.labelRes, it.iconRes) }
         },
         onSeek = { fraction -> viewModel.seekToFraction(fraction) },
         onSeekTo = { positionMs -> viewModel.seekTo(positionMs) },
         onShowLyrics = { track, text -> showLyrics(track, text) },
+        onShowQueue = { showQueueSheet(requireActivity(), viewModel) },
+        onDislike = { track ->
+            viewModel.dislike(track)
+            toast(R.string.player_disliked)
+        },
+        onShowComments = { track -> CommentSheet(requireActivity(), viewModel, track).show() },
     )
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -85,9 +98,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         binding.playerRoot.setOnApplyWindowInsetsListener { _, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val context = requireContext()
-            binding.playerHeader.updatePadding(top = bars.top + context.dp(8f).toInt())
             adapter.setInsets(
-                topPx = bars.top + context.dp(58f).toInt(),
+                topPx = bars.top + context.dp(20f).toInt(),
                 bottomPx = bars.bottom + context.dp(96f).toInt(),
             )
             insets
@@ -95,8 +107,31 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                combine(viewModel.cloud, viewModel.local) { _, _ -> Unit }
-                    .collect { rebuildTracks() }
+                viewModel.feed.collect { renderFeed(it) }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.feedLoading.collect { renderEmptyHint() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.feedEnded.collect { ended ->
+                    renderEmptyHint()
+                    // 流到底了：给一次提示就够，别每次滑到末尾都弹
+                    if (!ended) {
+                        feedEndNotified = false
+                        return@collect
+                    }
+                    if (feedEndNotified) return@collect
+                    feedEndNotified = true
+                    HudToast.show(
+                        requireContext(),
+                        getString(R.string.player_feed_ended),
+                        bottomMarginDp = 276,
+                    )
+                }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -119,31 +154,84 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
                     } else {
                         adapter.setActive(index)
                     }
-                    updatePageCount(index)
                 }
             }
         }
 
-        rebuildTracks()
+        // 进度单独一条流：只推当前页的进度条与歌词高亮
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.position.collect { position -> adapter.setPosition(position) }
+            }
+        }
+
+        // 从推荐页/歌单点播后切回来：先把流对齐到新的播放队列，再决定要不要建流
+        viewModel.adoptQueueIfChanged()
+        renderFeed(viewModel.feed.value)
+        viewModel.startFeed()
     }
 
-    private fun rebuildTracks() {
-        val all = viewModel.allTracks()
-        if (all.map { it.key } == tracks.map { it.key }) return
+    /**
+     * 流变化：可能是首批入流、往后接了一批、也可能是整条流被换掉。
+     *
+     * 前两种只改列表不动位置 —— 用户正滑到第 7 首，后面来了 20 首不该把他弹回去。
+     * 只有「整条流换了」才需要追踪正在播放的那首。
+     */
+    private fun renderFeed(feed: List<MusicTrack>) {
+        val oldKeys = tracks.map { it.key }
+        val newKeys = feed.map { it.key }
+        if (newKeys == oldKeys && feed == tracks) return
 
-        val playingKey = viewModel.playerState.value.track?.key
-        tracks = all
-        adapter.submit(all)
-        binding.playerEmpty.visibility = if (all.isEmpty()) View.VISIBLE else View.GONE
-        if (all.isEmpty()) {
-            binding.playerPageCount.text = ""
+        // 旧列表是新列表的前缀 → 只追加（或原地更新了某一首的 uri）
+        val prefixKept = newKeys.size >= oldKeys.size &&
+            newKeys.subList(0, oldKeys.size) == oldKeys
+
+        tracks = feed
+        adapter.submit(feed)
+        renderEmptyHint()
+        if (feed.isEmpty()) return
+
+        if (prefixKept && binding.playerPager.currentItem in feed.indices) {
+            val index = binding.playerPager.currentItem
+            adapter.setActive(index)
+            if (oldKeys.isEmpty()) {
+                // 首批入流：跟随正在播放的那首（ViewModel 已经把它插到流里了）；
+                // 什么都没在播才从第一首起播，别打断用户在别处点的歌
+                val playingKey = viewModel.playerState.value.track?.key
+                val playingIndex = feed.indexOfFirst { it.key == playingKey }
+                when {
+                    playingIndex >= 0 -> {
+                        if (binding.playerPager.currentItem != playingIndex) {
+                            binding.playerPager.setCurrentItem(playingIndex, false)
+                        }
+                        activate(playingIndex)
+                    }
+
+                    playingKey == null -> activate(0, forcePlay = true)
+                }
+            }
             return
         }
 
-        val index = all.indexOfFirst { it.key == playingKey }
+        val playingKey = viewModel.playerState.value.track?.key
+        val index = feed.indexOfFirst { it.key == playingKey }
         val start = if (index >= 0) index else 0
         binding.playerPager.setCurrentItem(start, false)
         activate(start, forcePlay = index < 0)
+    }
+
+    /** 空态：加载中说「正在选歌」，扩不出新歌才说拿不到。 */
+    private fun renderEmptyHint() {
+        if (_binding == null) return
+        val empty = tracks.isEmpty()
+        binding.playerEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+        if (!empty) return
+        binding.playerEmpty.setText(
+            when {
+                viewModel.feedEnded.value -> R.string.player_feed_ended
+                else -> R.string.player_feed_loading
+            },
+        )
     }
 
     private fun activate(position: Int, forcePlay: Boolean = false) {
@@ -152,23 +240,25 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         val track = tracks[index]
         activeTrackKey = track.key
         adapter.setActive(index)
-        updatePageCount(index)
         loadLyrics(track)
+        // 滑到离末尾还有几首就补，等到最后一首才发请求一定会露出空窗
+        if (index >= tracks.size - LOAD_MORE_THRESHOLD) viewModel.loadMoreFeed()
 
         val current = viewModel.playerState.value.track?.key
         if (forcePlay || current != track.key) {
-            viewModel.play(tracks, index)
+            viewModel.playFeedAt(index) { event ->
+                when (event) {
+                    is OnlinePlayEvent.Ready -> adapter.setState(viewModel.playerState.value)
+                    is OnlinePlayEvent.Failed -> {
+                        if (isAdded) {
+                            HudToast.show(requireContext(), event.message, bottomMarginDp = 276)
+                        }
+                    }
+                }
+            }
         } else {
             adapter.setState(viewModel.playerState.value)
         }
-    }
-
-    private fun updatePageCount(index: Int) {
-        binding.playerPageCount.text = getString(
-            R.string.player_page_count,
-            index + 1,
-            tracks.size,
-        )
     }
 
     /**
@@ -221,6 +311,12 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
             binding.playerPager.setCurrentItem(index, false)
         }
         tracks.getOrNull(binding.playerPager.currentItem)?.let(::loadLyrics)
+        // 隐藏期间可能在别处点播了新队列：切回来先对齐
+        viewModel.adoptQueueIfChanged()
+        // 队尾补一次；是否真的推荐由 ViewModel 的模式 + hasNext 闸门决定
+        if (binding.playerPager.currentItem >= tracks.size - LOAD_MORE_THRESHOLD) {
+            viewModel.loadMoreFeed()
+        }
     }
 
     override fun onDestroyView() {
@@ -230,7 +326,13 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         super.onDestroyView()
     }
 
-    private fun toast(resId: Int) {
-        requireContext().toast(resId)
+    /** 底部是进度条 + 传输控制条，提示抬到进度条上方，别盖住播放键和进度。 */
+    private fun toast(resId: Int, iconRes: Int = 0) {
+        HudToast.show(requireContext(), getString(resId), iconRes, bottomMarginDp = 276)
+    }
+
+    private companion object {
+        /** 离末尾还剩几首就补下一批：留出下一批解析地址的时间。 */
+        const val LOAD_MORE_THRESHOLD = 3
     }
 }

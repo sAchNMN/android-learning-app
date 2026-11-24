@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 播放设置：定时关闭 + 倍速两组。行由 NowPlayingMenuSheet 动态铺进容器，
+     不写死 10 个 id —— 选项以后增减只改一处列表。 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playOptionsRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog"
+    android:orientation="vertical"
+    android:paddingTop="10dp"
+    android:paddingBottom="14dp">
+
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_dialog_handle" />
+
+    <TextView
+        style="@style/Text.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:text="@string/player_sleep_timer"
+        android:textColor="?attr/auInkSecondary" />
+
+    <LinearLayout
+        android:id="@+id/optionsSleep"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        style="@style/Text.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:text="@string/player_speed"
+        android:textColor="?attr/auInkSecondary" />
+
+    <LinearLayout
+        android:id="@+id/optionsSpeed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+</LinearLayout>

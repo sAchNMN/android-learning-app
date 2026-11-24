@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 正在播放：深色沉浸、封面居中、底部控件。背景是同一张封面的模糊放大 -->
+<!-- 正在播放：深色沉浸、封面居中、底部控件。
+     背景 = 封面主色派生的纵向渐变（底层） + 一层预缩小的模糊封面（上层，低透明度）。
+     换歌时渐变由 ArgbEvaluator 平滑过渡，所有 API 级别效果一致，不依赖 RenderEffect。 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nowRoot"
@@ -7,11 +9,17 @@
     android:layout_height="match_parent"
     android:background="?attr/auDarkCanvas">
 
+    <!-- 底色渐变：颜色由 CoverPalette 从封面取，代码里设 GradientDrawable -->
+    <View
+        android:id="@+id/nowBackdropGradient"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <ImageView
         android:id="@+id/nowBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0.42"
+        android:alpha="0.35"
         android:contentDescription="@null"
         android:scaleType="centerCrop" />
 
@@ -47,36 +55,39 @@
                 android:src="@drawable/ic_chevron_down"
                 app:tint="?attr/auOnDark" />
 
+            <!-- 定时关闭生效时显示剩余时间，未设置时整块不占位 -->
             <TextView
-                android:layout_width="0dp"
+                android:id="@+id/nowSleepHint"
+                style="@style/Text.Numeric"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:alpha="0.6"
-                android:gravity="center"
-                android:text="@string/player_now_playing"
-                android:textColor="?attr/auOnDark"
-                android:textSize="11sp" />
+                android:layout_marginStart="8dp"
+                android:textColor="?attr/auOnDarkSecondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
             <ImageButton
-                android:id="@+id/nowQueue"
+                android:id="@+id/nowMore"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/queue_title"
-                android:padding="10dp"
+                android:contentDescription="@string/player_more"
+                android:padding="9dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_queue"
+                android:src="@drawable/ic_more"
                 app:tint="?attr/auOnDark" />
-        </LinearLayout>
 
-        <Space
-            android:layout_width="1dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="272dp"
             android:layout_height="272dp"
+            android:layout_marginTop="4dp"
             android:layout_gravity="center_horizontal">
 
             <com.google.android.material.imageview.ShapeableImageView
@@ -97,16 +108,12 @@
                 app:tint="@color/white" />
         </FrameLayout>
 
-        <Space
-            android:layout_width="1dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
         <TextView
             android:id="@+id/nowTitle"
             style="@style/Text.Title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
             android:ellipsize="end"
             android:gravity="center"
             android:maxLines="1"
@@ -128,14 +135,77 @@
         <com.szc.learning.music.ui.widget.LyricView
             android:id="@+id/nowLyric"
             android:layout_width="match_parent"
-            android:layout_height="104dp"
-            android:layout_marginTop="10dp" />
+            android:layout_height="0dp"
+            android:layout_marginTop="8dp"
+            android:layout_weight="1"
+            android:minHeight="140dp" />
+
+        <!-- 操作行：不喜欢 / 评论 / 队列，紧贴进度条上方 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/nowDislike"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/player_dislike"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_thumb_down"
+                app:tint="?attr/auOnDark" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/nowComments"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/comment_title"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_comment"
+                app:tint="?attr/auOnDark" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/nowQueue"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/queue_title"
+                android:padding="10dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_queue"
+                app:tint="?attr/auOnDark" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+        </LinearLayout>
 
         <com.szc.learning.music.ui.widget.SeekLine
             android:id="@+id/nowSeek"
             android:layout_width="match_parent"
             android:layout_height="28dp"
-            android:layout_marginTop="18dp" />
+            android:layout_marginTop="4dp" />
 
         <LinearLayout
             android:layout_width="match_parent"

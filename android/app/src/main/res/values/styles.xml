@@ -98,14 +98,21 @@
         <item name="cornerSize">10dp</item>
     </style>
 
+    <!-- 迷你播放器的封面：正圆。播放时它会缓慢自转，圆角方块转起来会露出直角 -->
+    <style name="Shape.Cover.Mini" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- 行内封面与行级 ripple 共用 radius_row，曲率必须一致 -->
     <style name="Shape.Cover.Row" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">12dp</item>
+        <item name="cornerSize">@dimen/radius_row</item>
     </style>
 
     <style name="Shape.Cover.Card" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">20dp</item>
+        <item name="cornerSize">@dimen/radius_lg</item>
     </style>
 
     <style name="Shape.Cover.Hero" parent="">
