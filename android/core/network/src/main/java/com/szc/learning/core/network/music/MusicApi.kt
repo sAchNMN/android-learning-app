@@ -17,10 +17,6 @@ import retrofit2.http.Query
  */
 interface MusicApi {
 
-    /** 全部云端曲目，按上传时间倒序。 */
-    @GET("app/music/tracks")
-    suspend fun tracks(): AjaxResult<List<MusicTrackDto>>
-
     /**
      * 聚合搜索。
      *
@@ -78,23 +74,6 @@ interface MusicApi {
         @Body body: SourceUpdateBody,
     ): AjaxResult<Void>
 
-    // ---------------------------------------------------------------- 推荐
-
-    /**
-     * 猜你喜欢。
-     *
-     * @param artists 口味歌手，逗号分隔；后端还会去 own 的喜欢记录里补
-     * @param seed    洗牌种子，null 表示按天固定（同一天结果一致）
-     */
-    @GET("app/music/recommend")
-    suspend fun recommend(
-        @Query("deviceId") deviceId: String? = null,
-        @Query("artists") artists: String? = null,
-        @Query("seed") seed: Long? = null,
-        @Query("limit") limit: Int = 20,
-        @Query("cookies") cookies: String? = null,
-    ): AjaxResult<RecommendDto>
-
     // ---------------------------------------------------------------- 我喜欢
 
     @POST("app/music/like")
@@ -108,20 +87,6 @@ interface MusicApi {
         @Query("deviceId") deviceId: String,
         @Query("limit") limit: Int = 200,
     ): AjaxResult<List<UserLikeDto>>
-
-    // ---------------------------------------------------------------- 个人歌单
-
-    @GET("app/music/playlists")
-    suspend fun playlists(@Query("cookies") cookies: String? = null): AjaxResult<List<UserPlaylistDto>>
-
-    @GET("app/music/playlist")
-    suspend fun playlistTracks(
-        @Query("source") source: String,
-        @Query("id") id: String,
-        @Query("name") name: String? = null,
-        @Query("limit") limit: Int = 200,
-        @Query("cookies") cookies: String? = null,
-    ): AjaxResult<PlaylistDetailDto>
 
     // ---------------------------------------------------------------- 歌单分享码
 

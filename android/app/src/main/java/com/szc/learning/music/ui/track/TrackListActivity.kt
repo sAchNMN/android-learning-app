@@ -73,7 +73,6 @@ class TrackListActivity : AppCompatActivity() {
         binding.trackListTitle.setText(
             when (mode) {
                 MODE_RECENT -> R.string.playlist_recent_title
-                MODE_CLOUD -> R.string.playlist_cloud_title
                 else -> R.string.playlist_favorite_title
             },
         )
@@ -91,11 +90,10 @@ class TrackListActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
-                    viewModel.cloud,
                     viewModel.local,
                     viewModel.favorites,
                     viewModel.recent,
-                ) { _, _, _, _ -> Unit }.collect { render() }
+                ) { _, _, _ -> Unit }.collect { render() }
             }
         }
         render()
@@ -123,7 +121,6 @@ class TrackListActivity : AppCompatActivity() {
     private fun render() {
         tracks = when (mode) {
             MODE_RECENT -> viewModel.recent.value
-            MODE_CLOUD -> viewModel.cloud.value
             else -> viewModel.favoriteTracks()
         }
         adapter.submitList(tracks)
@@ -190,13 +187,10 @@ class TrackListActivity : AppCompatActivity() {
         private const val EXTRA_MODE = "tracklist.mode"
         const val MODE_FAVORITES = "favorites"
         const val MODE_RECENT = "recent"
-        const val MODE_CLOUD = "cloud"
 
         fun startFavorites(context: Context) = start(context, MODE_FAVORITES)
 
         fun startRecent(context: Context) = start(context, MODE_RECENT)
-
-        fun startCloud(context: Context) = start(context, MODE_CLOUD)
 
         private fun start(context: Context, mode: String) {
             context.startActivity(

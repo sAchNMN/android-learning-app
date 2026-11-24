@@ -382,7 +382,6 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         val context = context ?: return
         val playlists = Playlists.build(
             context,
-            viewModel.cloud.value,
             viewModel.local.value,
             viewModel.recent.value,
             viewModel.favoriteTracks(),

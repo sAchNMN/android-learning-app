@@ -124,11 +124,10 @@ class SearchActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 combine(
-                    viewModel.cloud,
                     viewModel.local,
                     viewModel.online,
                     viewModel.onlineLoading,
-                ) { _, _, _, _ -> Unit }
+                ) { _, _, _ -> Unit }
                     .combine(viewModel.onlineError) { _, _ -> Unit }
                     .collect { render() }
             }

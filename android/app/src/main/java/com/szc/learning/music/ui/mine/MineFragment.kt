@@ -139,7 +139,6 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
 
     private fun handleEntry(entry: MineEntry) {
         when (entry.key) {
-            MineEntryAdapter.KEY_CLOUD -> TrackListActivity.startCloud(requireContext())
             MineEntryAdapter.KEY_STATS -> showListenStats(
                 requireContext(),
                 viewModel.listenMinutes.value,

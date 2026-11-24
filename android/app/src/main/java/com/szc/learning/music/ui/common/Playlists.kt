@@ -11,14 +11,16 @@ import com.szc.learning.music.data.StoredPlaylist
  * 把曲库切成歌单卡片。
  *
  * 没有服务端歌单表，所以这里不假装有运营：第一张给收藏，
- * 然后云端 / 本地 / 最近播放，再补同歌手合集。数据空就不生成，
+ * 然后本地 / 最近播放，再补同歌手合集。数据空就不生成，
  * 卡片区自然收缩，不会留一排空壳。
+ *
+ * 「云端曲库」那一类已经移除 —— 它原本是拉后端上传的 mp3，
+ * 本地化之后没有任何东西能填满它，留着只会是一张永远不会出现的卡片。
  */
 object Playlists {
 
     fun build(
         context: Context,
-        cloud: List<MusicTrack>,
         local: List<MusicTrack>,
         recent: List<MusicTrack>,
         favorites: List<MusicTrack>,
@@ -37,7 +39,7 @@ object Playlists {
         }
 
         // 导入的分享歌单排在收藏之后：刚导入的人第一眼就要能找到它，
-        // 而不是被云端/本地/最近那几张常驻卡片挤到最下面
+        // 而不是被本地/最近那几张常驻卡片挤到最下面
         for (playlist in shared) {
             if (out.size >= limit) break
             if (playlist.tracks.isEmpty()) continue
@@ -50,14 +52,6 @@ object Playlists {
             )
         }
 
-        if (cloud.isNotEmpty()) {
-            out += Playlist(
-                key = "cloud",
-                title = context.getString(R.string.playlist_cloud_title),
-                tag = PlaylistTag.CLOUD,
-                tracks = cloud,
-            )
-        }
         if (local.isNotEmpty()) {
             out += Playlist(
                 key = "local",
@@ -76,7 +70,7 @@ object Playlists {
         }
 
         // 同一个歌手至少两首才值得单独成单，否则卡片看起来像重复
-        val byArtist = (cloud + local)
+        val byArtist = local
             .filter { it.artist.isNotBlank() }
             .groupBy { it.artist }
             .filterValues { it.size >= 2 }

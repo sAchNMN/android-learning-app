@@ -13,18 +13,16 @@ import java.util.concurrent.TimeUnit
 /**
  * 全局唯一的网络入口。
  *
- * 只暴露 [authApi]，后续按业务加 `CourseApi`、`StudyApi` 等，
- * 都在这里 `retrofit.create(...)` 一次即可，共用连接池和拦截器。
+ * 后端是**可选**的：只有分享码和歌曲评论这类需要中心化数据的功能非它不可，
+ * 其余能力（本地曲库、在线音源、推荐、收藏）都在客户端自己完成。
+ * 所以这里没有认证头，也没有登录会话 —— App 里不存在"当前用户"这个概念。
  *
  * @param baseUrl 必须以 `/` 结尾，例如 `http://127.0.0.1:8080/`
  *                （本机调试走 `adb reverse`，见 `app/build.gradle.kts` 的 adbReverse 任务）。
- * @param tokenProvider 同步返回当前 token，由 SessionStore 提供。
- * @param debug 是否打开 OkHttp 日志。使用 HEADERS 级别，
- *              避免把登录密码和响应体写进 Logcat。
+ * @param debug 是否打开 OkHttp 日志。使用 HEADERS 级别，避免把响应体写进 Logcat。
  */
 class ApiClient(
     baseUrl: String,
-    tokenProvider: () -> String?,
     debug: Boolean = false,
 ) {
 
@@ -35,7 +33,6 @@ class ApiClient(
         .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
-        .addInterceptor(AuthInterceptor(tokenProvider))
         .apply {
             if (debug) {
                 addInterceptor(
@@ -52,8 +49,6 @@ class ApiClient(
         .client(okHttpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
-
-    val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 
     val takeoutApi: TakeoutApi = retrofit.create(TakeoutApi::class.java)
 

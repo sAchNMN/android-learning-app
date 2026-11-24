@@ -2,9 +2,8 @@ package com.szc.learning
 
 import android.content.Context
 import com.szc.learning.core.network.ApiClient
-import com.szc.learning.core.network.AuthRepository
-import com.szc.learning.core.network.SessionStore
 import com.szc.learning.core.network.music.MusicRepository
+import com.szc.learning.music.data.ClientRecommendEngine
 import com.szc.learning.music.data.DeviceIdStore
 import com.szc.learning.music.data.DislikeStore
 import com.szc.learning.music.data.FavoritesRepository
@@ -21,7 +20,9 @@ import com.szc.learning.music.data.RecentStore
 import com.szc.learning.music.data.RecommendCacheStore
 import com.szc.learning.music.data.SharedPlaylistStore
 import com.szc.learning.music.data.SourceConfigStore
-import com.szc.learning.music.data.local.KuwoDirectSource
+import com.szc.learning.music.data.source.KugouClientSource
+import com.szc.learning.music.data.source.NeteaseClientSource
+import com.szc.learning.music.data.source.QqClientSource
 import com.szc.learning.music.player.FeedAudioCache
 import com.szc.learning.music.player.PlayerController
 import kotlinx.coroutines.CoroutineScope
@@ -40,17 +41,12 @@ class AppContainer(context: Context) {
     /** 应用级作用域：播放位置轮询、曲库加载这类"不随页面销毁"的任务用它。 */
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    val sessionStore: SessionStore = SessionStore(context)
-
     private val apiClient: ApiClient = ApiClient(
         baseUrl = BuildConfig.BASE_URL,
-        tokenProvider = sessionStore::token,
         debug = BuildConfig.DEBUG,
     )
 
-    val authRepository: AuthRepository = AuthRepository(apiClient.authApi, sessionStore)
-
-    /** 云端曲库。接口匿名可访问，不登录也能拉全量列表。 */
+    /** 云端曲库。接口匿名可访问，没有登录体系。 */
     val musicRepository: MusicRepository = MusicRepository(apiClient.musicApi, BuildConfig.BASE_URL)
 
     /** 本地曲库：运行时读 MediaStore，不落库。 */
@@ -89,18 +85,15 @@ class AppContainer(context: Context) {
     /** 音源开关 / 优先级 / Cookie，全部本机存，不再依赖 `/app/music/sources`。 */
     val sourceConfigStore: SourceConfigStore = SourceConfigStore(context)
 
-    /** 酷我客户端直连实现：后端不可用时的唯一在线音源。 */
-    private val kuwoDirectSource: KuwoDirectSource = KuwoDirectSource()
-
     /**
-     * 在线音源路由：后端优先、酷我兜底。
+     * 在线音源路由：**客户端直连优先**，后端只在三个平台都失败时兜底。
      *
      * [OnlineSourceRouter.startWatching] 在构造时启动，把首次探测的 2.5 秒
-     * 挪到 App 启动阶段 —— 用户第一次点搜索时后端状态已经知道了。
+     * 挪到 App 启动阶段 —— 用户点搜索时后端状态已经知道了。
      */
     val onlineSourceRouter: OnlineSourceRouter = OnlineSourceRouter(
         remote = musicRepository,
-        kuwo = kuwoDirectSource,
+        providers = listOf(NeteaseClientSource(), KugouClientSource(), QqClientSource()),
         configStore = sourceConfigStore,
         baseUrl = BuildConfig.BASE_URL,
         scope = appScope,
@@ -109,9 +102,15 @@ class AppContainer(context: Context) {
     /** 列表入库前验证可播性：换不到地址的在线曲目不展示。 */
     val playableFilter: PlayableFilter = PlayableFilter(onlineSourceRouter)
 
-    /** 本地推荐：后端不可用时从本机曲库 + 收藏挑歌（酷我已停用，不再有在线兜底）。 */
+    /** 本地推荐：在线音源全都搜不到时，从本机曲库 + 收藏挑歌。 */
     val localRecommendEngine: LocalRecommendEngine = LocalRecommendEngine(
         localMusic = localMusicRepository,
+        favorites = favoritesStore,
+    )
+
+    /** 在线推荐：客户端直连音源按口味歌手搜，不再经过后端。 */
+    val clientRecommendEngine: ClientRecommendEngine = ClientRecommendEngine(
+        router = onlineSourceRouter,
         favorites = favoritesStore,
     )
 

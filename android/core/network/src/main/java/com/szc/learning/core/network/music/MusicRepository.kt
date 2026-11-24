@@ -24,9 +24,6 @@ class MusicRepository(
     private val baseUrl: String,
 ) {
 
-    suspend fun tracks(): AppResult<List<MusicTrack>> =
-        callData { api.tracks() }.map { list -> list.map { it.toTrack() } }
-
     /**
      * 聚合搜索。失败（后端不可达 / 没开音源）返回 [AppResult.Failure]；
      * 单个平台失败只是 `errors` 里的一条，不影响整体成功。
@@ -125,37 +122,6 @@ class MusicRepository(
         api.updateSource(key, SourceUpdateBody(enabled = enabled, priority = priority, cookie = cookie))
     }
 
-    // ---------------------------------------------------------------- 推荐
-
-    /**
-     * 猜你喜欢。
-     *
-     * 口味歌手由调用方（ViewModel）从收藏 + 最近播放里算，服务端只负责「按歌手找歌 + 补发现流」，
-     * 这样推荐结果的解释权在客户端，后端不必知道用户的一切。
-     */
-    suspend fun recommend(
-        deviceId: String?,
-        artists: List<String>,
-        seed: Long? = null,
-        limit: Int = 20,
-        cookies: String? = null,
-    ): AppResult<RecommendResult> =
-        callData {
-            api.recommend(
-                deviceId = deviceId,
-                artists = artists.takeIf { it.isNotEmpty() }?.joinToString(","),
-                seed = seed,
-                limit = limit,
-                cookies = cookies,
-            )
-        }.map { dto ->
-            RecommendResult(
-                tracks = dto.tracks.mapNotNull { it.toOnlineTrack() },
-                basedOn = dto.basedOn,
-                reason = dto.reason,
-            )
-        }
-
     // ---------------------------------------------------------------- 我喜欢
 
     /**
@@ -201,29 +167,6 @@ class MusicRepository(
         callData { api.likes(deviceId, limit) }.map { list -> list.mapNotNull { it.toTrack() } }
 
     // ---------------------------------------------------------------- 个人歌单
-
-    suspend fun userPlaylists(cookies: String? = null): AppResult<List<UserPlaylistInfo>> =
-        callData { api.playlists(cookies) }.map { list ->
-            list.map {
-                UserPlaylistInfo(
-                    source = it.source,
-                    id = it.id,
-                    name = it.name.ifBlank { "未命名歌单" },
-                    coverUrl = it.coverUrl,
-                    trackCount = it.trackCount,
-                    own = it.own ?: true,
-                )
-            }
-        }
-
-    suspend fun playlistTracks(
-        source: String,
-        id: String,
-        name: String,
-        cookies: String? = null,
-    ): AppResult<List<MusicTrack>> =
-        callData { api.playlistTracks(source, id, name, cookies = cookies) }
-            .map { dto -> dto.tracks.mapNotNull { it.toOnlineTrack() } }
 
     // ---------------------------------------------------------------- 歌单分享码
 

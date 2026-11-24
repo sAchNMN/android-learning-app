@@ -50,9 +50,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     /** 收藏的写入口与 Service 共用同一条路径（通知栏也能点红心）。 */
     private val favoritesRepo = container.favoritesRepository
 
-    private val _cloud = MutableStateFlow<List<MusicTrack>>(emptyList())
-    val cloud: StateFlow<List<MusicTrack>> = _cloud.asStateFlow()
-
     private val _local = MutableStateFlow<List<MusicTrack>>(emptyList())
     val local: StateFlow<List<MusicTrack>> = _local.asStateFlow()
 
@@ -121,14 +118,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     /** 当前播放队列。正在播放页的"队列"弹层直接读它。 */
     val queue: StateFlow<List<MusicTrack>> = player.queue
 
-    private val _cloudLoading = MutableStateFlow(false)
-    val cloudLoading: StateFlow<Boolean> = _cloudLoading.asStateFlow()
-
     private val _localLoading = MutableStateFlow(false)
     val localLoading: StateFlow<Boolean> = _localLoading.asStateFlow()
-
-    private val _cloudError = MutableStateFlow<String?>(null)
-    val cloudError: StateFlow<String?> = _cloudError.asStateFlow()
 
     // ---------------------------------------------------------------- 在线音源
 
@@ -191,7 +182,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private var statCarryMs = 0L
 
     init {
-        loadCloud()
         // 曲目切换时才写历史。位置回调每秒好几次，不能每次都想写盘。
         viewModelScope.launch {
             player.state
@@ -221,26 +211,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------- 曲库
 
-    fun loadCloud(force: Boolean = false) {
-        if (_cloudLoading.value) return
-        if (!force && _cloud.value.isNotEmpty()) return
-        _cloudLoading.value = true
-        viewModelScope.launch {
-            when (val result = container.musicRepository.tracks()) {
-                is AppResult.Success -> {
-                    _cloud.value = result.data
-                    _cloudError.value = null
-                }
-
-                is AppResult.Failure -> {
-                    _cloudError.value = result.message
-                }
-            }
-            _cloudLoading.value = false
-            refreshRecent()
-        }
-    }
-
     fun loadLocal() {
         if (_localLoading.value) return
         _localLoading.value = true
@@ -255,10 +225,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshLocal() = loadLocal()
 
     private fun refreshRecent() {
-        _recent.value = container.recentStore.resolve(_cloud.value + _local.value)
+        _recent.value = container.recentStore.resolve(_local.value)
     }
 
-    fun allTracks(): List<MusicTrack> = (_cloud.value + _local.value).distinctBy { it.key }
+    fun allTracks(): List<MusicTrack> = _local.value
 
     fun favoriteTracks(): List<MusicTrack> = _favoriteTracks.value
 
@@ -293,9 +263,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
      * 拉一次「猜你喜欢」。
      *
      * 三级策略：
-     * 1. 后端可达 → 后端聚合推荐（四平台 + 平台推荐流补齐）
-     * 2. 后端不可达 → [LocalRecommendEngine] 本机算（酷我单平台，算法同口径）
+     * 1. [ClientRecommendEngine] 客户端直连音源算（口味歌手聚合搜索 + 平台推荐流）
+     * 2. 在线一首可播的都没有 → [LocalRecommendEngine] 只从本机曲库出歌
      * 3. 本地也空 → 上一次的缓存，标记 [recommendOffline]
+     *
+     * 后端不再是这条链路的一环：推荐本质是「拿这些歌手去搜」，搜得到就有得推。
      *
      * @param refresh true = 用户点「换一批」，换洗牌种子，同一天也能出不同结果
      */
@@ -312,37 +284,22 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val seed = if (refresh) System.currentTimeMillis() else null
                 val artists = tasteArtists()
-                var message: String? = null
 
-                if (container.onlineSourceRouter.probeNow(force = false)) {
-                    when (val result = container.musicRepository.recommend(
-                        deviceId = container.deviceIdStore.id,
-                        artists = artists,
-                        seed = seed,
-                        cookies = container.sourceConfigStore.cookiesJson(),
-                    )) {
-                        is AppResult.Success -> {
-                            if (result.data.tracks.isNotEmpty()) {
-                                // 换不到地址的曲目不展示：宁可少几首，也别让用户点了播不了
-                                val playable = container.playableFilter.filter(result.data.tracks)
-                                if (playable.isNotEmpty()) {
-                                    publishRecommend(
-                                        tracks = playable,
-                                        basedOn = result.data.basedOn,
-                                        reason = result.data.reason,
-                                        offline = false,
-                                    )
-                                    return@launch
-                                }
-                                message = null
-                            }
-                        }
-
-                        is AppResult.Failure -> message = result.message
-                    }
+                // 1.1 客户端直连：搜得到就有得推，搜不到再往下走
+                val online = container.clientRecommendEngine.recommend(artists, seed)
+                // 换不到地址的曲目不展示：宁可少几首，也别让用户点了播不了
+                val playable = container.playableFilter.filter(online.tracks)
+                if (playable.isNotEmpty()) {
+                    publishRecommend(
+                        tracks = playable,
+                        basedOn = online.basedOn,
+                        reason = online.reason,
+                        offline = false,
+                    )
+                    return@launch
                 }
 
-                // 后端不在（或推荐结果里没有可播曲目）：本机接管
+                // 1.2 在线全空：本机曲库接管
                 val local = container.localRecommendEngine.recommend(artists, seed)
                 val playableLocal = container.playableFilter.filter(local.tracks)
                 if (playableLocal.isNotEmpty()) {
@@ -353,7 +310,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                         offline = true,
                     )
                 } else {
-                    fallbackToCache(message)
+                    fallbackToCache(null)
                 }
             } finally {
                 _recommendLoading.value = false
@@ -632,14 +589,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 推荐一批，顺手把种子歌手排进探索队列。 */
     private suspend fun recommendBatch(seed: Long): List<MusicTrack> {
-        val result = container.musicRepository.recommend(
-            deviceId = container.deviceIdStore.id,
+        val data = container.clientRecommendEngine.recommend(
             artists = tasteArtists(),
             seed = seed,
             limit = FEED_PAGE_SIZE,
-            cookies = container.sourceConfigStore.cookiesJson(),
         )
-        val data = (result as? AppResult.Success)?.data ?: return emptyList()
         data.basedOn.forEach(::enqueueArtist)
         data.tracks.forEach { enqueueArtist(mainArtist(it.artist)) }
         return data.tracks
@@ -649,12 +603,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun nextCandidates(): List<MusicTrack> {
         val artist = feedArtistQueue.removeFirstOrNull()
         if (artist != null) {
-            val result = container.musicRepository.searchOnline(
-                artist,
-                limit = FEED_PAGE_SIZE,
-                cookies = container.sourceConfigStore.cookiesJson(),
-            )
-            val tracks = (result as? AppResult.Success)?.data?.tracks.orEmpty()
+            // 刷歌流和搜索页共用一条客户端直连链路，不再走 /app/music/search
+            val tracks = container.onlineSourceRouter.search(artist, limit = FEED_PAGE_SIZE).tracks
             if (tracks.isNotEmpty()) return tracks
         }
         return recommendBatch(seed = System.nanoTime())
@@ -788,21 +738,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
                 val likesResult = container.musicRepository.likes(container.deviceIdStore.id)
-                val playlistsResult = container.musicRepository.userPlaylists(
-                    container.sourceConfigStore.cookiesJson(),
-                )
+                // 账号歌单走客户端直连：Cookie 留在本机，也不用等后端多中转一跳
+                val playlists = container.onlineSourceRouter.myPlaylists()
 
                 val restored = (likesResult as? AppResult.Success)?.data?.let {
                     container.favoritesStore.merge(it)
                 } ?: 0
                 if (restored > 0) refreshFavorites()
 
-            val playlists = (playlistsResult as? AppResult.Success)?.data
-            if (playlists != null) {
-                _syncedPlaylists.value = playlists
-            }
-            // 失败时保留上一次的歌单列表：静默同步挂一次就把「来自音源」整段清空
-            // 比不刷新更糟，用户会以为歌单被删了
+                // 空列表不覆盖上一次结果：静默同步挂一次就把「来自音源」整段清空
+                // 比不刷新更糟，用户会以为歌单被删了
+                if (playlists.isNotEmpty()) {
+                    _syncedPlaylists.value = playlists
+                }
 
                 if (notify) {
                     val message = when {
@@ -810,15 +758,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                             R.string.sync_failed, likesResult.message,
                         )
 
-                        playlistsResult is AppResult.Failure -> context.getString(
-                            R.string.sync_failed, playlistsResult.message,
+                        else -> context.getString(
+                            R.string.sync_done,
+                            restored,
+                            playlists.size.takeIf { it > 0 } ?: _syncedPlaylists.value.size,
                         )
-
-                    else -> context.getString(
-                        R.string.sync_done,
-                        restored,
-                        playlists?.size ?: _syncedPlaylists.value.size,
-                    )
                     }
                     _syncNotice.emit(message)
                 }
@@ -832,11 +776,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     /** 打开同步回来的歌单：拉曲目后按在线队列播放。 */
     fun playSyncedPlaylist(playlist: UserPlaylistInfo, onEvent: (OnlinePlayEvent) -> Unit) {
         viewModelScope.launch {
-            when (val result = container.musicRepository.playlistTracks(
-                playlist.source,
-                playlist.id,
-                playlist.name,
-                cookies = container.sourceConfigStore.cookiesJson(),
+            when (val result = container.onlineSourceRouter.playlistTracks(
+                source = playlist.source,
+                playlistId = playlist.id,
+                name = playlist.name,
             )) {
                 is AppResult.Success -> {
                     if (result.data.isEmpty()) {
@@ -860,15 +803,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
      * 不该在推荐页一进页面就全部下回来。
      */
     suspend fun playlistTracks(source: String, id: String, name: String): AppResult<List<MusicTrack>> {
-        val result = container.musicRepository.playlistTracks(
-            source,
-            id,
-            name,
-            cookies = container.sourceConfigStore.cookiesJson(),
-        )
+        val result = container.onlineSourceRouter.playlistTracks(source, id, name)
         // 平台歌单里会员曲/下架曲很常见，入列表前先验证，播不了的剔除
         return when (result) {
-            is AppResult.Success -> result.copy(data = container.playableFilter.filter(result.data))
+            is AppResult.Success -> AppResult.Success(container.playableFilter.filter(result.data))
             is AppResult.Failure -> result
         }
     }
@@ -1118,8 +1056,6 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ---------------------------------------------------------------- 播放
-
-    fun playCloud(startIndex: Int) = player.play(_cloud.value, startIndex)
 
     fun playLocal(startIndex: Int) = player.play(_local.value, startIndex)
 

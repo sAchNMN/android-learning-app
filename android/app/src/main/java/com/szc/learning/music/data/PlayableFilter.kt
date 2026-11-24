@@ -96,7 +96,7 @@ class PlayableFilter(
         /** 全局停用的平台：酷我 anti.s 返回「下载 App」提示音，不是可播音频。 */
         val DISABLED_SOURCES = setOf(com.szc.learning.music.data.local.KuwoDirectSource.KEY)
 
-        const val PARALLEL = 6
+        const val PARALLEL = 8
         const val VERIFY_TIMEOUT_MS = 8_000L
         const val OK_TTL_MS = 10 * 60 * 1_000L
         const val FAIL_TTL_MS = 30 * 1_000L
