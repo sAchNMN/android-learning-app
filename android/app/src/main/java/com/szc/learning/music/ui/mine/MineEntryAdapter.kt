@@ -43,12 +43,14 @@ class MineEntryAdapter(
     }
 
     companion object {
+        const val KEY_TOGETHER = "together"
         const val KEY_STATS = "stats"
         const val KEY_SOURCES = "sources"
         const val KEY_IMPORT_SHARE = "import_share"
 
         /** 只放别处进不去的入口：本地/播放器在底栏，关于在标题栏，喜欢/最近在页面里。 */
         fun defaults(): List<MineEntry> = listOf(
+            MineEntry(KEY_TOGETHER, R.drawable.ic_users, R.string.mine_entry_together),
             MineEntry(KEY_SOURCES, R.drawable.ic_source, R.string.mine_entry_sources),
             MineEntry(KEY_IMPORT_SHARE, R.drawable.ic_plus, R.string.mine_entry_import_share),
             MineEntry(KEY_STATS, R.drawable.ic_chart, R.string.mine_entry_stats),

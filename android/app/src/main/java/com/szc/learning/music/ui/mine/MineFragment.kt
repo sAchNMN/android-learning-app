@@ -30,6 +30,7 @@ import com.szc.learning.music.ui.common.CoverArt
 import com.szc.learning.music.ui.common.showListenStats
 import com.szc.learning.music.ui.glass.GlassDialog
 import com.szc.learning.music.ui.motion.installSpringPress
+import com.szc.learning.music.ui.room.RoomActivity
 import com.szc.learning.music.ui.source.SourceActivity
 import com.szc.learning.music.ui.track.TrackCardAdapter
 import com.szc.learning.music.ui.track.TrackListActivity
@@ -139,6 +140,9 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
 
     private fun handleEntry(entry: MineEntry) {
         when (entry.key) {
+            MineEntryAdapter.KEY_TOGETHER ->
+                startActivity(android.content.Intent(requireContext(), RoomActivity::class.java))
+
             MineEntryAdapter.KEY_STATS -> showListenStats(
                 requireContext(),
                 viewModel.listenMinutes.value,

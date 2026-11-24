@@ -20,6 +20,7 @@ import com.szc.learning.music.data.RecentStore
 import com.szc.learning.music.data.RecommendCacheStore
 import com.szc.learning.music.data.SharedPlaylistStore
 import com.szc.learning.music.data.SourceConfigStore
+import com.szc.learning.music.data.room.TogetherListenManager
 import com.szc.learning.music.data.source.KugouClientSource
 import com.szc.learning.music.data.source.NeteaseClientSource
 import com.szc.learning.music.data.source.QqClientSource
@@ -133,4 +134,22 @@ class AppContainer(context: Context) {
 
     /** 全局唯一播放器。 */
     val playerController: PlayerController = PlayerController(context, appScope)
+
+    /**
+     * 一起听。
+     *
+     * 构造不建连接：房间是用户主动开才存在的东西，App 一启动就连一个
+     * WebSocket 占着不放，对不用这个功能的人是纯浪费。
+     *
+     * 作用域挂在 [appScope] 上而不是某个页面：用户退出房间界面去翻歌单时，
+     * 同步必须继续 —— 一起听的听众不会因为你翻到了"我的"页就听不到声音。
+     */
+    val togetherListenManager: TogetherListenManager = TogetherListenManager(
+        appContext = context.applicationContext,
+        player = playerController,
+        router = onlineSourceRouter,
+        deviceId = deviceIdStore.id,
+        baseUrl = BuildConfig.BASE_URL,
+        parentScope = appScope,
+    )
 }

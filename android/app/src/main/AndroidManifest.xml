@@ -54,6 +54,12 @@
             android:name=".music.ui.track.TrackListActivity"
             android:exported="false" />
 
+        <!-- 一起听：建房/加入，显示同步模式与成员 -->
+        <activity
+            android:name=".music.ui.room.RoomActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
         <!-- 音源歌单详情：点开卡片能看到里面有什么歌 -->
         <activity
             android:name=".music.ui.playlist.PlaylistDetailActivity"

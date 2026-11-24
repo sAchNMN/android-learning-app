@@ -70,6 +70,10 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
     @Volatile
     private var controller: MediaController? = null
 
+    /** 一起听的纠偏速度正在生效：此时 [publish] 不能把微调值写进 UI 状态。 */
+    @Volatile
+    private var syncSpeedActive = false
+
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
     }
@@ -210,6 +214,63 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
     /** 音量走播放器而不是 AudioManager：后者会改动系统全局音量，退出去还得还原。 */
     fun setVolume(volume: Float) {
         controller?.volume = volume.coerceIn(0f, 1f)
+    }
+
+    // ---------------------------------------------------------------- 一起听
+
+    /**
+     * 一起听专用：单曲入队并定位到 [positionMs] 准备好，但**不起播**。
+     *
+     * 拆成 prepare / start 两步是为了"预定起播"：远端换歌时各端先各自准备，
+     * 到约定时刻一起响。直接 `play()` 的话，谁先准备好谁先响，
+     * 网络快的那台已经唱了两秒，另一台才刚开始 —— 这就是普通"同步播放"常见的错位。
+     *
+     * 队列被整个替换成单曲：一起听的语义是"大家听同一首"，
+     * 各端维护自己的推荐队列没有意义，反而会在切歌时产生两条不同的时间线。
+     */
+    fun prepareSingle(track: MusicTrack, positionMs: Long) {
+        val current = controller ?: return
+        _queue.value = listOf(track)
+        current.setMediaItem(TrackMediaItem.toMediaItem(track), positionMs.coerceAtLeast(0L))
+        current.prepare()
+        _position.value = positionMs.coerceAtLeast(0L)
+    }
+
+    /** 配合 [prepareSingle]：到点统一起播。 */
+    fun startNow() {
+        controller?.play()
+    }
+
+    /** 远端下达的暂停。与 [toggle] 分开是因为它不该再触发一次"用户操作"回传。 */
+    fun pauseQuiet() {
+        controller?.pause()
+    }
+
+    /** 真实播放位置。ticker 的 [_position] 有 350ms 粒度，纠偏要看精确值。 */
+    fun positionNow(): Long = controller?.currentPosition?.coerceAtLeast(0L) ?: 0L
+
+    fun isPlayingNow(): Boolean = controller?.isPlaying == true
+
+    /**
+     * 纠正漂移用的速度微调（±4% 量级）。
+     *
+     * 不写进 [_state.speed]：那个字段是给用户看的"倍速"，同步期间应该一直是 1.0x。
+     * 让它显示 1.04x 的话，用户打开倍速菜单会看到一串莫名其妙的小数，
+     * 而且退出一起听后还可能残留。
+     */
+    fun applySyncSpeed(speed: Float) {
+        val current = controller ?: return
+        val target = speed.coerceIn(MIN_SYNC_SPEED, MAX_SYNC_SPEED)
+        if (kotlin.math.abs(current.playbackParameters.speed - target) < 0.001f) return
+        syncSpeedActive = true
+        current.setPlaybackSpeed(target)
+    }
+
+    /** 退出同步时把速度还原成用户设定的倍速。 */
+    fun restoreSpeed() {
+        if (!syncSpeedActive) return
+        syncSpeedActive = false
+        controller?.setPlaybackSpeed(_state.value.speed)
     }
 
     // ---------------------------------------------------------------- 倍速 / 定时
@@ -378,7 +439,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             recommendMode = _state.value.recommendMode,
             queueSize = player.mediaItemCount,
             // 倍速不需要从旧 state 带：ExoPlayer 自己就记着，回调里读回来即可
-            speed = player.playbackParameters.speed,
+            speed = if (syncSpeedActive) _state.value.speed else player.playbackParameters.speed,
         )
     }
 
@@ -391,6 +452,16 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         /** 倍速的可用区间。超过 2x 人声已经听不清，低于 0.5x 只剩轰鸣。 */
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 3.0f
+
+        /**
+         * 一起听纠偏的速度范围。
+         *
+         * ±4% 是听感分界线：再大就能听出音调在爬（ExoPlayer 虽然保持音高，
+         * 但变速本身会让人声有轻微的"赶"感）；再小则追不上音乐本身的漂移，
+         * 白白来回切速度反而更明显。
+         */
+        const val MIN_SYNC_SPEED = 0.96f
+        const val MAX_SYNC_SPEED = 1.04f
         const val MINUTE_MS = 60_000L
     }
 }
