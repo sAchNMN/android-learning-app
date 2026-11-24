@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Aurora</string>
+
+    <!-- ================= 底部导航 ================= -->
+    <string name="tab_player">播放</string>
+    <string name="tab_recommend">推荐</string>
+    <string name="tab_local">本地</string>
+    <string name="tab_mine">我的</string>
+
+    <!-- ================= 歌单 ================= -->
+    <string name="playlist_tracks">%1$d 首</string>
+    <string name="playlist_favorite_title">我喜欢的音乐</string>
+    <string name="playlist_cloud_title">云端热歌</string>
+    <string name="playlist_local_title">本地珍藏</string>
+    <string name="playlist_recent_title">最近播放</string>
+    <string name="playlist_artist_title">%1$s精选</string>
+
+    <!-- ================= 推荐 ================= -->
+    <string name="recommend_title">推荐</string>
+    <string name="recommend_offline">离线</string>
+    <string name="recommend_refresh">换一批</string>
+    <string name="recommend_daily_tag">每日推荐</string>
+    <string name="recommend_daily_play">播放每日推荐</string>
+    <string name="recommend_like">喜欢</string>
+    <string name="recommend_empty">暂时没拿到推荐</string>
+    <string name="recommend_playlists">推荐歌单</string>
+    <string name="recommend_source_playlists">来自音源</string>
+
+    <!-- ================= 收藏同步 ================= -->
+    <string name="like_synced">已收藏，已同步到%1$s</string>
+    <string name="like_local_only">已收藏，仅本机与后台记录：%1$s</string>
+    <string name="like_sync_failed">已收藏，同步失败：%1$s</string>
+    <string name="like_backend_missing">已收藏，后端未记录</string>
+    <string name="sync_done">已同步 %1$d 首喜欢 · %2$d 个歌单</string>
+    <string name="sync_failed">同步失败：%1$s</string>
+    <string name="sync_running">正在同步…</string>
+    <string name="sync_playlist_empty">这个歌单在平台上没有可读曲目</string>
+    <string name="sync_offline_skipped">后端未连接，本机收藏已保留，跳过同步</string>
+    <string name="play_unavailable">这几首暂时都换不到播放地址</string>
+
+    <!-- ================= 本地 ================= -->
+    <string name="local_title">本地</string>
+    <string name="local_songs">歌曲</string>
+    <string name="local_artists">歌手</string>
+    <string name="local_albums">专辑</string>
+    <string name="local_folders">文件夹</string>
+    <string name="local_scan">重新扫描</string>
+    <string name="local_empty">还没有本地音乐</string>
+    <string name="local_permission">需要读取音频权限</string>
+    <string name="local_grant">授予权限</string>
+    <string name="local_search_hint">搜索</string>
+    <string name="local_rescanned">已重新扫描</string>
+    <string name="local_play_all">播放全部</string>
+    <string name="local_sort">排序</string>
+    <string name="local_sort_default">默认（标题）</string>
+    <string name="local_sort_artist">歌手</string>
+    <string name="local_sort_duration">时长</string>
+    <string name="local_search_empty">没有匹配的本地歌曲</string>
+    <string name="local_unknown_folder">其他</string>
+
+    <!-- ================= 我的 ================= -->
+    <string name="mine_title">我的</string>
+    <string name="mine_stats_title">听歌统计</string>
+    <string name="mine_stats_body">累计听歌 %1$d 分钟\n收藏 %2$d 首 · 最近播放 %3$d 首</string>
+    <string name="mine_ok">知道了</string>
+    <string name="mine_entry_cloud">云端热歌</string>
+    <string name="mine_entry_stats">听歌统计</string>
+    <string name="mine_favorites_card">我喜欢的音乐</string>
+    <string name="mine_recent_card">最近播放</string>
+    <string name="mine_empty_favorites">还没有收藏，去听几首吧</string>
+
+    <!-- ================= 搜索 ================= -->
+    <string name="search_hint">搜索</string>
+    <string name="search_empty">没有找到相关歌曲</string>
+    <string name="search_no_playable">找到的歌曲暂时都无法播放</string>
+
+    <!-- ================= 播放器 ================= -->
+    <string name="player_play">播放</string>
+    <string name="player_lyrics_title">歌词</string>
+    <string name="player_empty">还没有可播放的歌曲</string>
+    <string name="player_album">专辑</string>
+    <string name="player_pause">暂停</string>
+    <string name="player_next">下一首</string>
+    <string name="player_previous">上一首</string>
+    <string name="player_repeat">循环</string>
+    <string name="player_mode_sequence">顺序播放</string>
+    <string name="player_mode_repeat_all">列表循环</string>
+    <string name="player_mode_repeat_one">单曲循环</string>
+    <string name="player_mode_shuffle">随机播放</string>
+    <string name="player_mode_recommend">歌曲推荐</string>
+    <string name="player_mode_switch">切换播放方式，当前：%1$s</string>
+    <string name="player_dislike">不喜欢</string>
+    <string name="player_disliked">已减少这类推荐</string>
+    <string name="player_like">收藏</string>
+    <string name="player_unlike">取消收藏</string>
+    <string name="player_added_favorite">已收藏</string>
+    <string name="player_removed_favorite">已取消收藏</string>
+    <string name="player_unknown_artist">未知歌手</string>
+    <string name="player_unknown_album">未知专辑</string>
+    <string name="player_collapse">收起</string>
+    <string name="player_feed_loading">正在为你选歌…</string>
+    <string name="player_feed_ended">暂时拿不到新歌，看看网络或音源设置</string>
+    <string name="queue_title">播放队列</string>
+
+    <!-- ================= 歌曲评论 ================= -->
+    <string name="comment_title">评论</string>
+    <string name="comment_title_count">评论 %1$d</string>
+    <string name="comment_empty">还没有评论，来说第一句</string>
+    <string name="comment_hint">说点什么…</string>
+    <string name="comment_send">发送</string>
+    <string name="comment_like">点赞</string>
+    <string name="comment_anonymous">匿名听众</string>
+    <string name="comment_posted">已发布</string>
+    <string name="comment_delete">删除</string>
+    <string name="comment_delete_confirm">删除这条评论？</string>
+    <string name="comment_no_track">还没有正在播放的歌</string>
+    <string name="action_close">关闭</string>
+
+    <!-- ================= 列表页 ================= -->
+    <string name="track_list_play_all">播放全部</string>
+    <string name="track_list_empty">这里还没有歌曲</string>
+    <string name="track_list_share">分享歌单</string>
+
+    <!-- ================= 歌单分享码 ================= -->
+    <string name="share_empty">这个列表里没有可分享的曲目</string>
+    <string name="share_failed">分享失败：%1$s</string>
+    <string name="share_dialog_title">歌单分享码</string>
+    <string name="share_dialog_message">共 %1$d 首，有效期至 %2$s。\n让对方在「我的 → 导入分享码」里输入这串码即可。</string>
+    <string name="share_copy">复制码</string>
+    <string name="share_copied">分享码已复制</string>
+    <string name="mine_entry_import_share">导入分享码</string>
+    <string name="import_share_title">导入分享码</string>
+    <string name="import_share_hint">输入 6 位分享码</string>
+    <string name="import_share_action">导入</string>
+    <string name="import_share_empty">分享码不能为空</string>
+    <string name="import_share_done">已导入「%1$s」，共 %2$d 首</string>
+    <string name="import_share_failed">导入失败：%1$s</string>
+
+    <!-- ================= 歌单详情 ================= -->
+    <string name="playlist_detail_header">歌单</string>
+    <string name="playlist_detail_count">%1$d 首</string>
+    <string name="playlist_detail_loading">正在读取歌单…</string>
+    <string name="playlist_detail_empty">这个歌单没有可读曲目</string>
+
+    <!-- ================= 登录 ================= -->
+    <string name="login_local">仅本地播放</string>
+    <string name="login_cancelled">已取消登录</string>
+
+    <!-- ================= 通用 ================= -->
+    <string name="action_back">返回</string>
+    <string name="loading">载入中</string>
+
+    <!-- ================= 外观 ================= -->
+    <string name="theme_button">切换主题</string>
+    <string name="theme_title">外观</string>
+    <string name="theme_mode_system">跟随系统</string>
+    <string name="theme_mode_light">浅色</string>
+    <string name="theme_mode_dark">深色</string>
+    <string name="theme_aurora">极光</string>
+    <string name="theme_ember">余烬</string>
+    <string name="theme_sage">苔原</string>
+    <string name="theme_cobalt">深海</string>
+    <string name="theme_noir">墨色</string>
+
+    <!-- 玻璃材质 -->
+    <string name="glass_button">玻璃材质</string>
+    <string name="glass_title">玻璃材质</string>
+    <string name="glass_frost_title">磨砂</string>
+    <string name="glass_frost_value">%1$d%%</string>
+    <string name="glass_preview_title">夜色温柔</string>
+    <string name="glass_preview_artist">Aurora</string>
+
+    <!-- 在线音源（Mineradio 式多平台接入） -->
+    <string name="source_netease">网易云音乐</string>
+    <string name="source_kugou">酷狗音乐</string>
+    <string name="source_qq">QQ音乐</string>
+    <string name="source_kuwo">酷我音乐</string>
+    <string name="source_other">其它音源</string>
+    <string name="source_short_netease">网易云</string>
+    <string name="source_short_kugou">酷狗</string>
+    <string name="source_short_qq">QQ</string>
+    <string name="source_short_kuwo">酷我</string>
+    <string name="source_switched_notice">%1$s 不可播，已自动换到 %2$s</string>
+    <string name="source_manage_title">音源管理</string>
+    <string name="source_login">登录</string>
+    <string name="source_logged_in">已登录</string>
+    <string name="source_cookie_dialog_title">%1$s</string>
+    <string name="source_cookie_dialog_hint">Cookie</string>
+    <string name="source_cookie_help">浏览器登录 → F12 → Network → 任一请求 → 复制 Cookie</string>
+    <string name="source_login_action">网页登录</string>
+    <string name="source_cookie_manual">粘贴 Cookie</string>
+    <string name="source_cookie_clear">退出登录</string>
+    <string name="source_login_title">%1$s</string>
+    <string name="source_login_clear_web">清除登录状态</string>
+    <string name="source_login_clear_confirm">清除本机网页里保存的登录状态？</string>
+    <string name="source_login_clear_done">已清除网页登录状态</string>
+    <string name="source_login_saved">%1$s 已登录</string>
+    <string name="source_login_cookie_cleared">已清除%1$s登录态</string>
+    <string name="source_login_failed">登录失败</string>
+    <string name="source_move_up">上移</string>
+    <string name="source_move_down">下移</string>
+    <string name="source_saved">已保存</string>
+    <string name="action_save">保存</string>
+    <string name="source_empty">还没有可用的音源</string>
+
+    <string name="search_section_online">在线</string>
+    <string name="search_section_online_loading">在线 …</string>
+    <string name="search_section_mine">我的音乐</string>
+    <string name="search_online_failed">%1$s</string>
+    <string name="search_offline_only_kuwo">后端未连接，在线音源不可用；可搜索本机歌曲</string>
+    
+
+    <string name="mine_entry_sources">音源管理</string>
+    <string name="source_sync">同步歌单</string>
+
+    <!-- 播放设置（定时关闭 / 倍速） -->
+    <string name="player_more">更多设置</string>
+    <string name="player_fullscreen">沉浸全屏</string>
+    <string name="player_sleep_timer">定时关闭</string>
+    <string name="player_speed">播放倍速</string>
+    <string name="sleep_off">关闭</string>
+    <string name="sleep_minutes">%1$d 分钟</string>
+    <string name="sleep_track_end">播完当前歌曲</string>
+    <string name="sleep_remaining">定时 %1$s</string>
+    <string name="sleep_applied">%1$s 后停止播放</string>
+    <string name="sleep_applied_track_end">播完当前歌曲后停止</string>
+    <string name="sleep_cancelled">已取消定时关闭</string>
+    <string name="speed_value">%1$sx</string>
+    <string name="speed_applied">倍速 %1$sx</string>
+</resources>

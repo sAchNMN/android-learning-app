@@ -1,0 +1,62 @@
+# ---------- Android ----------
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/*/build/
+android/*/*/build/
+android/.kotlin/
+android/local.properties
+android/.idea/
+android/captures/
+android/app/release/
+*.apk
+*.aab
+*.iml
+
+# ---------- 后端 ----------
+server/RuoYi-Vue/
+server/ruoyi-vue-pro/
+server/target/
+server/*/target/
+server/application-local.yml
+
+# ---------- 系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 编辑器 ----------
+.idea/
+**/.idea/
+.vscode/
+*.swp
+
+# ---------- 项目数据 ----------
+# 保留 memory 便于跨会话交接，其余（截图、临时产物）不入库
+.workbuddy/*
+!.workbuddy/memory/
+.screenshots/
+
+# local backend run log
+server/backend-run.log
+server/redis-run.log
+server/*-run.log
+
+# ---------- 验证截图（adb 抓的，验证完即清）----------
+.verify-shots/
+android/.verify-shots/
+.verify-shots-*/
+*.verify.png
+
+# ---------- 临时素材（启动动画抽帧 / 录屏）----------
+frames/
+/*.mp4
+
+# 签名密钥不进仓
+*.jks
+*.keystore
+android/keystore/
+
+# ---------- WorkBuddy ----------
+.workbuddy/

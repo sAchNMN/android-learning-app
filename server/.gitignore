@@ -1,0 +1,22 @@
+# 若依服务端源码，独立 clone，不入版本控制
+RuoYi-Vue/
+ruoyi-vue-pro/
+
+# Windows 便携版 Redis（二进制，13MB，用 start-redis.sh 启动）
+redis/
+
+# 后端构建产物
+target/
+*/target/
+*.jar
+*.war
+
+# 本地覆盖的配置（可能含数据库密码）
+application-local.yml
+
+# IDE
+.idea/
+*.iml
+
+# 后端语法自检的临时产物
+.verify-stub/

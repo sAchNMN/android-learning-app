@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 主题「苔原」sage · 浅色（tools/theme/gen_palette.py 生成，勿手改） -->
+<resources>
+    <color name="theme_sage_canvas">#F1F5F2</color>
+    <color name="theme_sage_surface">#FDFFFE</color>
+    <color name="theme_sage_surface_sunken">#E9EFEB</color>
+    <color name="theme_sage_surface_pressed">#DDE4E0</color>
+    <color name="theme_sage_hero_placeholder">#DFE7E2</color>
+    <color name="theme_sage_ink">#131C17</color>
+    <color name="theme_sage_ink_secondary">#5A625D</color>
+    <color name="theme_sage_ink_tertiary">#6B726D</color>
+    <color name="theme_sage_ink_inverse">#FCFEFD</color>
+    <color name="theme_sage_accent">#066C43</color>
+    <color name="theme_sage_accent_on">#FAFFFC</color>
+    <color name="theme_sage_accent_soft">#DCF5E5</color>
+    <color name="theme_sage_accent_deep">#00603A</color>
+    <color name="theme_sage_accent_cyan">#3AB0C2</color>
+    <color name="theme_sage_hairline">#D9E2DC</color>
+    <color name="theme_sage_hairline_dark">#1FFFFFFF</color>
+    <color name="theme_sage_scrim">#8C000000</color>
+    <color name="theme_sage_nav_pill">#D6E3DB</color>
+    <color name="theme_sage_dark_canvas">#07120C</color>
+    <color name="theme_sage_on_dark">#F8FBF9</color>
+    <color name="theme_sage_on_dark_secondary">#B1B8B3</color>
+    <color name="theme_sage_dark_pill">#33FFFFFF</color>
+    <color name="theme_sage_like">#D54563</color>
+    <color name="theme_sage_progress_start">#30875C</color>
+    <color name="theme_sage_progress_mid">#176B44</color>
+    <color name="theme_sage_progress_end">#4B9E72</color>
+    <color name="theme_sage_tag_brand_bg">#DCF4E5</color>
+    <color name="theme_sage_tag_brand_text">#136C44</color>
+    <color name="theme_sage_tag_warm_bg">#FFEEE1</color>
+    <color name="theme_sage_tag_warm_text">#944E12</color>
+    <color name="theme_sage_tag_neutral_bg">#E8F1EB</color>
+    <color name="theme_sage_success">#287B46</color>
+    <color name="theme_sage_warning">#A16500</color>
+    <color name="theme_sage_danger">#B74441</color>
+    <color name="theme_sage_blob_a">#8FC4A4</color>
+    <color name="theme_sage_blob_b">#80C5BB</color>
+    <color name="theme_sage_blob_c">#A5C090</color>
+    <color name="theme_sage_blob_d">#7DC5C5</color>
+</resources>

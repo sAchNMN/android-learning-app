@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      这里只放"绝对色"：直接压在封面图/视频上的白字和黑遮罩。
+      它们不能跟着主题变 —— 底下是照片，不是画布。
+      其余一切颜色都在 colors_theme_*.xml + attrs.xml 里，组件用 ?attr/au*。
+    -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+</resources>

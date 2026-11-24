@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主界面骨架。
+  页面层铺满整屏（含状态栏和手势条区域），由各页面自己用 insets 给标题让位；
+  顶部一层很淡的渐隐保证状态栏图标可读，底部 dock 自己避开导航指示线。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/auCanvas">
+
+    <FrameLayout
+        android:id="@+id/tabContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.szc.learning.music.ui.widget.TopEdgeFadeView
+        android:id="@+id/topFade"
+        android:layout_width="match_parent"
+        android:layout_height="112dp"
+        android:layout_gravity="top" />
+
+    <com.szc.learning.music.ui.widget.BottomEdgeFadeView
+        android:id="@+id/bottomFade"
+        android:layout_width="match_parent"
+        android:layout_height="140dp"
+        android:layout_gravity="bottom" />
+
+    <LinearLayout
+        android:id="@+id/dock"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp">
+
+
+        <com.szc.learning.music.ui.widget.BottomNavBar
+            android:id="@+id/tabBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+</FrameLayout>

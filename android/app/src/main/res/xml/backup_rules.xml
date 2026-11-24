@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  不让 token 进入云备份：DataStore 的认证文件存有明文 token，
+  跟随云备份迁移到新设备等于账号被搬走。
+-->
+<full-backup-content>
+    <exclude domain="file" path="datastore/auth.preferences_pb" />
+</full-backup-content>

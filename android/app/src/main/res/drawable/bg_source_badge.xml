@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 在线来源的小胶囊：只在 item_track 里出现，不走 Material Chip，避免多一层测量 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/auAccentSoft" />
+    <corners android:radius="6dp" />
+</shape>

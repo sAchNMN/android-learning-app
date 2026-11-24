@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      主题调色板属性。组件、布局、drawable 只准引用 ?attr/au*，
+      不准直接引用 @color/theme_* —— 这是"换主题不用改 UI"的前提。
+    -->
+    <attr name="auCanvas" format="color" />
+    <attr name="auSurface" format="color" />
+    <attr name="auSurfaceSunken" format="color" />
+    <attr name="auSurfacePressed" format="color" />
+    <attr name="auHeroPlaceholder" format="color" />
+    <attr name="auInk" format="color" />
+    <attr name="auInkSecondary" format="color" />
+    <attr name="auInkTertiary" format="color" />
+    <attr name="auInkInverse" format="color" />
+    <attr name="auAccent" format="color" />
+    <attr name="auAccentOn" format="color" />
+    <attr name="auAccentSoft" format="color" />
+    <attr name="auAccentDeep" format="color" />
+    <attr name="auAccentCyan" format="color" />
+    <attr name="auHairline" format="color" />
+    <attr name="auHairlineDark" format="color" />
+    <attr name="auScrim" format="color" />
+    <attr name="auNavPill" format="color" />
+    <attr name="auDarkCanvas" format="color" />
+    <attr name="auOnDark" format="color" />
+    <attr name="auOnDarkSecondary" format="color" />
+    <attr name="auDarkPill" format="color" />
+    <attr name="auLike" format="color" />
+    <attr name="auProgressStart" format="color" />
+    <attr name="auProgressMid" format="color" />
+    <attr name="auProgressEnd" format="color" />
+    <attr name="auTagBrandBg" format="color" />
+    <attr name="auTagBrandText" format="color" />
+    <attr name="auTagWarmBg" format="color" />
+    <attr name="auTagWarmText" format="color" />
+    <attr name="auTagNeutralBg" format="color" />
+    <attr name="auSuccess" format="color" />
+    <attr name="auWarning" format="color" />
+    <attr name="auDanger" format="color" />
+    <attr name="auBlobA" format="color" />
+    <attr name="auBlobB" format="color" />
+    <attr name="auBlobC" format="color" />
+    <attr name="auBlobD" format="color" />
+
+    <!--
+      排版只有五档：Display / Title / Section / RowTitle / Body / Caption。
+      字号越大字距越紧，小字反而放松，否则挤成一团。
+    -->
+
+    <!-- 封面圆角。用 outline 硬件裁剪，不再走 ShapeableImageView 的 path mask -->
+    <declare-styleable name="CoverImageView">
+        <attr name="coverRadius" format="dimension" />
+    </declare-styleable>
+</resources>

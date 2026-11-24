@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  迷你播放器内部布局。根节点是 merge：MiniPlayerView 是嵌在导航玻璃里的一行，自己不画底。
+  进度线从歌名下方开始（66dp，避开封面圆环），可以拖动 seek。
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- 圆环进度：比封面大一圈，两者同心（封面 40dp @ marginStart 14dp → 中心 34dp） -->
+    <com.szc.learning.music.ui.widget.RingProgressView
+        android:id="@+id/miniRing"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="10dp"
+        android:contentDescription="@null" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/miniCover"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="14dp"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/Shape.Cover.Mini" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_marginStart="66dp"
+        android:layout_marginEnd="136dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/miniTitle"
+            style="@style/Text.RowTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/miniArtist"
+            style="@style/Text.Caption"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/miniQueue"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="96dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/queue_title"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_queue"
+        app:tint="?attr/auInkSecondary" />
+
+    <ImageButton
+        android:id="@+id/miniPlay"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="54dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/player_play"
+        android:padding="9dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_play"
+        app:tint="?attr/auInk" />
+
+    <ImageButton
+        android:id="@+id/miniNext"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="12dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/player_next"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_next"
+        app:tint="?attr/auInk" />
+
+    <com.szc.learning.music.ui.widget.SeekLine
+        android:id="@+id/miniProgress"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="66dp"
+        android:layout_marginEnd="24dp" />
+</merge>

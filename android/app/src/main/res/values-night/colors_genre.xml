@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 12 个分类色相（24° 一档，明度/色度固定）：给分类方块当"彩色玻璃"用 -->
+<resources>
+    <color name="genre_1">#BC484B</color>
+    <color name="genre_2">#B85207</color>
+    <color name="genre_3">#9D6800</color>
+    <color name="genre_4">#857500</color>
+    <color name="genre_5">#608200</color>
+    <color name="genre_6">#008C46</color>
+    <color name="genre_7">#008874</color>
+    <color name="genre_8">#00848E</color>
+    <color name="genre_9">#007FA9</color>
+    <color name="genre_10">#3074CA</color>
+    <color name="genre_11">#6965C9</color>
+    <color name="genre_12">#8D58B7</color>
+</resources>

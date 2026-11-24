@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  播放器 tab：竖向 ViewPager2，一页一首歌。
+  没有视频，也没有每页一个播放器；真正的音频由全局 PlayerController 播放，
+  页面只负责把「封面 + 歌词 + 控制」画出来。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/playerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/auDarkCanvas">
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/playerPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <TextView
+        android:id="@+id/playerEmpty"
+        style="@style/Text.Body"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:text="@string/player_empty"
+        android:textColor="?attr/auOnDarkSecondary"
+        android:visibility="gone" />
+</FrameLayout>
