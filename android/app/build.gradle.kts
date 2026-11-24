@@ -1,4 +1,5 @@
 import java.io.File
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -37,6 +38,33 @@ if (releaseApiBaseUrl.isBlank()) {
         "⚠️ release BASE_URL 仍是占位地址 https://api.example.com/；" +
             "正式打包请传 -PapiBaseUrlRelease=https://你的域名/",
     )
+}
+
+/**
+ * release 签名。
+ *
+ * 密钥绝不进仓：优先读 gradle 属性 / `local.properties`（后者本来就被 gitignore）：
+ * ```
+ * -PstoreFile=/path/aurora-release.jks -PstorePassword=xxx -PkeyAlias=aurora -PkeyPassword=xxx
+ * ```
+ *
+ * 都没提供时退回本机 debug keystore —— 目的只是让 **R8 之后的包能装到设备上冒烟**，
+ * 不装包就验不了「推荐的 JSON 还解析得出来吗」这类只有混淆会弄坏的问题。
+ * 用 debug 密钥签的包不能发版，构建时会打 warning。
+ */
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun signingValue(key: String): String? =
+    providers.gradleProperty(key).orNull ?: localProperties.getProperty(key)
+
+val releaseStoreFile: String? = signingValue("storeFile")
+val debugKeystore = File(System.getProperty("user.home"), ".android/debug.keystore")
+
+if (releaseStoreFile == null && !debugKeystore.exists()) {
+    logger.warn("⚠️ 没有 release 密钥也没有 debug.keystore，release 包将保持 unsigned、无法装机")
 }
 
 /**
@@ -105,6 +133,28 @@ android {
         viewBinding = true
     }
 
+    // 必须写在 buildTypes 之前：release 里那句 findByName("release") 是配置期求值，
+    // 写在后面会拿到 null（包就变 unsigned 且不报错）
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("storePassword")
+                keyAlias = signingValue("keyAlias")
+                keyPassword = signingValue("keyPassword")
+            }
+        } else if (debugKeystore.exists()) {
+            // 只为冒烟：debug 密钥签的包不能发版
+            create("release") {
+                storeFile = debugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+            logger.warn("⚠️ release 用 debug keystore 签名，仅用于装机冒烟；正式发版请传 -PstoreFile=")
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField("String", "BASE_URL", "\"$debugApiBaseUrl\"")
@@ -122,6 +172,7 @@ android {
                 enable = true
             }
             proguardFiles("proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
