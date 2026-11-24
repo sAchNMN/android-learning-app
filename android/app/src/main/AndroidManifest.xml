@@ -19,9 +19,7 @@
 
     <application
         android:name=".LearningApp"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -55,6 +53,11 @@
         <!-- 收藏 / 最近播放 / 云端热歌的通用列表页 -->
         <activity
             android:name=".music.ui.track.TrackListActivity"
+            android:exported="false" />
+
+        <!-- 音源歌单详情：点开卡片能看到里面有什么歌 -->
+        <activity
+            android:name=".music.ui.playlist.PlaylistDetailActivity"
             android:exported="false" />
 
         <!-- 音源管理：平台开关、优先级、Cookie -->

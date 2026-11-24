@@ -22,6 +22,24 @@ val debugApiBaseUrl: String =
 val backendPort: String = providers.gradleProperty("backendPort").getOrElse("8080")
 
 /**
+ * release 包的接口地址，必须显式传入：
+ * ```
+ * ./gradlew assembleRelease -PapiBaseUrlRelease=https://music.example.com/
+ * ```
+ *
+ * 不编造域名：没传就退回占位地址并打印警告（不失败，否则 CI 里连体检都做不了）。
+ * 占位地址一旦被误发到线上，所有请求都会打到 example.com —— 警告是要人看见的。
+ */
+val releaseApiBaseUrl: String = providers.gradleProperty("apiBaseUrlRelease").getOrElse("")
+
+if (releaseApiBaseUrl.isBlank()) {
+    logger.warn(
+        "⚠️ release BASE_URL 仍是占位地址 https://api.example.com/；" +
+            "正式打包请传 -PapiBaseUrlRelease=https://你的域名/",
+    )
+}
+
+/**
  * 定位 adb：`-PadbPath` → `ANDROID_HOME` / `ANDROID_SDK_ROOT` → `local.properties` 的 sdk.dir → PATH。
  * 找不到就退回裸 `adb`，由系统 PATH 兜底。
  */
@@ -92,11 +110,18 @@ android {
             buildConfigField("String", "BASE_URL", "\"$debugApiBaseUrl\"")
         }
         release {
-            // 上线前替换为真实域名，必须是 https。
-            buildConfigField("String", "BASE_URL", "\"https://api.example.com/\"")
+            // 上线前请用 -PapiBaseUrlRelease= 传入真实域名，必须是 https。
+            buildConfigField(
+                "String",
+                "BASE_URL",
+                "\"${releaseApiBaseUrl.ifBlank { "https://api.example.com/" }}\"",
+            )
+            // AGP 9.3 起一个开关同时打开代码收缩、资源收缩与 proguard-android-optimize 默认规则，
+            // 不要再配 isMinifyEnabled —— 两套 DSL 并存会让规则文件叠加两次
             optimization {
-                enable = false
+                enable = true
             }
+            proguardFiles("proguard-rules.pro")
         }
     }
     compileOptions {
@@ -128,6 +153,8 @@ dependencies {
     implementation(libs.media3.session)
     // 专辑封面异步加载（本地 content:// 与云端 http:// 同一套 API）
     implementation(libs.coil)
+    // 封面取色：播放页背景跟着封面换色，Palette 是唯一官方实现，别自己写聚类
+    implementation(libs.androidx.palette)
 
     // 购物车落盘（与 SessionStore 同一个 DataStore 库，各自一个文件名）
     implementation(libs.androidx.datastore.preferences)
