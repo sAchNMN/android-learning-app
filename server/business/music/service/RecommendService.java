@@ -54,7 +54,8 @@ public class RecommendService {
      * @param artistsCsv 前端算好的口味歌手，逗号分隔
      * @param seed      洗牌种子，空则按天取
      */
-    public RecommendResponse recommend(String deviceId, String artistsCsv, Long seed, int limit) {
+    public RecommendResponse recommend(String deviceId, String artistsCsv, Long seed, int limit,
+                                       Map<String, String> requestCookies) {
         int size = Math.max(LIMIT_MIN, Math.min(limit, LIMIT_MAX));
         RecommendResponse response = new RecommendResponse();
 
@@ -78,7 +79,7 @@ public class RecommendService {
         Map<String, OnlineTrack> picked = new LinkedHashMap<>();
         for (String artist : artists) {
             try {
-                SearchResponse result = sourceService.search(artist, SEARCH_PER_ARTIST, null);
+                SearchResponse result = sourceService.search(artist, SEARCH_PER_ARTIST, null, requestCookies);
                 for (OnlineTrack track : result.getTracks()) {
                     if (isLiked(track, likedTitles)) {
                         continue;
@@ -91,7 +92,7 @@ public class RecommendService {
         }
 
         if (picked.size() < size) {
-            for (OnlineTrack track : sourceService.discover(size * 2)) {
+            for (OnlineTrack track : sourceService.discover(size * 2, requestCookies)) {
                 if (picked.size() >= size) {
                     break;
                 }

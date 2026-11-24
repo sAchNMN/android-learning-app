@@ -16,57 +16,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 固定标题：翻页时标题不跟着走，页面里只滚动内容 -->
-    <LinearLayout
-        android:id="@+id/playerHeader"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingTop="10dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="6dp">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:letterSpacing="-0.02"
-                android:text="@string/player_title"
-                android:textColor="?attr/auOnDark"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:alpha="0.55"
-                android:text="@string/player_subtitle"
-                android:textColor="?attr/auOnDark"
-                android:textSize="10sp" />
-        </LinearLayout>
-
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <TextView
-            android:id="@+id/playerPageCount"
-            style="@style/Text.Numeric"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:alpha="0.55"
-            android:textColor="?attr/auOnDark"
-            android:textSize="11sp" />
-    </LinearLayout>
-
     <TextView
         android:id="@+id/playerEmpty"
         style="@style/Text.Body"

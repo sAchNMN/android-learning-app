@@ -1,5 +1,6 @@
 package com.szc.learning.music.ui.recommend
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.core.view.ViewCompat
@@ -15,6 +16,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
+import com.szc.learning.core.common.music.TrackSource
 import com.szc.learning.core.common.toast
 import com.szc.learning.core.network.music.UserPlaylistInfo
 import com.szc.learning.databinding.FragmentRecommendBinding
@@ -25,6 +27,8 @@ import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.music.ui.common.Playlists
 import com.szc.learning.music.ui.motion.Motion
 import com.szc.learning.music.ui.motion.springEnter
+import com.szc.learning.music.ui.playlist.PlaylistDetailActivity
+import com.szc.learning.music.ui.search.SearchActivity
 import com.szc.learning.music.ui.track.PlaylistRailAdapter
 import com.szc.learning.music.ui.widget.ShimmerSkeletonView
 import com.szc.learning.music.ui.widget.dp
@@ -58,7 +62,6 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
     }
 
     private val trackAdapter = RecommendTrackAdapter(
-        favoriteKeys = { viewModel.favorites.value },
         onClick = { index -> playFrom(index) },
         onToggleFavorite = { track -> viewModel.toggleFavorite(track) },
     )
@@ -68,13 +71,20 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         viewModel.playTracks(playlist.tracks, 0, ::onPlayEvent)
     }
 
-    /** 音源账号里的歌单：卡片只有标题/封面/总数，点开才去拉曲目。 */
+    /** 音源账号里的歌单：卡片只有标题/封面/总数，点开进详情页看曲目。 */
     private val sourceAdapter = PlaylistRailAdapter { card ->
         val playlist = sourceIndex[card.key]
         if (playlist == null) {
             viewModel.playTracks(card.tracks, 0, ::onPlayEvent)
         } else {
-            viewModel.playSyncedPlaylist(playlist, ::onPlayEvent)
+            PlaylistDetailActivity.start(
+                context = requireContext(),
+                source = playlist.source,
+                id = playlist.id,
+                name = playlist.name,
+                coverUrl = playlist.coverUrl,
+                trackCount = playlist.trackCount,
+            )
         }
     }
 
@@ -97,6 +107,9 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = trackAdapter
             setHasFixedSize(false)
+            // 列表高度是 wrap_content，任何 change 动画都会让外层 NestedScrollView
+            // 连着整页重新测量；滚动时的观感由 Coil 的淡入负责，动画这里不需要
+            itemAnimator = null
         }
         binding.recommendPlaylists.apply {
             layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -110,6 +123,9 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         }
 
         binding.recommendRefresh.setOnClickListener { viewModel.loadRecommendations(refresh = true) }
+        binding.recommendSearch.setOnClickListener {
+            startActivity(Intent(requireContext(), SearchActivity::class.java))
+        }
         binding.dailyCard.setOnClickListener { playFrom(0) }
         binding.dailyPlay.setOnClickListener { playFrom(0) }
         installInsets()
@@ -117,11 +133,6 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.recommend.collect { renderTracks() }
-            }
-        }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.recommendBasedOn.collect { renderHeader() }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -146,7 +157,7 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 // 收藏变了红心要跟着变；曲库变了本机歌单也要重算
                 viewModel.favorites.collect {
-                    trackAdapter.notifyDataSetChanged()
+                    renderTracks()
                     renderPlaylists()
                 }
             }
@@ -154,6 +165,12 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.recent.collect { renderPlaylists() }
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // 导入完分享码回到推荐页，新歌单要立刻出现，不用杀进程重进
+                viewModel.sharedPlaylists.collect { renderPlaylists() }
             }
         }
         viewLifecycleOwner.lifecycleScope.launch {
@@ -268,18 +285,16 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         binding.recommendHeader.springEnter(delayMs = offset + 20L, distanceDp = 36f)
         binding.recommendSubtitle.springEnter(delayMs = offset + 70L, distanceDp = 40f)
         binding.dailyCard.springEnter(delayMs = offset + 120L, distanceDp = 48f)
-        binding.recommendTracksHeader.springEnter(delayMs = offset + 180L, distanceDp = 44f)
-        animateRows(delayMs = offset + 220L)
+        animateTrackList(delayMs = offset + 220L)
         binding.recommendSourceHeader.springEnter(delayMs = offset + 360L, distanceDp = 44f)
         binding.recommendSourcePlaylists.springEnter(delayMs = offset + 400L, distanceDp = 48f)
         binding.recommendPlaylistsHeader.springEnter(delayMs = offset + 460L, distanceDp = 44f)
         binding.recommendPlaylists.springEnter(delayMs = offset + 500L, distanceDp = 48f)
-        binding.recommendFooter.springEnter(delayMs = offset + 560L, distanceDp = 36f)
     }
 
     /** 空态提示延后淡入，既不和飞上来的标题叠影，也不会突兀地"啪"出现。 */
     private fun fadeEmptyHints() {
-        listOf(binding.recommendEmpty, binding.recommendSourceEmpty).forEach { view ->
+        listOf(binding.recommendEmpty).forEach { view ->
             if (!view.isVisible) return@forEach
             view.alpha = 0f
             view.animate().alpha(1f).setStartDelay(EMPTY_HINT_DELAY_MS).setDuration(220L).start()
@@ -287,83 +302,70 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
     }
 
     /**
-     * 曲目行单独错峰。
+     * 曲目列表整体入场。
      *
-     * 行是异步来的（推荐结果走网络），页面入场时可能一条都还没有，
-     * 所以列表第一次真的出现子项时补播一次；已经播过就不再动。
+     * 以前这里是对 RecyclerView 的前 6 个 child 逐个 springEnter，那是 bug 根源：
+     * springEnter 先把 child 写成 alpha=0，再靠带 startDelay 的动画推回终态；
+     * 而 child 是 ViewHolder.itemView，会被后续 submitList（收藏、静默同步都会触发）
+     * 重新绑定/拆装，动画中途被打断后 alpha=0 就永久留下。表现就是截图里那样：
+     * 前 6 行透明看不见，没被动画碰过的第 7 行往后正常显示，像"下半部分没飞入"。
+     *
+     * 现在把整个列表当成一个稳定的 View 飞入，和上半部分同一套机制 —— child 怎么
+     * 被复用都不影响它，所有行一起飞，也不再有"前 6 行 / 后面"的割裂。
+     * 另外不再因为 userScrolled 直接跳过：整体动画只有一个 animator，开销可忽略，
+     * 数据晚到时跳过只会让整个列表"啪"地出现，那正是要修的现象。
      */
-    private fun animateRows(delayMs: Long, attempt: Int = 0) {
+    private fun animateTrackList(delayMs: Long, attempt: Int = 0) {
         if (rowsEntered) return
         binding.recommendTracks.post {
             val list = _binding?.recommendTracks ?: return@post
             if (list.childCount == 0) {
                 // 数据刚提交、还没排版完：下一帧再试，最多重试三次
-                if (attempt < ROW_ENTRANCE_RETRY) animateRows(delayMs, attempt + 1)
+                if (attempt < ROW_ENTRANCE_RETRY) animateTrackList(delayMs, attempt + 1)
                 return@post
             }
             rowsEntered = true
             if (Motion.animationsDisabled(requireContext())) return@post
-            val count = minOf(list.childCount, ROW_ENTRANCE_MAX)
-            for (index in 0 until count) {
-                list.getChildAt(index)?.springEnter(
-                    delayMs = delayMs + index * ROW_STAGGER_MS,
-                    distanceDp = 56f,
-                )
-            }
+            list.springEnter(delayMs = delayMs, distanceDp = 56f)
         }
     }
 
+    /** 标题下只在离线时露一行状态；正常情况下内容自己说明一切。 */
     private fun renderHeader() {
-        val offline = viewModel.recommendOffline.value
-        val basedOn = viewModel.recommendBasedOn.value
-        binding.recommendSubtitle.text = when {
-            offline -> getString(R.string.recommend_subtitle_offline)
-            basedOn.isNotEmpty() -> getString(
-                R.string.recommend_subtitle_taste,
-                basedOn.take(3).joinToString("、"),
-            )
-
-            else -> getString(R.string.recommend_subtitle_fresh)
-        }
+        binding.recommendSubtitle.isVisible = viewModel.recommendOffline.value
     }
 
     private fun renderTracks() {
+        // 红心状态随 item 一起提交，收藏变化时 DiffUtil 只标出变的那几行
+        val liked = viewModel.favorites.value
         val tracks = viewModel.recommend.value
-        // 提交回调里补播行入场：推荐结果是网络来的，可能在页面入场之后才到
-        trackAdapter.submitList(tracks) {
-            animateRows(delayMs = 160L + MainActivity.entranceDelayMs())
+        // 只有混源时角标才提供信息；全是同一平台时不重复贴
+        val showSource = tracks
+            .filter { it.source == TrackSource.ONLINE }
+            .map { it.sourceKey }
+            .distinct()
+            .size > 1
+        val rows = tracks.map { track ->
+            RecommendTrackAdapter.Row(track, track.key in liked, showSource)
         }
-        binding.recommendTrackCount.text =
-            getString(R.string.recommend_track_count, tracks.size)
-        binding.dailySubtitle.setText(R.string.recommend_daily_subtitle)
-        binding.dailyCard.isEnabled = tracks.isNotEmpty()
+        // 提交回调里补播行入场：推荐结果是网络来的，可能在页面入场之后才到
+        trackAdapter.submitList(rows) {
+            animateTrackList(delayMs = 160L + MainActivity.entranceDelayMs())
+        }
 
         renderEmpty()
     }
 
     /**
-     * 推荐为空时的说明文案。
+     * 推荐为空：收起每日卡，只留一行空态（刷新按钮就在标题旁）。
      *
-     * 单独成一个方法是因为「加载中」和「加载失败」两个时机都要判断：
-     * 失败时 `recommend` 压根不会发出新值，光靠 [renderTracks] 的话这段文案永远不会出现。
+     * 「加载中」和「加载失败」两个时机都要判断：失败时 `recommend` 不会发出新值。
      */
     private fun renderEmpty() {
         if (_binding == null) return
-        val empty = viewModel.recommend.value.isEmpty() && !viewModel.recommendLoading.value
-        binding.recommendEmpty.isVisible = empty
-        if (empty) {
-            binding.recommendEmpty.text = buildString {
-                append(getString(R.string.recommend_empty))
-                append('\n')
-                append(getString(R.string.recommend_empty_hint))
-            }
-        }
-        // 没数据时大卡也别写「今天为你挑了 0 首」，那句话看着像出了 bug
-        binding.dailyTitle.text = if (empty) {
-            getString(R.string.recommend_empty)
-        } else {
-            getString(R.string.recommend_daily_title, viewModel.recommend.value.size)
-        }
+        val tracks = viewModel.recommend.value
+        binding.recommendEmpty.isVisible = tracks.isEmpty() && !viewModel.recommendLoading.value
+        binding.dailyCard.isVisible = tracks.isNotEmpty()
     }
 
     private fun renderSourcePlaylists() {
@@ -371,9 +373,8 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
         sourceIndex.clear()
         playlists.forEach { sourceIndex["source:${it.source}:${it.id}"] = it }
         sourceAdapter.submitList(playlists.map { it.toCard() })
-        binding.recommendSourceState.text =
-            getString(R.string.recommend_playlist_count, playlists.size)
-        binding.recommendSourceEmpty.isVisible = playlists.isEmpty()
+        // 没登录音源就整段不出现，不留一句「去登录」的说明
+        binding.recommendSourceHeader.isVisible = playlists.isNotEmpty()
         binding.recommendSourcePlaylists.isVisible = playlists.isNotEmpty()
     }
 
@@ -385,11 +386,12 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
             viewModel.local.value,
             viewModel.recent.value,
             viewModel.favoriteTracks(),
+            viewModel.sharedPlaylists.value,
             limit = 8,
         )
         playlistAdapter.submitList(playlists)
-        binding.recommendMorePlaylists.text =
-            getString(R.string.recommend_playlist_count, playlists.size)
+        binding.recommendPlaylistsHeader.isVisible = playlists.isNotEmpty()
+        binding.recommendPlaylists.isVisible = playlists.isNotEmpty()
     }
 
     // ---------------------------------------------------------------- 播放
@@ -423,12 +425,6 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
     }
 
     private companion object {
-        /** 行入场最多错峰多少条，往下滑到的行不再补动画。 */
-        const val ROW_ENTRANCE_MAX = 6
-
-        /** 相邻两行的入场间隔，和旧首页 40ms 的节奏一致。 */
-        const val ROW_STAGGER_MS = 40L
-
         /** 列表还没排版好时的补播重试次数。 */
         const val ROW_ENTRANCE_RETRY = 3
 

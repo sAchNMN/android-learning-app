@@ -29,27 +29,27 @@
             android:src="@drawable/ic_arrow_back"
             app:tint="?attr/auInk" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/trackListTitle"
+            style="@style/Text.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="20sp" />
 
-            <TextView
-                android:id="@+id/trackListTitle"
-                style="@style/Text.Title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="20sp" />
-
-            <TextView
-                android:id="@+id/trackListCount"
-                style="@style/Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp" />
-        </LinearLayout>
+        <ImageButton
+            android:id="@+id/trackListShare"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/track_list_share"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_share"
+            app:tint="?attr/auInk" />
 
         <TextView
             android:id="@+id/trackListPlayAll"

@@ -5,6 +5,7 @@ import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.music.data.Playlist
 import com.szc.learning.music.data.PlaylistTag
+import com.szc.learning.music.data.StoredPlaylist
 
 /**
  * 把曲库切成歌单卡片。
@@ -21,6 +22,7 @@ object Playlists {
         local: List<MusicTrack>,
         recent: List<MusicTrack>,
         favorites: List<MusicTrack>,
+        shared: List<StoredPlaylist> = emptyList(),
         limit: Int = 6,
     ): List<Playlist> {
         val out = mutableListOf<Playlist>()
@@ -33,6 +35,21 @@ object Playlists {
                 tracks = favorites,
             )
         }
+
+        // 导入的分享歌单排在收藏之后：刚导入的人第一眼就要能找到它，
+        // 而不是被云端/本地/最近那几张常驻卡片挤到最下面
+        for (playlist in shared) {
+            if (out.size >= limit) break
+            if (playlist.tracks.isEmpty()) continue
+            out += Playlist(
+                key = "shared:${playlist.code}",
+                title = playlist.title,
+                tag = PlaylistTag.SHARED,
+                tracks = playlist.tracks,
+                coverUrl = playlist.tracks.firstOrNull()?.artUri,
+            )
+        }
+
         if (cloud.isNotEmpty()) {
             out += Playlist(
                 key = "cloud",

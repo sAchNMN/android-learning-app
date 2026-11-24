@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,7 +39,7 @@ public class MusicUserService {
     @Autowired(required = false)
     private MusicUserLikeMapper likeMapper;
 
-    public LikeResult like(LikeBody body) {
+    public LikeResult like(LikeBody body, Map<String, String> requestCookies) {
         LikeResult result = new LikeResult();
         boolean liked = body.getLiked() == null || body.getLiked();
         result.setLiked(liked);
@@ -54,7 +55,7 @@ public class MusicUserService {
 
         // 平台侧同步：本机来源跳过，音源平台推一次（失败只记回执）
         if (!SOURCE_LOCAL.equals(source) && !SOURCE_CLOUD.equals(source) && !trackId.isEmpty()) {
-            result.getSyncs().add(sourceService.like(source, trackId, liked));
+            result.getSyncs().add(sourceService.like(source, trackId, liked, requestCookies));
         }
         return result;
     }
@@ -103,16 +104,17 @@ public class MusicUserService {
     }
 
     /** 合并所有已登录平台的个人歌单。 */
-    public List<UserPlaylist> playlists() {
-        return sourceService.userPlaylists();
+    public List<UserPlaylist> playlists(Map<String, String> requestCookies) {
+        return sourceService.userPlaylists(requestCookies);
     }
 
-    public PlaylistDetail playlist(String source, String playlistId, String name, int limit) {
+    public PlaylistDetail playlist(String source, String playlistId, String name, int limit,
+                                   Map<String, String> requestCookies) {
         PlaylistDetail detail = new PlaylistDetail();
         detail.setSource(source);
         detail.setId(playlistId);
         detail.setName(name == null ? "" : name);
-        detail.setTracks(sourceService.playlistTracks(source, playlistId, limit));
+        detail.setTracks(sourceService.playlistTracks(source, playlistId, limit, requestCookies));
         return detail;
     }
 

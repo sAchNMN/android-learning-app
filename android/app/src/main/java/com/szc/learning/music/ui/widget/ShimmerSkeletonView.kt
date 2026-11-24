@@ -198,8 +198,9 @@ class ShimmerSkeletonView @JvmOverloads constructor(
         var y = paddingTop + dp(12f)
         add(x, y, right, y + dp(44f), dp(22f))
         y += dp(60f)
-        add(x, y, x + dp(140f), y + dp(14f), dp(5f))
-        add(right - dp(72f), y - dp(4f), right, y + dp(28f), dp(16f))
+        // 操作行：左边「播放全部」胶囊，右边排序按钮
+        add(x, y - dp(4f), x + dp(84f), y + dp(28f), dp(16f))
+        add(right - dp(28f), y - dp(2f), right, y + dp(26f), dp(14f))
         y += dp(44f)
         val tab = (right - x) / 4f
         repeat(4) { index ->
@@ -215,42 +216,33 @@ class ShimmerSkeletonView @JvmOverloads constructor(
         }
     }
 
+    /** 和 fragment_recommend 对齐：标题 → 每日卡 → 曲目行 → 歌单横排。 */
     private fun buildRecommend() {
         val x = paddingLeft + dp(20f)
         val right = width - paddingRight - dp(20f)
-        val content = (right - x).coerceAtLeast(dp(40f))
         var y = paddingTop + dp(4f)
         add(x, y, x + dp(100f), y + dp(28f), dp(9f))
         add(right - dp(38f), y + dp(2f), right, y + dp(40f), dp(19f))
-        y += dp(48f)
-        add(x, y, x + dp(168f), y + dp(12f), dp(5f))
-        y += dp(28f)
-        add(x, y, right, y + dp(150f), dp(24f))
-        y += dp(172f)
-        add(x, y, x + dp(120f), y + dp(18f), dp(6f))
+        y += dp(56f)
+        add(x, y, right, y + dp(96f), dp(24f))
+        y += dp(112f)
+        repeat(5) {
+            add(x, y, x + dp(48f), y + dp(48f), dp(12f))
+            add(x + dp(60f), y + dp(8f), min(x + dp(240f), right - dp(40f)), y + dp(22f), dp(5f))
+            add(x + dp(60f), y + dp(30f), min(x + dp(170f), right - dp(40f)), y + dp(41f), dp(4f))
+            y += dp(64f)
+        }
+        y += dp(16f)
+        add(x, y, x + dp(96f), y + dp(18f), dp(6f))
         y += dp(30f)
-        val cardWidth = dp(150f)
+        val cardWidth = dp(140f)
         repeat(3) { index ->
-            val left = x + index * (cardWidth + dp(14f))
+            val left = x + index * (cardWidth + dp(12f))
             if (left < right) {
-                add(left, y, min(left + cardWidth, right), y + dp(154f), dp(18f))
-                add(left, y + dp(166f), min(left + dp(104f), right), y + dp(180f), dp(5f))
+                add(left, y, min(left + cardWidth, right), y + cardWidth, dp(18f))
+                add(left, y + cardWidth + dp(10f), min(left + dp(104f), right), y + cardWidth + dp(24f), dp(5f))
             }
         }
-        y += dp(204f)
-        add(x, y, x + dp(120f), y + dp(18f), dp(6f))
-        y += dp(30f)
-        repeat(4) { index ->
-            add(x + index * dp(84f), y, x + index * dp(84f) + dp(64f), y + dp(64f), dp(32f))
-        }
-        y += dp(84f)
-        add(x, y, x + dp(120f), y + dp(18f), dp(6f))
-        y += dp(30f)
-        repeat(3) {
-            add(x, y, right, y + dp(72f), dp(18f))
-            y += dp(84f)
-        }
-        if (content < 0f) return
     }
 
     private fun add(left: Float, top: Float, right: Float, bottom: Float, radius: Float) {

@@ -1,10 +1,13 @@
 package com.szc.learning.music.ui.track
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -15,12 +18,15 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.szc.learning.R
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.core.common.AppResult
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.toast
+import com.szc.learning.core.network.music.ShareResult
 import com.szc.learning.databinding.ActivityTrackListBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.OnlinePlayEvent
-import com.szc.learning.music.ui.now.NowPlayingActivity
+
+import com.szc.learning.ui.main.MainActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -75,6 +81,7 @@ class TrackListActivity : AppCompatActivity() {
         binding.trackListPlayAll.setOnClickListener {
             if (tracks.isNotEmpty()) play(tracks, 0)
         }
+        binding.trackListShare.setOnClickListener { shareCurrentList() }
 
         binding.trackList.layoutManager = LinearLayoutManager(this)
         binding.trackList.adapter = adapter
@@ -95,7 +102,7 @@ class TrackListActivity : AppCompatActivity() {
     }
 
     private fun openPlayer() {
-        startActivity(Intent(this, NowPlayingActivity::class.java))
+        startActivity(MainActivity.playerIntent(this))
     }
 
     /**
@@ -120,9 +127,63 @@ class TrackListActivity : AppCompatActivity() {
             else -> viewModel.favoriteTracks()
         }
         adapter.submitList(tracks)
-        binding.trackListCount.text = getString(R.string.playlist_tracks, tracks.size)
         binding.trackListEmpty.visibility =
             if (tracks.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    // ---------------------------------------------------------------- 分享
+
+    /**
+     * 把当前列表生成一个 6 位分享码。
+     *
+     * 这是整个 App 唯一一个**不降级**的功能：短码必须在服务端分配。
+     * 后端不在时直接失败并说明原因 —— 本地伪造一个码会让对方查出「码不存在」，
+     * 比当场失败更糟。
+     *
+     * 本地曲目由 `MusicRepository.createShare` 过滤掉：`content://` 指的是
+     * 本机文件，对方拿到只会是一首点开就报错的歌。
+     */
+    private fun shareCurrentList() {
+        if (tracks.isEmpty()) {
+            toast(R.string.share_empty)
+            return
+        }
+        val title = binding.trackListTitle.text?.toString().orEmpty()
+        lifecycleScope.launch {
+            when (val result = viewModel.createShareCode(title, tracks)) {
+                is AppResult.Success -> showShareCodeDialog(result.data)
+                is AppResult.Failure -> toast(getString(R.string.share_failed, result.message))
+            }
+        }
+    }
+
+    private fun showShareCodeDialog(result: ShareResult) {
+        // 码单独一行、前后各留一个空行：用户要念给别人听，也和说明文字区分开
+        val body = buildString {
+            appendLine(result.code)
+            appendLine()
+            append(
+                getString(
+                    R.string.share_dialog_message,
+                    result.trackCount,
+                    result.expireTime?.take(10).orEmpty(),
+                ),
+            )
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.share_dialog_title)
+            .setMessage(body.trim())
+            .setPositiveButton(R.string.share_copy) { _, _ ->
+                copyToClipboard(result.code)
+                toast(R.string.share_copied)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun copyToClipboard(text: String) {
+        val manager = getSystemService(ClipboardManager::class.java) ?: return
+        manager.setPrimaryClip(ClipData.newPlainText("aurora_share_code", text))
     }
 
     companion object {

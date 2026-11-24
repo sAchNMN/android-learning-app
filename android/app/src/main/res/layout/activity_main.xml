@@ -21,6 +21,12 @@
         android:layout_height="112dp"
         android:layout_gravity="top" />
 
+    <com.szc.learning.music.ui.widget.BottomEdgeFadeView
+        android:id="@+id/bottomFade"
+        android:layout_width="match_parent"
+        android:layout_height="140dp"
+        android:layout_gravity="bottom" />
+
     <LinearLayout
         android:id="@+id/dock"
         android:layout_width="match_parent"
@@ -31,16 +37,10 @@
         android:paddingEnd="12dp"
         android:paddingBottom="10dp">
 
-        <com.szc.learning.music.ui.widget.MiniPlayerView
-            android:id="@+id/miniPlayer"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone" />
 
         <com.szc.learning.music.ui.widget.BottomNavBar
             android:id="@+id/tabBar"
             android:layout_width="match_parent"
-            android:layout_height="64dp" />
+            android:layout_height="wrap_content" />
     </LinearLayout>
 </FrameLayout>

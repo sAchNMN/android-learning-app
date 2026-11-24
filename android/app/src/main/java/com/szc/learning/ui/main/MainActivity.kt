@@ -1,6 +1,7 @@
 package com.szc.learning.ui.main
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -21,14 +22,15 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.szc.learning.LearningApp
 import com.szc.learning.R
+import com.szc.learning.ui.login.LoginActivity
 import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.databinding.ActivityMainBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.library.LibraryFragment
 import com.szc.learning.music.ui.mine.MineFragment
 import com.szc.learning.music.ui.common.showQueueSheet
-import com.szc.learning.music.ui.now.NowPlayingActivity
 import com.szc.learning.music.ui.player.PlayerFragment
 import com.szc.learning.music.ui.recommend.RecommendFragment
 import com.szc.learning.music.ui.widget.BottomNavBar
@@ -51,6 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MusicViewModel by viewModels()
+    private val container by lazy { (application as LearningApp).container }
 
     private val tags = listOf(TAG_PLAYER, TAG_RECOMMEND, TAG_LOCAL, TAG_MINE)
     private var currentTab = DEFAULT_TAB
@@ -73,6 +76,15 @@ class MainActivity : AppCompatActivity() {
         // 主题要在 super 之前套上：晚一步，窗口会先按清单里的默认主题创建
         ThemeManager.applyPalette(this)
         super.onCreate(savedInstanceState)
+
+        // 首次启动先走登录页。放在 setContentView 之前：主界面一帧都不会露出来，
+        // 也就不需要额外的启动闪屏。
+        if (!container.loginStore.isComplete) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
         // 放在 super 之后：AppCompat 这时才把亮暗写进 resources，
         // enableEdgeToEdge 读到的才是最终模式，状态栏图标不会反色
         enableEdgeToEdge()
@@ -98,7 +110,11 @@ class MainActivity : AppCompatActivity() {
         bindMiniPlayer()
         observePlayer()
 
-        val restored = savedInstanceState?.getInt(KEY_TAB, DEFAULT_TAB) ?: DEFAULT_TAB
+        val restored = when {
+            savedInstanceState != null -> savedInstanceState.getInt(KEY_TAB, DEFAULT_TAB)
+            // 登录页选了「仅本地播放」时会带一个起始 tab，冷启动时优先用它
+            else -> intent.getIntExtra(EXTRA_START_TAB, DEFAULT_TAB)
+        }
         showTab(restored)
         val animationsEnabled = android.provider.Settings.Global.getFloat(
             contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f,
@@ -121,6 +137,19 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(KEY_TAB, currentTab)
+    }
+
+    /** 从搜索页/歌单页播歌后回到这里时，直接切到播放 tab。 */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val tab = intent.getIntExtra(EXTRA_START_TAB, -1)
+        if (tab < 0) return
+        // 从别的页面回来时本页可能刚恢复，等这一帧结束再切，
+        // 避免 FragmentManager 仍处于「已保存状态」时提交事务。
+        binding.root.post {
+            if (!isFinishing && !isDestroyed) showTab(tab)
+        }
     }
 
     override fun onStart() {
@@ -245,14 +274,14 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------------------- 播放
 
     private fun bindMiniPlayer() {
-        binding.tabBar.player.onOpen = {
-            startActivity(Intent(this, NowPlayingActivity::class.java))
-        }
+        binding.tabBar.player.onOpen = { openPlayerTab() }
         binding.tabBar.player.onPlayToggle = { viewModel.toggle() }
         binding.tabBar.player.onNext = { viewModel.next() }
         // 左滑下一首、右滑上一首；「上一首」沿用 iOS 习惯（播过 3 秒先回本曲开头）
         binding.tabBar.player.onPrevious = { viewModel.previous() }
         binding.tabBar.player.onQueue = { showQueueSheet(this, viewModel) }
+        // 迷你条上的进度线松手后提交一次 seek
+        binding.tabBar.player.onSeekFinished = { fraction -> viewModel.seekToFraction(fraction) }
     }
 
     private fun observePlayer() {
@@ -317,6 +346,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val KEY_TAB = "aurora.tab"
+        private const val EXTRA_START_TAB = "aurora.start_tab"
 
         /** 打开先落在推荐页：播放器页在没歌可播时是空的，不适合当默认首屏。 */
         const val DEFAULT_TAB = 1
@@ -330,6 +360,15 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_RECOMMEND = "tab_recommend"
         private const val TAG_LOCAL = "tab_local"
         private const val TAG_MINE = "tab_mine"
+
+        /** 登录页在完成登录后启动主界面，并指定第一个 tab。 */
+        fun intent(context: Context, startTab: Int = DEFAULT_TAB): Intent =
+            Intent(context, MainActivity::class.java).putExtra(EXTRA_START_TAB, startTab)
+
+        /** 从其他页面点歌后回到主界面：复用已有实例，并落在播放 tab。 */
+        fun playerIntent(context: Context): Intent = intent(context, INDEX_PLAYER).addFlags(
+            Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP,
+        )
 
         /** 与 [LaunchAnimationView.reveal] 里的 1200ms 一致，改一处要改两处。 */
         private const val LAUNCH_REVEAL_MS = 1200L

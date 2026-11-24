@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  卡片级按压高亮。替代 ?attr/selectableItemBackground —— 系统那个是矩形 ripple，
+  点下去会露出一块直角灰底，和封面的圆角对不上。
+  圆角与 Shape.Cover.Card 同档（radius_lg），换尺寸改 dimen 即可，不要在这里写死。
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/white" />
+            <corners android:radius="@dimen/radius_lg" />
+        </shape>
+    </item>
+</ripple>

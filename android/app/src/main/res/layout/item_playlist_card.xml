@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 歌单卡：方形封面 + 覆盖播放数 + 标签 + 两行标题（参考 vivo 音乐的歌单卡） -->
+<!-- 歌单卡：方形封面 + 角标播放键 + 两行标题。来源不用标签说，标题本身就是 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="140dp"
     android:layout_height="wrap_content"
     android:layout_marginEnd="12dp"
-    android:background="?attr/selectableItemBackground"
+    android:background="@drawable/bg_ripple_card"
     android:orientation="vertical">
 
     <FrameLayout
         android:layout_width="140dp"
         android:layout_height="140dp">
 
-        <com.google.android.material.imageview.ShapeableImageView
+        <com.szc.learning.music.ui.widget.CoverImageView
             android:id="@+id/playlistCover"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:contentDescription="@null"
             android:scaleType="centerCrop"
-            app:shapeAppearanceOverlay="@style/Shape.Cover.Card" />
+            app:coverRadius="@dimen/radius_lg" />
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -26,48 +26,24 @@
             android:layout_gravity="bottom|start"
             android:layout_margin="8dp"
             android:background="@drawable/bg_play_count"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:orientation="horizontal"
-            android:paddingStart="6dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="2dp">
+            android:padding="6dp">
 
             <ImageView
-                android:layout_width="9dp"
-                android:layout_height="9dp"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_play"
                 app:tint="@color/white" />
-
-            <TextView
-                android:id="@+id/playlistCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="3dp"
-                android:textColor="@color/white"
-                android:textSize="10sp" />
         </LinearLayout>
     </FrameLayout>
-
-    <TextView
-        android:id="@+id/playlistTag"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/bg_tag_blue"
-        android:paddingStart="5dp"
-        android:paddingTop="2dp"
-        android:paddingEnd="5dp"
-        android:paddingBottom="2dp"
-        android:textColor="?attr/auTagBrandText"
-        android:textSize="9sp" />
 
     <TextView
         android:id="@+id/playlistTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="8dp"
         android:ellipsize="end"
         android:lineSpacingExtra="2dp"
         android:maxLines="2"

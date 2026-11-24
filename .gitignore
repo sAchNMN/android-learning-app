@@ -40,6 +40,14 @@ desktop.ini
 
 # local backend run log
 server/backend-run.log
+server/redis-run.log
+server/*-run.log
+
+# ---------- 验证截图（adb 抓的，验证完即清）----------
+.verify-shots/
+android/.verify-shots/
+.verify-shots-*/
+*.verify.png
 
 # ---------- 临时素材（启动动画抽帧 / 录屏）----------
 frames/

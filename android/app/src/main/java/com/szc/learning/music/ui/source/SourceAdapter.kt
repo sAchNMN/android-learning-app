@@ -32,23 +32,17 @@ class SourceAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: MusicSourceInfo, position: Int) {
-            val context = binding.root.context
             binding.sourceName.text = item.label
-            val state = context.getString(
-                if (item.enabled) R.string.source_enabled else R.string.source_disabled,
-            )
-            binding.sourceStatus.text =
-                "$state · ${context.getString(R.string.source_priority, item.priority)}"
-
+            binding.sourceSwitch.contentDescription = item.label
             binding.sourceSwitch.setOnCheckedChangeListener(null)
             binding.sourceSwitch.isChecked = item.enabled
             binding.sourceSwitch.setOnCheckedChangeListener { _, checked ->
                 onToggle(item, checked)
             }
 
-            val cookieState =
-                context.getString(if (item.hasCookie) R.string.source_cookie_set else R.string.source_cookie_unset)
-            binding.sourceCookie.text = "${context.getString(R.string.source_cookie)} · $cookieState"
+            binding.sourceCookie.setText(
+                if (item.hasCookie) R.string.source_logged_in else R.string.source_login,
+            )
             binding.sourceCookie.setOnClickListener { onCookie(item) }
 
             // 第一项不能上移、最后一项不能下移；置灰而不是隐藏，避免卡片高度跳动

@@ -155,8 +155,8 @@
 | GET | `/app/music/search?keyword=晴天&limit=20&sources=netease,kugou,kuwo,qq` | 聚合搜索，单平台失败只进 `errors` |
 | GET | `/app/music/play?source=netease&id=186016&title=晴天&artist=周杰伦&durationMs=269747&fallback=true` | 换取播放地址，可自动换源 |
 | GET | `/app/music/lyric?source=netease&id=186016` | LRC 文本，可能为空串 |
-| GET | `/app/music/sources` | 音源列表（不回传 Cookie，只给 `hasCookie`） |
-| PUT | `/app/music/sources/{key}` | 改 `enabled` / `priority` / `cookie`，字段都可空 |
+| GET | `/app/music/sources` | 音源列表（不回传 Cookie，只给 `hasCookie`）。**客户端已改为本机存，此接口只在首次初始化时用一次** |
+| PUT | `/app/music/sources/{key}` | 改 `enabled` / `priority` / `cookie`。**已弃用**：配置改存客户端 `SourceConfigStore`，Cookie 不再经过服务器 |
 
 约定：
 
@@ -218,6 +218,110 @@
 
 酷狗这几项要签名/token 才能调，没有可靠公开接口，所以留空实现：
 客户端会显示「酷狗暂不支持同步喜欢，已记在本机与后台」，**不假装成功**。
+
+### 3.5 歌单分享码
+
+**这是全项目唯一必须依赖服务端的功能**：短码要在中心分配，别的设备才查得到。
+收藏、推荐、音源配置都已下沉到客户端，只有这一件事客户端做不到。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/app/music/share` | 生成 6 位码，body `{deviceId, title, tracks:[…]}` |
+| GET | `/app/music/share/{code}` | 按码取歌单，不存在/已过期都返回 `code != 200` |
+
+生成响应：
+
+```json
+{ "code": 200, "data": {
+    "code": "A7K2M9",
+    "title": "我喜欢",
+    "trackCount": 12,
+    "createTime": "2026-11-18 15:02:11",
+    "expireTime": "2026-12-18 15:02:11",
+    "viewCount": 0,
+    "tracks": [ { "id": "MUSIC_228908", "title": "晴天", "source": "ONLINE", "sourceKey": "kuwo", "hash": "MUSIC_228908", "…": "…" } ]
+} }
+```
+
+约定：
+
+1. **`tracks` 原样存、原样返回**，后端不解析内部字段。跨音源曲目带 `hash` /
+   `albumId` / `albumAudioId` 这些平台私有参数，后端一旦理解这套结构，
+   客户端每加字段都要改两边。
+2. 码是 6 位，字符集 `23456789ABCDEFGHJKMNPQRSTUVWXYZ`（**去掉 0/O/1/I/L**，
+   用户会口头念码、手抄码）。唯一索引 + 撞码重试保证不重。
+3. 上限：单次 200 首（超出截断不报错）、payload 512KB、有效期 30 天。
+4. `source` 用字符串 `ONLINE` / `CLOUD` / `LOCAL`，**不用枚举序号** ——
+   序号会随枚举顺序变化，是跨版本协议最容易踩的坑。
+5. 客户端提交前会过滤掉 `LOCAL` 曲目：`content://` 指的是分享者手机上的文件，
+   对方拿到只会是一首点开就报错的歌。
+6. 导入方把结果落在本机 `SharedPlaylistStore`，之后**离线也能看到自己导入过什么**；
+   码本身仍在服务端。
+
+### 3.6 歌曲评论
+
+第二件**必须依赖服务端**的功能。评论是多人共享的数据，单机的「评论」只能自言自语。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/app/music/comments?title=&artist=&deviceId=&limit=20&offset=0` | 列表，带本人的 `liked` / `own` |
+| POST | `/app/music/comments` | 发表，见下方 body |
+| POST | `/app/music/comments/{id}/like` | 点赞 / 取消，body `{deviceId, liked}` |
+| DELETE | `/app/music/comments/{id}?deviceId=` | 只能删自己的 |
+
+发表 body：
+
+```json
+{ "deviceId": "a1b2c3", "deviceName": "V2419A", "title": "晴天", "artist": "周杰伦",
+  "sourceKey": "kuwo", "trackId": "MUSIC_228908", "content": "前奏一响就是整个夏天" }
+```
+
+列表响应：
+
+```json
+{ "code": 200, "data": {
+  "total": 12, "hasMore": true,
+  "items": [ { "id": 1, "deviceName": "V2419A", "content": "…",
+               "likeCount": 3, "liked": false, "own": true,
+               "createTime": "2026-11-18 15:09:03" } ]
+} }
+```
+
+约定：
+
+1. **评论按 `songKey`（归一化「歌名|主歌手」）归属，不是按平台 `trackId`**。
+   用户在网易云听《晴天》和在酷我听到的是同一批评论 —— 评论评价的是「这首歌」，
+   不是「某个平台的一条曲目记录」。
+2. **归一化只在服务端做一处**（`MusicCommentService.songKey`），客户端传原始
+   `title` / `artist`。两端各写一套正则，迟早在全角括号或 `feat.` 上对不齐，
+   同一首歌会分裂成两批评论。
+3. **括号里的版本标识参与匹配**：`晴天 (Live)` 与 `晴天` 是两条独立评论流。
+   和 `RecommendService` 的去重规则一致 —— 那边也把它们当两首歌。
+4. 点赞用**唯一键 + `INSERT IGNORE`**，不是「先查再写」。连点两下时先查后写会
+   两个请求都读到「没赞过」，然后一条撞唯一键直接 500。重复点赞是幂等的。
+5. 频控：同一设备 **60 秒内最多 3 条**。
+6. 响应**不回传 `deviceId`**（那是能冒充别人点赞/删评论的凭证），只给 `own`。
+7. `deviceName` 为空时客户端显示「匿名听众」。App 没有登录体系，昵称默认取设备型号。
+8. 离线时这个功能**明确失败**，不做本地伪造：本机编不出别人的评论。
+
+## 3.7 客户端离线能力矩阵
+
+本节描述 App 在**后端关闭**时的行为，是「离线优先」改造的验收标准。
+
+| 能力 | 后端在线 | 后端关闭 |
+| --- | --- | --- |
+| 本地曲库（MediaStore） | ✅ | ✅ |
+| 云端曲库 `/tracks` | ✅ | ❌ 列表为空，不报错 |
+| 搜索 | 四平台聚合 | 仅酷我（客户端直连） |
+| 在线播放 | 四平台 + 自动换源 | 仅酷我曲目可播，其它平台提示连不上后端 |
+| 歌词 | 后端优先 | 酷我直连，拿不到显示「暂无歌词」 |
+| 收藏 | 本机 + 后端 + 平台同步 | 本机生效，同步静默跳过 |
+| 推荐 | 后端聚合 + 平台推荐流 | `LocalRecommendEngine` 本机算 |
+| 音源开关 / Cookie | 本机 | 本机 |
+| 分享码 | ✅ | ❌ 明确失败（码必须在服务端） |
+
+判活方式：`OnlineSourceRouter` 每 15–45 秒探一次 `/app/music/sources`（2.5 秒超时），
+不是靠「请求失败了才降级」—— 后端没起时那样要等 15 秒 connect timeout。
 
 ## 4. 错误码对照
 

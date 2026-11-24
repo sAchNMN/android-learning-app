@@ -1,6 +1,5 @@
 package com.szc.learning.music.ui.search
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -23,12 +22,10 @@ import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.ActivitySearchBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.OnlinePlayEvent
-import com.szc.learning.music.ui.common.sourceLabel
-import com.szc.learning.music.ui.common.sourceShortLabel
-import com.szc.learning.music.ui.now.NowPlayingActivity
+import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.music.ui.track.SectionHeaderAdapter
 import com.szc.learning.music.ui.track.TrackAdapter
-import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.main.MainActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -60,7 +57,7 @@ class SearchActivity : AppCompatActivity() {
             when (event) {
                 is OnlinePlayEvent.Ready -> {
                     event.notice?.let { toast(it) }
-                    startActivity(Intent(this, NowPlayingActivity::class.java))
+                    startActivity(MainActivity.playerIntent(this))
                 }
 
                 is OnlinePlayEvent.Failed -> toast(event.message)
@@ -72,7 +69,7 @@ class SearchActivity : AppCompatActivity() {
         if (index in localResults.indices) {
             hideKeyboard()
             viewModel.play(localResults, index)
-            startActivity(Intent(this, NowPlayingActivity::class.java))
+            startActivity(MainActivity.playerIntent(this))
         }
     }
 
@@ -105,7 +102,6 @@ class SearchActivity : AppCompatActivity() {
             localAdapter,
         )
         binding.searchBack.setOnClickListener { finish() }
-        binding.searchCancel.setOnClickListener { finish() }
         binding.searchInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 hideKeyboard()
@@ -134,7 +130,6 @@ class SearchActivity : AppCompatActivity() {
                     viewModel.onlineLoading,
                 ) { _, _, _, _ -> Unit }
                     .combine(viewModel.onlineError) { _, _ -> Unit }
-                    .combine(viewModel.onlineErrors) { _, _ -> Unit }
                     .collect { render() }
             }
         }
@@ -147,25 +142,12 @@ class SearchActivity : AppCompatActivity() {
         val online = viewModel.online.value
         val loading = viewModel.onlineLoading.value
         val onlineError = viewModel.onlineError.value
-        val onlineErrors = viewModel.onlineErrors.value
         val attempted = query.length >= 2
 
         onlineHeader.setTitle(
             when {
                 loading -> getString(R.string.search_section_online_loading)
-                online.isNotEmpty() -> {
-                    val base = getString(R.string.search_section_online) + " · " +
-                        online.map { sourceShortLabel(this, it.sourceKey) }.distinct().joinToString(" / ")
-                    if (onlineErrors.isEmpty()) {
-                        base
-                    } else {
-                        // 单个平台超时/被限流时列表照常展示，只在标题上标一下谁没回来
-                        base + " · " + getString(
-                            R.string.search_section_online_partial,
-                            onlineErrors.keys.joinToString(" / ") { sourceLabel(this, it) },
-                        )
-                    }
-                }
+                online.isNotEmpty() -> getString(R.string.search_section_online)
                 else -> null
             },
         )
@@ -177,7 +159,8 @@ class SearchActivity : AppCompatActivity() {
 
         val hasContent = online.isNotEmpty() || localResults.isNotEmpty()
         val placeholder = when {
-            query.isEmpty() -> getString(R.string.search_tip)
+            // 空输入时只留一个搜索图标，输入框本身已经说明了这是干什么的
+            query.isEmpty() -> ""
             attempted && online.isEmpty() && localResults.isEmpty() && loading -> null
             attempted && onlineError != null && localResults.isEmpty() ->
                 getString(R.string.search_online_failed, onlineError)
@@ -187,6 +170,8 @@ class SearchActivity : AppCompatActivity() {
         binding.searchPlaceholder.visibility =
             if (placeholder == null) View.GONE else View.VISIBLE
         binding.searchPlaceholderText.text = placeholder.orEmpty()
+        binding.searchPlaceholderText.visibility =
+            if (placeholder.isNullOrEmpty()) View.GONE else View.VISIBLE
         binding.searchList.visibility =
             if (placeholder == null || loading) View.VISIBLE else View.INVISIBLE
     }

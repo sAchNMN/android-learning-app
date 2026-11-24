@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -15,7 +16,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
-import com.szc.learning.core.common.music.formatDuration
 import com.szc.learning.core.common.toast
 import com.szc.learning.databinding.FragmentLibraryBinding
 import com.szc.learning.music.ui.MusicViewModel
@@ -94,9 +94,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
             if (tracks.isNotEmpty()) viewModel.play(tracks, 0)
         }
         binding.localSort.setOnClickListener { showSortDialog() }
-        binding.localGrant.setOnClickListener {
-            (activity as? MainActivity)?.requestAudioPermission()
-        }
+        binding.localGrant.setOnClickListener { rescan() }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -134,36 +132,38 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         val loading = granted && all.isEmpty() && query.isEmpty() &&
             viewModel.localLoading.value
 
+        // 曲库为空时，搜索、排序、歌手/专辑/文件夹都没有作用对象 —— 整排收起，
+        // 让空态和「重新扫描」成为页面上唯一的动作。
+        val hasLibrary = all.isNotEmpty()
+        binding.localSearchBar.isVisible = hasLibrary
+        binding.localActions.isVisible = hasLibrary
+        binding.localTabs.isVisible = hasLibrary
+
         binding.localSkeleton.visibility = if (loading) View.VISIBLE else View.GONE
         if (loading) {
             binding.localEmpty.visibility = View.GONE
             binding.localList.visibility = View.INVISIBLE
-            binding.localSummary.text = ""
             return
         }
-
-        val totalMs = visible.sumOf { it.durationMs }
-        binding.localSummary.text = getString(
-            R.string.local_summary,
-            visible.size,
-            formatDuration(totalMs),
-        )
 
         val empty = !granted || visible.isEmpty()
         binding.localEmpty.visibility = if (empty) View.VISIBLE else View.GONE
         binding.localList.visibility = if (empty) View.INVISIBLE else View.VISIBLE
+        binding.localPlayAll.isVisible = visible.isNotEmpty()
         if (empty) {
-            binding.localGrant.visibility = if (granted) View.GONE else View.VISIBLE
-            if (!granted) {
-                binding.localEmptyTitle.setText(R.string.local_permission)
-                binding.localEmptyHint.setText(R.string.local_permission_hint)
-            } else if (query.isNotEmpty()) {
-                binding.localEmptyTitle.setText(R.string.local_search_empty)
-                binding.localEmptyHint.setText(R.string.search_tip)
-            } else {
-                binding.localEmptyTitle.setText(R.string.local_empty)
-                binding.localEmptyHint.setText(R.string.local_empty_hint)
-            }
+            val needsPermission = !granted
+            // 搜索无结果时不给动作：这里没有"重新扫描"能解决的问题
+            binding.localGrant.isVisible = needsPermission || all.isEmpty()
+            binding.localGrant.setText(
+                if (needsPermission) R.string.local_grant else R.string.local_scan,
+            )
+            binding.localEmptyTitle.setText(
+                when {
+                    needsPermission -> R.string.local_permission
+                    query.isNotEmpty() -> R.string.local_search_empty
+                    else -> R.string.local_empty
+                },
+            )
         }
 
         if (mode == Mode.SONGS) {

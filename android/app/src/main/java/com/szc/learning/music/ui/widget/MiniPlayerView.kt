@@ -3,11 +3,13 @@ package com.szc.learning.music.ui.widget
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
+import android.graphics.Rect
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.TouchDelegate
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
@@ -24,7 +26,7 @@ import kotlin.math.abs
  * 播放行：嵌在 [BottomNavBar] 上半部分，和导航共用同一块玻璃，自己不画底。
  *
  * 一行内容：旋转封面 + 圆环进度 · 歌名/歌手 · 队列 · 播放/暂停 · 下一首；
- * 底部还有一条细线进度，同时充当它和 tab 行之间的分隔。整行可点，展开成全屏播放页。
+ * 底部还有一条细线进度，可以直接按住拖动 seek。整行可点，展开成全屏播放页。
  *
  * 手势：左右滑切歌（左滑下一首、右滑上一首），点击展开。
  * 滑动用 [GestureDetector] 单独识别，不抢子按钮的点击 —— 子按钮自己消费触摸，
@@ -40,6 +42,9 @@ class MiniPlayerView @JvmOverloads constructor(
     var onNext: (() -> Unit)? = null
     var onPrevious: (() -> Unit)? = null
     var onQueue: (() -> Unit)? = null
+
+    /** 松手时提交 seek。拖动过程中的画面由 [SeekLine] 自己预览，不必每帧都去 seek 播放器。 */
+    var onSeekFinished: ((Float) -> Unit)? = null
 
     private val cover: ShapeableImageView
     private val ring: RingProgressView
@@ -89,9 +94,23 @@ class MiniPlayerView @JvmOverloads constructor(
         playButton = findViewById(R.id.miniPlay)
         progressLine = findViewById(R.id.miniProgress)
 
-        // 进度线不接收触摸，整行都是「展开」的热区
-        progressLine.isClickable = false
-        progressLine.isEnabled = false
+        // 进度线可以拖：按下时露出圆点，松手提交 seek。
+        // 拖动中的进度由 SeekLine 自己用 dragFraction 预览，不用每帧 seek 播放器。
+        progressLine.knobRing = true
+        progressLine.onSeekFinished = { fraction -> onSeekFinished?.invoke(fraction) }
+        progressLine.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> progressLine.showKnob = true
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL,
+                -> progressLine.showKnob = false
+            }
+            false
+        }
+        // 线只有 8dp 高，靠 TouchDelegate 把上下热区撑开
+        progressLine.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            updateSeekTouchDelegate()
+        }
 
         val ripple = TypedValue()
         if (context.theme.resolveAttribute(android.R.attr.selectableItemBackground, ripple, true)) {
@@ -136,8 +155,10 @@ class MiniPlayerView @JvmOverloads constructor(
             playButton.contentDescription =
                 context.getString(if (isPlaying) R.string.player_pause else R.string.player_play)
         }
-        progressLine.progress = progress
-        ring.progress = progress
+        if (!progressLine.isSeeking) {
+            progressLine.progress = progress
+            ring.progress = progress
+        }
         updateSpin(isPlaying)
 
         // 封面只换一次，避免每 350ms 的位置回调都触发一次解码
@@ -155,8 +176,30 @@ class MiniPlayerView @JvmOverloads constructor(
      */
     fun bindProgress(progress: Float) {
         if (visibility != View.VISIBLE) return
+        // 手指按着进度线时，别被 350ms 一次的位置回调顶回去
+        if (progressLine.isSeeking) return
         progressLine.progress = progress
         ring.progress = progress
+    }
+
+    /**
+     * 进度线只有 8dp 高，手指很难按准：把上下、左右各扩一点触摸区域。
+     * 只改热区，视觉上的线和圆点都不变。
+     */
+    private fun updateSeekTouchDelegate() {
+        if (progressLine.width == 0 || progressLine.height == 0) return
+        val rect = Rect()
+        progressLine.getHitRect(rect)
+        rect.inset(
+            -context.dp(SEEK_TOUCH_EXTRA_X_DP).toInt(),
+            -context.dp(SEEK_TOUCH_EXTRA_DP).toInt(),
+        )
+        touchDelegate = TouchDelegate(rect, progressLine)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateSeekTouchDelegate()
     }
 
     /** 播放时缓慢自转；暂停停在当前角度（不是归零），看起来才像"唱片停住了"。 */
@@ -217,5 +260,9 @@ class MiniPlayerView @JvmOverloads constructor(
         const val SWIPE_OFFSET_RATIO = 0.06f
         const val SWIPE_OUT_MS = 90L
         const val SWIPE_IN_MS = 140L
+
+        /** 进度线触摸热区在上下 / 左右方向额外撑开的距离（dp）。 */
+        const val SEEK_TOUCH_EXTRA_DP = 8f
+        const val SEEK_TOUCH_EXTRA_X_DP = 4f
     }
 }

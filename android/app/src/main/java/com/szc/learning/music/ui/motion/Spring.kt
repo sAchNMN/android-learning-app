@@ -364,6 +364,19 @@ fun View.springEnter(
     }
     trackAnimator(animator)
     animator.start()
+    // 归位兜底：springEnter 先把 view 写成 alpha=0，再靠动画推回终态。
+    // 动画一旦被中断（view 被复用 / 从 window 移除 / 被别的动画接管却没重新设初态），
+    // 透明态就会永久留下 —— 表现就是内容"少了一半、停在原地不飞入"。
+    // 超时后若仍是透明的就强制落终态；已有新动画接管时不插手，避免打断它。
+    postDelayed({
+        if (runningAnimators[this] !== animator) return@postDelayed
+        if (alpha < 0.99f || abs(translationY) > 0.5f) {
+            alpha = 1f
+            translationY = 0f
+            scaleX = 1f
+            scaleY = 1f
+        }
+    }, delayMs + animator.duration + 200L)
 }
 
 /** 首页首屏：RecyclerView 可见子项按位置自上而下错峰进入。 */

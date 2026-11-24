@@ -22,7 +22,7 @@ import com.szc.learning.ui.theme.themeColor
 import kotlin.math.roundToInt
 
 /**
- * 玻璃材质面板。只有两个决定：用哪种材质、磨砂到什么程度。
+ * 玻璃材质面板。现在只有一个决定：磨砂到什么程度。
  *
  * 预览用的是真正的 [GlassSurfaceView]，不是一张效果图：
  * 拖动滑块时预览里的玻璃条和主界面的播放栏/底部导航走同一条绘制与采样路径，
@@ -34,7 +34,6 @@ import kotlin.math.roundToInt
 class GlassDialog(context: Context) : BottomSheetDialog(context) {
 
     private lateinit var binding: DialogGlassBinding
-    private val modeViews = mutableListOf<Pair<GlassMode, TextView>>()
     private var spec = GlassSpec.DEFAULT
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,38 +55,13 @@ class GlassDialog(context: Context) : BottomSheetDialog(context) {
         binding.glassPreviewCover.setImageDrawable(
             BitmapDrawable(context.resources, CoverArt.of("aurora:glass-cover", 160)),
         )
+        // 预览是同一块 [GlassSurfaceView] 压在彩色插画上：面板本身不再采样，
+        // 但压在彩色底上才看得出染色浓淡，压在纯白上和页面分不开
         binding.glassPreviewPanel.cornerRadiusDp = 18f
-        // 预览压在彩色封面上：固定浅色玻璃，和播放栏在浅色页面里的处境一致
         binding.glassPreviewPanel.glassDark = false
-        // 模糊模式采样这张封面，走的是和主界面同一条采样 + 盒式模糊路径
-        binding.glassPreviewPanel.backdropSource = binding.glassPreviewArt
 
-        buildModeRow()
         buildSlider()
         render()
-    }
-
-    private fun buildModeRow() {
-        val row = binding.glassMode
-        row.removeAllViews()
-        modeViews.clear()
-        GlassMode.entries.forEach { mode ->
-            val label = TextView(context).apply {
-                text = context.getString(mode.labelRes)
-                textSize = 13f
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                letterSpacing = -0.005f
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { pickMode(mode) }
-            }
-            row.addView(
-                label,
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f),
-            )
-            modeViews += mode to label
-        }
     }
 
     private fun buildSlider() {
@@ -100,8 +74,6 @@ class GlassDialog(context: Context) : BottomSheetDialog(context) {
     }
 
     private fun render() {
-        modeViews.forEach { (mode, label) -> applyModeLook(label, selected = mode == spec.mode) }
-        binding.glassModeNote.setText(spec.mode.noteRes)
         binding.glassFrostValue.text = context.getString(
             R.string.glass_frost_value,
             (spec.frost * 100f).roundToInt(),
@@ -110,30 +82,10 @@ class GlassDialog(context: Context) : BottomSheetDialog(context) {
         binding.glassPreviewPanel.glassOverride = spec
     }
 
-    private fun applyModeLook(label: TextView, selected: Boolean) {
-        label.background = if (selected) {
-            context.getDrawable(R.drawable.bg_segment_thumb)
-        } else {
-            null
-        }
-        label.setTextColor(
-            context.themeColor(if (selected) R.attr.auInk else R.attr.auInkSecondary),
-        )
-        label.typeface = Typeface.create(
-            "sans-serif-medium",
-            if (selected) Typeface.BOLD else Typeface.NORMAL,
-        )
-    }
-
-    private fun pickMode(mode: GlassMode) {
-        if (mode == spec.mode) return
-        spec = spec.copy(mode = mode)
-        GlassSettings.selectMode(context, mode)
-        render()
-    }
-
     private fun updateFrost(frost: Float, persist: Boolean) {
-        spec = spec.copy(frost = frost.coerceIn(0f, 1f))
+        // clamped 而不是裸赋值：滑到最左端会停在磨砂下限，滑块跟着回弹，
+        // 不会出现「滑块在 0、面板却按 0.3 画」这种自相矛盾
+        spec = GlassSpec(frost).clamped()
         if (persist) GlassSettings.selectFrost(context, spec.frost)
         binding.glassFrost.progress = spec.frost
         binding.glassFrostValue.text = context.getString(

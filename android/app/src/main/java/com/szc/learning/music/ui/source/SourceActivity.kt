@@ -24,6 +24,7 @@ import com.szc.learning.R
 import com.szc.learning.core.common.toast
 import com.szc.learning.core.network.music.MusicSourceInfo
 import com.szc.learning.databinding.ActivitySourceBinding
+import com.szc.learning.music.data.local.KuwoDirectSource
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.common.sourceLabel
 import com.szc.learning.ui.theme.ThemeManager
@@ -80,6 +81,10 @@ class SourceActivity : AppCompatActivity() {
         binding.sourceList.layoutManager = LinearLayoutManager(this)
         binding.sourceList.adapter = adapter
         binding.sourceBack.setOnClickListener { finish() }
+        binding.sourceSync.setOnClickListener {
+            toast(R.string.sync_running)
+            viewModel.syncLibrary(force = true, notify = true)
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -90,11 +95,20 @@ class SourceActivity : AppCompatActivity() {
                 ) { _, _, _ -> Unit }.collect { render() }
             }
         }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.syncNotice.collect { message -> toast(message) }
+            }
+        }
         viewModel.loadSources()
     }
 
     private fun render() {
-        val sources = viewModel.sources.value.sortedBy { it.priority }
+        // 酷我取址接口已失效、开关被强制禁用：留在列表里只会多一个点了没反应的入口。
+        // 它仍然作为后端不可用时的播放兜底，但不属于用户可管理的音源。
+        val sources = viewModel.sources.value
+            .filter { it.key != KuwoDirectSource.KEY }
+            .sortedBy { it.priority }
         val loading = viewModel.sourcesLoading.value
         adapter.submitList(sources)
         binding.sourceProgress.visibility =

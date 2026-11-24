@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="44dp" android:height="44dp"
+    android:viewportWidth="48" android:viewportHeight="48">
+    <!-- 酷狗音乐：品牌蓝圆底 + 白色 K -->
+    <path
+        android:fillColor="#1E9BFF"
+        android:pathData="M24,2 A22,22 0 1,0 24,46 A22,22 0 1,0 24,2 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M15,14 H20.5 V23 L29,14 H35.5 L25,24.5 L36,34.5 H29.5 L20.5,26 V34.5 H15 Z" />
+</vector>

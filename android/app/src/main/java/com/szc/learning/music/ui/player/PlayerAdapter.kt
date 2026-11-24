@@ -42,6 +42,8 @@ class PlayerAdapter(
     private val onShowQueue: () -> Unit,
     private val onDislike: (MusicTrack) -> Unit,
     private val onShowComments: (MusicTrack) -> Unit,
+    private val onMore: () -> Unit,
+    private val onFullscreen: () -> Unit,
 ) : RecyclerView.Adapter<PlayerAdapter.Holder>() {
 
     private var tracks: List<MusicTrack> = emptyList()
@@ -217,6 +219,8 @@ class PlayerAdapter(
                 }
             }
             binding.playerQueue.setOnClickListener { onShowQueue() }
+            binding.playerMore.setOnClickListener { onMore() }
+            binding.playerFullscreen.setOnClickListener { onFullscreen() }
             binding.playerDislike.setOnClickListener { track?.let(onDislike) }
             binding.playerComments.setOnClickListener { track?.let(onShowComments) }
             binding.playerLyrics.onLineClick = { line ->
@@ -239,6 +243,8 @@ class PlayerAdapter(
                 binding.playerMode,
                 binding.playerFavorite,
                 binding.playerQueue,
+                binding.playerMore,
+                binding.playerFullscreen,
                 binding.playerComments,
                 binding.playerDislike,
             ).forEach { it.installSpringPress(0.9f) }
@@ -270,6 +276,14 @@ class PlayerAdapter(
                 binding.root.context.dp(24f).toInt(),
                 bottomInsetPx,
             )
+            // 全屏按钮浮在内容之上，位置跟着状态栏 inset 走，不能压在系统图标下
+            val lp = binding.playerFullscreen.layoutParams as ViewGroup.MarginLayoutParams
+            val top = (topInsetPx - binding.root.context.dp(12f).toInt())
+                .coerceAtLeast(binding.root.context.dp(8f).toInt())
+            if (lp.topMargin != top) {
+                lp.topMargin = top
+                binding.playerFullscreen.layoutParams = lp
+            }
         }
 
         fun renderFavorite(favorite: Boolean) {

@@ -24,4 +24,4 @@ data class Playlist(
     val size: Int get() = declaredSize ?: tracks.size
 }
 
-enum class PlaylistTag { FAVORITE, CLOUD, LOCAL, RECENT, ARTIST, SOURCE }
+enum class PlaylistTag { FAVORITE, CLOUD, LOCAL, RECENT, ARTIST, SOURCE, SHARED }

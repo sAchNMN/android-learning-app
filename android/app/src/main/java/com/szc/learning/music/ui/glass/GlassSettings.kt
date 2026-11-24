@@ -2,42 +2,29 @@ package com.szc.learning.music.ui.glass
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.annotation.StringRes
-import com.szc.learning.R
 
 /**
- * 玻璃材质只有两种，对应两条不同的渲染路径：
+ * 毛玻璃外观。
  *
- * - [LIQUID]：背后内容录进 GPU，先轻度模糊，再由 AGSL shader 在边缘做**真正的折射**，
- *   并把 RGB 分开取样做色散。染色薄，靠折射和镜面高光找"玻璃"的感觉。
- * - [BLUR]：同一份 GPU 纹理，但只做重度高斯模糊，不做折射、不做高光 ——
- *   背后内容彻底化开，最接近毛玻璃。
+ * 只有一个旋钮：[GlassSpec.frost]，0 = 完全通透，1 = 厚磨砂。
+ * 它同时决定模糊半径和染色浓度 —— 用户手里只有一个滑块，语义必须一致。
  *
- * 两者共用 [GlassSpec.frost]：磨砂程度。液态下它同时调模糊半径和折射强度，
- * 高斯模式下只调模糊半径和染色浓度 —— 用户只有一个旋钮，语义要一致。
+ * 早期还有一个 "liquid" 模式（AGSL 边缘折射 + 色散 + 触摸光斑），已经删掉：
+ * 那是拿帧预算换观感，90Hz 面板上滚动时每次采样都顶在 11.1ms 的线上。
+ * 现在只有高斯模糊一条路径，代码里不再有分支，也就不可能再被切回去。
  */
-enum class GlassMode(
-    val key: String,
-    @StringRes val labelRes: Int,
-    @StringRes val noteRes: Int,
-) {
-    LIQUID("liquid", R.string.glass_mode_liquid, R.string.glass_mode_liquid_note),
-    BLUR("blur", R.string.glass_mode_blur, R.string.glass_mode_blur_note);
-
-    companion object {
-        fun of(key: String?): GlassMode = entries.firstOrNull { it.key == key } ?: LIQUID
-    }
-}
-
-/** 一份玻璃外观。[frost] 0 = 完全通透，1 = 厚磨砂。 */
 data class GlassSpec(
-    val mode: GlassMode,
     val frost: Float,
 ) {
+    /**
+     * 0 = 最通透，1 = 最厚。两端都给到底，不设下限 ——
+     * 面板不透出背后内容，"太透"最多是露出一点底色，不会串字串到没法看，
+     * 值不值得是用户自己的判断。染色映射见 [GlassPainter]。
+     */
     fun clamped(): GlassSpec = copy(frost = frost.coerceIn(0f, 1f))
 
     companion object {
-        val DEFAULT = GlassSpec(GlassMode.LIQUID, 0.66f)
+        val DEFAULT = GlassSpec(0.62f)
     }
 }
 
@@ -49,7 +36,6 @@ data class GlassSpec(
 object GlassSettings {
 
     private const val PREFS = "aurora.glass"
-    private const val KEY_MODE = "mode"
     private const val KEY_FROST = "frost"
 
     /** 控件要注册监听时拿这个实例（同一进程内是同一个对象）。 */
@@ -59,13 +45,8 @@ object GlassSettings {
     fun spec(context: Context): GlassSpec {
         val prefs = preferences(context)
         return GlassSpec(
-            mode = GlassMode.of(prefs.getString(KEY_MODE, null)),
             frost = prefs.getFloat(KEY_FROST, GlassSpec.DEFAULT.frost),
         ).clamped()
-    }
-
-    fun selectMode(context: Context, mode: GlassMode) {
-        preferences(context).edit().putString(KEY_MODE, mode.key).apply()
     }
 
     fun selectFrost(context: Context, frost: Float) {

@@ -31,8 +31,12 @@ class MusicRepository(
      * 聚合搜索。失败（后端不可达 / 没开音源）返回 [AppResult.Failure]；
      * 单个平台失败只是 `errors` 里的一条，不影响整体成功。
      */
-    suspend fun searchOnline(keyword: String, limit: Int = 20): AppResult<OnlineSearchResult> =
-        callData { api.searchOnline(keyword, limit) }.map { dto ->
+    suspend fun searchOnline(
+        keyword: String,
+        limit: Int = 20,
+        cookies: String? = null,
+    ): AppResult<OnlineSearchResult> =
+        callData { api.searchOnline(keyword, limit, cookies = cookies) }.map { dto ->
             OnlineSearchResult(
                 tracks = dto.tracks.mapNotNull { it.toOnlineTrack() },
                 errors = dto.errors,
@@ -43,7 +47,11 @@ class MusicRepository(
      * 换取播放地址。`fallback = true` 时后端会在当前平台不可播时自动换源，
      * 返回的 [OnlinePlayback.switchedFrom] / [OnlinePlayback.switchedTo] 非空即发生了换源。
      */
-    suspend fun playOnline(track: MusicTrack, fallback: Boolean = true): AppResult<OnlinePlayback> =
+    suspend fun playOnline(
+        track: MusicTrack,
+        fallback: Boolean = true,
+        cookies: String? = null,
+    ): AppResult<OnlinePlayback> =
         callData {
             api.playOnline(
                 source = track.sourceKey,
@@ -57,6 +65,7 @@ class MusicRepository(
                 albumAudioId = track.albumAudioId.takeIf { it.isNotBlank() },
                 quality = "exhigh",
                 fallback = fallback,
+                cookies = cookies,
             )
         }.map { dto ->
             val url = dto.url
@@ -83,7 +92,7 @@ class MusicRepository(
         }
 
     /** 在线歌词。拿不到就返回 null，不把「没歌词」当错误弹给用户。 */
-    suspend fun onlineLyric(track: MusicTrack): String? {
+    suspend fun onlineLyric(track: MusicTrack, cookies: String? = null): String? {
         if (track.source != TrackSource.ONLINE) return null
         val result = callData {
             api.onlineLyric(
@@ -95,6 +104,7 @@ class MusicRepository(
                 durationMs = track.durationMs.takeIf { it > 0 },
                 title = track.title,
                 artist = track.artist,
+                cookies = cookies,
             )
         }
         return when (result) {
@@ -128,6 +138,7 @@ class MusicRepository(
         artists: List<String>,
         seed: Long? = null,
         limit: Int = 20,
+        cookies: String? = null,
     ): AppResult<RecommendResult> =
         callData {
             api.recommend(
@@ -135,6 +146,7 @@ class MusicRepository(
                 artists = artists.takeIf { it.isNotEmpty() }?.joinToString(","),
                 seed = seed,
                 limit = limit,
+                cookies = cookies,
             )
         }.map { dto ->
             RecommendResult(
@@ -152,7 +164,12 @@ class MusicRepository(
      * 后端先落库再推平台，`saved=false` 但请求成功也是可能的（表没建 / 库挂了），
      * 所以调用方要同时看 [LikeSyncResult.saved] 和 [LikeSyncResult.syncs]。
      */
-    suspend fun setLike(deviceId: String, track: MusicTrack, liked: Boolean): AppResult<LikeSyncResult> =
+    suspend fun setLike(
+        deviceId: String,
+        track: MusicTrack,
+        liked: Boolean,
+        cookies: String? = null,
+    ): AppResult<LikeSyncResult> =
         callData {
             api.setLike(
                 LikeBody(
@@ -169,6 +186,7 @@ class MusicRepository(
                     albumAudioId = track.albumAudioId,
                     liked = liked,
                 ),
+                cookies = cookies,
             )
         }.map { dto ->
             LikeSyncResult(
@@ -184,8 +202,8 @@ class MusicRepository(
 
     // ---------------------------------------------------------------- 个人歌单
 
-    suspend fun userPlaylists(): AppResult<List<UserPlaylistInfo>> =
-        callData { api.playlists() }.map { list ->
+    suspend fun userPlaylists(cookies: String? = null): AppResult<List<UserPlaylistInfo>> =
+        callData { api.playlists(cookies) }.map { list ->
             list.map {
                 UserPlaylistInfo(
                     source = it.source,
@@ -198,9 +216,107 @@ class MusicRepository(
             }
         }
 
-    suspend fun playlistTracks(source: String, id: String, name: String): AppResult<List<MusicTrack>> =
-        callData { api.playlistTracks(source, id, name) }
+    suspend fun playlistTracks(
+        source: String,
+        id: String,
+        name: String,
+        cookies: String? = null,
+    ): AppResult<List<MusicTrack>> =
+        callData { api.playlistTracks(source, id, name, cookies = cookies) }
             .map { dto -> dto.tracks.mapNotNull { it.toOnlineTrack() } }
+
+    // ---------------------------------------------------------------- 歌单分享码
+
+    /**
+     * 生成分享码。
+     *
+     * 本地曲目会被静默过滤掉（`toShareDto` 保留，但在提交前剔除）：
+     * `content://` 指向的是本机文件，对方拿到只会是一首点开就报错的歌。
+     * 过滤放在这里而不是 UI —— 每个调用点各写一遍迟早会漏。
+     */
+    suspend fun createShare(
+        deviceId: String,
+        title: String,
+        tracks: List<MusicTrack>,
+    ): AppResult<ShareResult> {
+        val shareable = tracks.filter { it.source != TrackSource.LOCAL }
+        if (shareable.isEmpty()) {
+            return AppResult.Failure("这个列表里没有可以分享的曲目（本地文件对方播不了）")
+        }
+        return callData {
+            api.createShare(
+                ShareRequestDto(
+                    deviceId = deviceId,
+                    title = title,
+                    tracks = shareable.map { it.toShareDto() },
+                ),
+            )
+        }.map { it.toResult() }
+    }
+
+    /** 按码取歌单。曲目已转成可直接播放的模型，在线曲目的地址仍然点播时才换。 */
+    suspend fun resolveShare(code: String): AppResult<SharedPlaylist> =
+        callData { api.resolveShare(code) }.map { it.toPlaylist(baseUrl) }
+
+    // ---------------------------------------------------------------- 歌曲评论
+
+    /**
+     * 评论列表。
+     *
+     * 定位用的是 `title + artist`，不是 `track.id`：评论属于「这首歌」，
+     * 而 `id` 属于「某个平台上的一条曲目记录」。同一首歌换个音源听，
+     * 评论应该还在。
+     */
+    suspend fun comments(
+        track: MusicTrack,
+        deviceId: String,
+        limit: Int = 20,
+        offset: Int = 0,
+    ): AppResult<CommentPage> = callData {
+        api.comments(
+            title = track.title,
+            artist = track.artist,
+            deviceId = deviceId,
+            limit = limit,
+            offset = offset,
+        )
+    }.map { it.toPage() }
+
+    /**
+     * 发表评论。
+     *
+     * [nickname] 为空时后端会存空串，列表里显示成「匿名听众」——
+     * 匿名是刻意的：App 没有登录体系，强行要昵称只会把人劝退。
+     */
+    suspend fun createComment(
+        track: MusicTrack,
+        deviceId: String,
+        nickname: String,
+        content: String,
+    ): AppResult<MusicComment> = callData {
+        api.createComment(
+            CommentBodyDto(
+                deviceId = deviceId,
+                deviceName = nickname,
+                title = track.title,
+                artist = track.artist,
+                sourceKey = track.sourceKey.ifBlank { track.source.name.lowercase() },
+                trackId = track.id,
+                content = content,
+            ),
+        )
+    }.map { it.toComment() }
+
+    suspend fun likeComment(
+        commentId: Long,
+        deviceId: String,
+        liked: Boolean,
+    ): AppResult<CommentLikeResult> = callData {
+        api.likeComment(commentId, CommentLikeBodyDto(deviceId = deviceId, liked = liked))
+    }.map { CommentLikeResult(liked = it.liked, likeCount = it.likeCount) }
+
+    suspend fun deleteComment(commentId: Long, deviceId: String): AppResult<Unit> =
+        callUnit { api.deleteComment(commentId, deviceId) }
 
     /** 收藏时上报的 source：在线用平台名，本机用 local / cloud。 */
     private fun MusicTrack.likeSource(): String = when (source) {

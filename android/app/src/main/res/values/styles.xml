@@ -172,6 +172,22 @@
     </style>
 
     <!--
+      登录页的平台行：整行可点、统一高度与左右留白。
+      背景是带按压高亮的 ripple，圆角由外层卡片的 clipToOutline 负责。
+    -->
+    <style name="Widget.LoginRow" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">64dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:background">@drawable/bg_login_row</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!--
       进出场不做系统默认的整屏滑动，改成短促淡入，接近 iOS 的转场节奏。
       Theme.Aurora 用 windowAnimationStyle 引用它，所以它必须留在手写的 styles 里，
       不能放进 themes.xml（那个文件由 tools/theme/gen_palette.py 生成）。

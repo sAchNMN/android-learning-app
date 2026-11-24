@@ -36,7 +36,15 @@ object CoverArt {
         0xFF93CBC9.toInt(),
     )
 
-    private val cache = object : LruCache<String, Bitmap>(32) {
+    /**
+     * 兜底封面缓存。
+     *
+     * `sizeOf` 返回的是 KB，所以上限也必须是 KB —— 这里曾经写成 `LruCache(32)`，
+     * 相当于 32KB 的容量：一张 168px 封面就有 110KB，put 进去立刻被自己挤掉，
+     * 缓存等于从来没有命中过。结果是每绑一行就在主线程现画一张渐变位图，
+     * 列表一重绑就掉帧。上限取 6MB，够放几十张封面。
+     */
+    private val cache = object : LruCache<String, Bitmap>(CACHE_KB) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
     }
 
@@ -132,4 +140,7 @@ object CoverArt {
 
     private fun withAlpha(color: Int, alpha: Float): Int =
         (color and 0x00FFFFFF) or (((alpha * 255f).toInt() and 0xFF) shl 24)
+
+    /** 缓存上限，单位 KB（和 [cache] 的 sizeOf 口径一致）。 */
+    private const val CACHE_KB = 6 * 1024
 }

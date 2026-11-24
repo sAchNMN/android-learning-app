@@ -47,4 +47,9 @@
       排版只有五档：Display / Title / Section / RowTitle / Body / Caption。
       字号越大字距越紧，小字反而放松，否则挤成一团。
     -->
+
+    <!-- 封面圆角。用 outline 硬件裁剪，不再走 ShapeableImageView 的 path mask -->
+    <declare-styleable name="CoverImageView">
+        <attr name="coverRadius" format="dimension" />
+    </declare-styleable>
 </resources>

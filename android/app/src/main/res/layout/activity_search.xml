@@ -14,7 +14,7 @@
         android:orientation="horizontal"
         android:paddingStart="10dp"
         android:paddingTop="8dp"
-        android:paddingEnd="16dp"
+        android:paddingEnd="20dp"
         android:paddingBottom="8dp">
 
         <ImageButton
@@ -60,17 +60,6 @@
                 android:textColorHint="?attr/auInkTertiary"
                 android:textSize="14sp" />
         </FrameLayout>
-
-        <TextView
-            android:id="@+id/searchCancel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:text="@string/search_cancel"
-            android:textColor="?attr/auAccent"
-            android:textSize="14sp" />
     </LinearLayout>
 
     <FrameLayout

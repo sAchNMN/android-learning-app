@@ -9,7 +9,7 @@ import com.szc.learning.R
 import com.szc.learning.databinding.ItemMineEntryBinding
 
 /**
- * 我的页的入口。做成数据而不是 8 段重复 XML，
+ * 我的页的入口。做成数据而不是几段重复 XML，
  * 以后加"设置/字体大小"只加一行。
  */
 data class MineEntry(
@@ -43,28 +43,17 @@ class MineEntryAdapter(
     }
 
     companion object {
-        const val KEY_FAVORITES = "favorites"
-        const val KEY_RECENT = "recent"
-        const val KEY_LOCAL = "local"
         const val KEY_CLOUD = "cloud"
-        const val KEY_PLAYER = "player"
         const val KEY_STATS = "stats"
-        const val KEY_RESCAN = "rescan"
         const val KEY_SOURCES = "sources"
-        const val KEY_SYNC = "sync"
-        const val KEY_ABOUT = "about"
+        const val KEY_IMPORT_SHARE = "import_share"
 
+        /** 只放别处进不去的入口：本地/播放器在底栏，关于在标题栏，喜欢/最近在页面里。 */
         fun defaults(): List<MineEntry> = listOf(
-            MineEntry(KEY_FAVORITES, R.drawable.ic_heart_filled, R.string.mine_entry_favorites),
-            MineEntry(KEY_RECENT, R.drawable.ic_clock, R.string.mine_entry_recent),
-            MineEntry(KEY_LOCAL, R.drawable.ic_nav_local, R.string.mine_entry_local),
             MineEntry(KEY_CLOUD, R.drawable.ic_music_note, R.string.mine_entry_cloud),
-            MineEntry(KEY_PLAYER, R.drawable.ic_nav_player, R.string.mine_entry_mv),
-            MineEntry(KEY_SYNC, R.drawable.ic_share, R.string.mine_entry_sync),
-            MineEntry(KEY_STATS, R.drawable.ic_chart, R.string.mine_entry_stats),
             MineEntry(KEY_SOURCES, R.drawable.ic_source, R.string.mine_entry_sources),
-            MineEntry(KEY_RESCAN, R.drawable.ic_refresh, R.string.mine_entry_rescan),
-            MineEntry(KEY_ABOUT, R.drawable.ic_info, R.string.mine_entry_about),
+            MineEntry(KEY_IMPORT_SHARE, R.drawable.ic_plus, R.string.mine_entry_import_share),
+            MineEntry(KEY_STATS, R.drawable.ic_chart, R.string.mine_entry_stats),
         )
     }
 }

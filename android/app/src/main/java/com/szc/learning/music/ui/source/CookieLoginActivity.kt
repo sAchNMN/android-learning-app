@@ -81,7 +81,6 @@ class CookieLoginActivity : AppCompatActivity() {
         }
 
         binding.cookieTitle.text = getString(R.string.source_login_title, getString(resolved.labelRes))
-        binding.cookieHint.text = getString(R.string.source_login_hint)
         binding.cookieBack.setOnClickListener { finish() }
         binding.cookieClear.setOnClickListener { confirmClearWebLogin() }
 

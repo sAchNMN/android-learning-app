@@ -14,7 +14,7 @@
     android:clipToPadding="false"
     android:fillViewport="true"
     android:overScrollMode="never"
-    android:paddingBottom="150dp"
+    android:paddingBottom="136dp"
     android:scrollbars="none">
 
     <LinearLayout
@@ -58,6 +58,15 @@
                 android:layout_weight="1" />
 
             <ImageButton
+                android:id="@+id/recommendSearch"
+                style="@style/Widget.IconButton"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="4dp"
+                android:contentDescription="@string/search_hint"
+                android:src="@drawable/ic_search"
+                app:tint="?attr/auInk" />
+
+            <ImageButton
                 android:id="@+id/recommendRefresh"
                 style="@style/Widget.IconButton"
                 android:layout_marginBottom="4dp"
@@ -74,60 +83,34 @@
             android:layout_marginStart="20dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="20dp"
-            android:text="@string/recommend_subtitle" />
+            android:text="@string/recommend_offline"
+            android:visibility="gone" />
 
         <!-- 每日推荐卡 -->
         <FrameLayout
             android:id="@+id/dailyCard"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="96dp"
             android:layout_marginStart="20dp"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="20dp"
             android:layout_marginEnd="20dp"
             android:background="@drawable/bg_recommend_header"
             android:clickable="true"
             android:focusable="true">
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/dailyTitle"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center_vertical"
-                android:orientation="vertical"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:ellipsize="end"
+                android:maxLines="1"
                 android:paddingStart="20dp"
-                android:paddingEnd="88dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_hero_label"
-                    android:paddingStart="7dp"
-                    android:paddingTop="2dp"
-                    android:paddingEnd="7dp"
-                    android:paddingBottom="2dp"
-                    android:text="@string/recommend_daily_tag"
-                    android:textColor="@color/white"
-                    android:textSize="10sp" />
-
-                <TextView
-                    android:id="@+id/dailyTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/white"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/dailySubtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:alpha="0.8"
-                    android:textColor="@color/white"
-                    android:textSize="12sp" />
-            </LinearLayout>
+                android:paddingEnd="88dp"
+                android:text="@string/recommend_daily_tag"
+                android:textColor="@color/white"
+                android:textSize="22sp"
+                android:textStyle="bold" />
 
             <ImageButton
                 android:id="@+id/dailyPlay"
@@ -143,32 +126,9 @@
                 app:tint="?attr/auAccent" />
         </FrameLayout>
 
-        <!-- 为你推荐 -->
-        <LinearLayout
-            android:id="@+id/recommendTracksHeader"
+        <View
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="20dp"
-            android:paddingTop="24dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                style="@style/Text.Section"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/recommend_tracks" />
-
-            <TextView
-                android:id="@+id/recommendTrackCount"
-                style="@style/Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp" />
-        </LinearLayout>
+            android:layout_height="8dp" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recommendTracks"
@@ -208,14 +168,6 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/recommend_source_playlists" />
-
-            <TextView
-                android:id="@+id/recommendSourceState"
-                style="@style/Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/recommend_more"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -228,16 +180,6 @@
             android:paddingEnd="8dp"
             android:scrollbars="none" />
 
-        <TextView
-            android:id="@+id/recommendSourceEmpty"
-            style="@style/Text.Caption"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="2dp"
-            android:layout_marginEnd="20dp"
-            android:text="@string/recommend_source_empty"
-            android:visibility="gone" />
 
         <!-- 推荐歌单（本机拼的） -->
         <LinearLayout
@@ -257,14 +199,6 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/recommend_playlists" />
-
-            <TextView
-                android:id="@+id/recommendMorePlaylists"
-                style="@style/Text.Caption"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/recommend_more"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -276,16 +210,6 @@
             android:paddingStart="20dp"
             android:paddingEnd="8dp"
             android:scrollbars="none" />
-
-        <TextView
-            android:id="@+id/recommendFooter"
-            style="@style/Text.Caption"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="@string/recommend_footer"
-            android:textSize="11sp" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
 

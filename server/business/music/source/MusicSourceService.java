@@ -86,7 +86,8 @@ public class MusicSourceService {
 
     // ---------------------------------------------------------------- 搜索
 
-    public SearchResponse search(String keyword, int limit, String sources) {
+    public SearchResponse search(String keyword, int limit, String sources,
+                                 Map<String, String> requestCookies) {
         String query = keyword == null ? "" : keyword.trim();
         if (query.isEmpty()) {
             throw new IllegalArgumentException("搜索关键词不能为空");
@@ -97,7 +98,8 @@ public class MusicSourceService {
             throw new IllegalStateException("没有启用的音源，请到音源管理里打开至少一个平台");
         }
         int size = Math.max(1, Math.min(limit, SEARCH_LIMIT_MAX));
-        String cacheKey = "search|" + query.toLowerCase(Locale.ROOT) + "|" + size + "|" + keysOf(selected);
+        String cacheKey = "search|" + query.toLowerCase(Locale.ROOT) + "|" + size + "|" + keysOf(selected)
+                + "|ck=" + RequestCookies.fingerprint(requestCookies);
         SearchResponse cached = getCached(cacheKey, SearchResponse.class);
         if (cached != null) {
             return cached;
@@ -109,8 +111,8 @@ public class MusicSourceService {
             if (provider == null) {
                 continue;
             }
-            futures.put(config.getSourceKey(), executor.submit(
-                    () -> provider.search(query, size, nullToEmpty(config.getCookie()))));
+            futures.put(config.getSourceKey(), executor.submit(() -> provider.search(query, size,
+                    RequestCookies.forSource(requestCookies, config.getSourceKey(), config.getCookie()))));
         }
 
         long deadline = System.currentTimeMillis() + 7000L;
@@ -144,7 +146,7 @@ public class MusicSourceService {
 
     public OnlinePlay play(String source, String id, String title, String artist, String album,
                            Long durationMs, String hash, String albumId, String albumAudioId,
-                           String quality, boolean fallback) {
+                           String quality, boolean fallback, Map<String, String> requestCookies) {
         ensureConfigs();
         MusicSourceProvider provider = providers.get(source);
         if (provider == null) {
@@ -169,7 +171,8 @@ public class MusicSourceService {
         track.setAlbumId(albumId);
         track.setAlbumAudioId(albumAudioId);
 
-        String cacheKey = "play|" + source + "|" + id + "|" + (quality == null ? "" : quality);
+        String cacheKey = "play|" + source + "|" + id + "|" + (quality == null ? "" : quality)
+                + "|ck=" + RequestCookies.fingerprint(requestCookies);
         OnlinePlay cached = getCached(cacheKey, OnlinePlay.class);
         // 失败结果会缓存 30 秒，但 fallback=true 的调用不能吃这份缓存：
         // 否则「先试播一次失败 → 用户点自动换源」会直接命中旧的失败结果，换源形同虚设。
@@ -180,13 +183,15 @@ public class MusicSourceService {
             return cached;
         }
 
-        OnlinePlay result = provider.resolve(track, nullToEmpty(config.getCookie()), normalizeQuality(quality));
+        OnlinePlay result = provider.resolve(track,
+                RequestCookies.forSource(requestCookies, source, config.getCookie()),
+                normalizeQuality(quality));
         if (Boolean.TRUE.equals(result.getPlayable())) {
             putCache(cacheKey, result, PLAY_TTL_MS);
             return result;
         }
 
-        OnlinePlay switched = fallback ? tryFallback(track, quality, source) : null;
+        OnlinePlay switched = fallback ? tryFallback(track, quality, source, requestCookies) : null;
         if (switched != null) {
             putCache(cacheKey, switched, PLAY_TTL_MS);
             return switched;
@@ -201,7 +206,8 @@ public class MusicSourceService {
      * 对应 Mineradio 的 sourceFallbackProviderReady / isSameTitleArtist：
      * 不只看歌名，还要歌手有交集、时长差在 8 秒内，避免把 Live / 伴奏当成原曲。
      */
-    private OnlinePlay tryFallback(OnlineTrack original, String quality, String excludeSource) {
+    private OnlinePlay tryFallback(OnlineTrack original, String quality, String excludeSource,
+                                   Map<String, String> requestCookies) {
         if (original.getTitle() == null || original.getTitle().isBlank()) {
             return null;
         }
@@ -216,7 +222,8 @@ public class MusicSourceService {
             }
             List<OnlineTrack> candidates;
             try {
-                candidates = provider.search(query, 8, nullToEmpty(config.getCookie()));
+                candidates = provider.search(query, 8,
+                        RequestCookies.forSource(requestCookies, config.getSourceKey(), config.getCookie()));
             } catch (RuntimeException ex) {
                 continue;
             }
@@ -230,8 +237,9 @@ public class MusicSourceService {
                     candidate -> -similarity(original, candidate)));
             for (int i = 0; i < Math.min(FALLBACK_CANDIDATES, matched.size()); i++) {
                 OnlineTrack candidate = matched.get(i);
-                OnlinePlay attempted = provider.resolve(
-                        candidate, nullToEmpty(config.getCookie()), normalizeQuality(quality));
+                OnlinePlay attempted = provider.resolve(candidate,
+                        RequestCookies.forSource(requestCookies, config.getSourceKey(), config.getCookie()),
+                        normalizeQuality(quality));
                 if (Boolean.TRUE.equals(attempted.getPlayable())) {
                     attempted.setSwitchedFrom(excludeSource);
                     attempted.setSwitchedTo(config.getSourceKey());
@@ -245,7 +253,7 @@ public class MusicSourceService {
     // ---------------------------------------------------------------- 歌词
 
     public String lyric(String source, String id, String hash, String albumId, String albumAudioId,
-                        Long durationMs, String title, String artist) {
+                        Long durationMs, String title, String artist, Map<String, String> requestCookies) {
         ensureConfigs();
         MusicSourceProvider provider = providers.get(source);
         if (provider == null) {
@@ -262,7 +270,8 @@ public class MusicSourceService {
         track.setTitle(title);
         track.setArtist(artist);
         try {
-            return provider.lyric(track, config == null ? "" : nullToEmpty(config.getCookie()));
+            return provider.lyric(track,
+                    RequestCookies.forSource(requestCookies, source, config == null ? "" : config.getCookie()));
         } catch (RuntimeException ex) {
             return "";
         }
@@ -276,7 +285,7 @@ public class MusicSourceService {
      * 与 {@link #search} 的区别是**不需要关键词**：平台自己按热度/新歌给一批，
      * 新用户还没有任何收藏时，推荐页靠它把首屏填满。
      */
-    public List<OnlineTrack> discover(int limit) {
+    public List<OnlineTrack> discover(int limit, Map<String, String> requestCookies) {
         ensureConfigs();
         int size = Math.max(1, Math.min(limit, SEARCH_LIMIT_MAX));
         List<List<OnlineTrack>> buckets = new ArrayList<>();
@@ -286,7 +295,8 @@ public class MusicSourceService {
                 continue;
             }
             try {
-                List<OnlineTrack> list = provider.dailyRecommend(size, nullToEmpty(config.getCookie()));
+                List<OnlineTrack> list = provider.dailyRecommend(size,
+                        RequestCookies.forSource(requestCookies, config.getSourceKey(), config.getCookie()));
                 if (list != null && !list.isEmpty()) {
                     buckets.add(list);
                 }
@@ -298,7 +308,7 @@ public class MusicSourceService {
     }
 
     /** 把「喜欢 / 取消喜欢」推给平台。平台不支持或未登录都只是失败回执，不抛异常。 */
-    public SyncResult like(String source, String trackId, boolean liked) {
+    public SyncResult like(String source, String trackId, boolean liked, Map<String, String> requestCookies) {
         ensureConfigs();
         MusicSourceProvider provider = providers.get(source);
         if (provider == null) {
@@ -312,14 +322,15 @@ public class MusicSourceService {
             return SyncResult.fail(source, provider.label() + " 暂不支持同步喜欢，已记在本机与后台");
         }
         try {
-            return provider.like(trackId, liked, nullToEmpty(config.getCookie()));
+            return provider.like(trackId, liked,
+                    RequestCookies.forSource(requestCookies, source, config.getCookie()));
         } catch (RuntimeException ex) {
             return SyncResult.fail(source, provider.label() + " 同步失败：" + ex.getMessage());
         }
     }
 
     /** 所有已启用平台的个人歌单。没登录的平台直接跳过，不算错误。 */
-    public List<UserPlaylist> userPlaylists() {
+    public List<UserPlaylist> userPlaylists(Map<String, String> requestCookies) {
         ensureConfigs();
         List<UserPlaylist> out = new ArrayList<>();
         for (MusicSourceConfig config : enabledConfigs(null)) {
@@ -328,7 +339,8 @@ public class MusicSourceService {
                 continue;
             }
             try {
-                List<UserPlaylist> list = provider.myPlaylists(nullToEmpty(config.getCookie()));
+                List<UserPlaylist> list = provider.myPlaylists(
+                        RequestCookies.forSource(requestCookies, config.getSourceKey(), config.getCookie()));
                 if (list != null && !list.isEmpty()) {
                     out.addAll(list);
                 }
@@ -339,7 +351,8 @@ public class MusicSourceService {
         return out;
     }
 
-    public List<OnlineTrack> playlistTracks(String source, String playlistId, int limit) {
+    public List<OnlineTrack> playlistTracks(String source, String playlistId, int limit,
+                                            Map<String, String> requestCookies) {
         ensureConfigs();
         MusicSourceProvider provider = providers.get(source);
         if (provider == null || playlistId == null || playlistId.isBlank()) {
@@ -347,8 +360,8 @@ public class MusicSourceService {
         }
         MusicSourceConfig config = configs.get(source);
         try {
-            List<OnlineTrack> list = provider.playlistTracks(
-                    playlistId, limit, config == null ? "" : nullToEmpty(config.getCookie()));
+            List<OnlineTrack> list = provider.playlistTracks(playlistId, limit,
+                    RequestCookies.forSource(requestCookies, source, config == null ? "" : config.getCookie()));
             return list == null ? new ArrayList<>() : list;
         } catch (RuntimeException ex) {
             LOG.log(Level.FINE, "歌单曲目获取失败：" + source + "/" + playlistId, ex);

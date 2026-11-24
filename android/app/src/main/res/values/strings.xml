@@ -143,6 +143,10 @@
     <string name="playlist_detail_loading">正在读取歌单…</string>
     <string name="playlist_detail_empty">这个歌单没有可读曲目</string>
 
+    <!-- ================= 登录 ================= -->
+    <string name="login_local">仅本地播放</string>
+    <string name="login_cancelled">已取消登录</string>
+
     <!-- ================= 通用 ================= -->
     <string name="action_back">返回</string>
     <string name="loading">载入中</string>
@@ -180,7 +184,7 @@
     <string name="source_switched_notice">%1$s 不可播，已自动换到 %2$s</string>
     <string name="source_manage_title">音源管理</string>
     <string name="source_login">登录</string>
-    <string name="source_logged_in">已登录·权益看账号</string>
+    <string name="source_logged_in">已登录</string>
     <string name="source_cookie_dialog_title">%1$s</string>
     <string name="source_cookie_dialog_hint">Cookie</string>
     <string name="source_cookie_help">浏览器登录 → F12 → Network → 任一请求 → 复制 Cookie</string>
@@ -191,7 +195,7 @@
     <string name="source_login_clear_web">清除登录状态</string>
     <string name="source_login_clear_confirm">清除本机网页里保存的登录状态？</string>
     <string name="source_login_clear_done">已清除网页登录状态</string>
-    <string name="source_login_saved">已保存%1$s登录态；会员曲仍需账号有相应权益</string>
+    <string name="source_login_saved">%1$s 已登录</string>
     <string name="source_login_cookie_cleared">已清除%1$s登录态</string>
     <string name="source_login_failed">登录失败</string>
     <string name="source_move_up">上移</string>
@@ -208,10 +212,11 @@
     
 
     <string name="mine_entry_sources">音源管理</string>
-    <string name="mine_entry_sync">同步音源</string>
+    <string name="source_sync">同步歌单</string>
 
     <!-- 播放设置（定时关闭 / 倍速） -->
     <string name="player_more">更多设置</string>
+    <string name="player_fullscreen">沉浸全屏</string>
     <string name="player_sleep_timer">定时关闭</string>
     <string name="player_speed">播放倍速</string>
     <string name="sleep_off">关闭</string>

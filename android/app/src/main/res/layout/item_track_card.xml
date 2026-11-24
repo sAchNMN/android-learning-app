@@ -5,7 +5,7 @@
     android:layout_width="112dp"
     android:layout_height="wrap_content"
     android:layout_marginEnd="12dp"
-    android:background="?attr/selectableItemBackground"
+    android:background="@drawable/bg_ripple_card"
     android:orientation="vertical">
 
     <com.google.android.material.imageview.ShapeableImageView

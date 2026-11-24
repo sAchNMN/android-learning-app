@@ -2,7 +2,7 @@ package com.szc.learning.core.common
 
 import android.content.Context
 import android.view.View
-import android.widget.Toast
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 
 fun View.show() {
@@ -21,8 +21,12 @@ fun View.setVisible(visible: Boolean, goneWhenHidden: Boolean = true) {
     }
 }
 
-fun Context.toast(@StringRes resId: Int) = Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
+/**
+ * 轻提示统一走 [HudToast]：系统 Toast 会排队，连点几次要等十几秒才播完，
+ * 而且样式跟 ROM 绑定，跟这里的液态玻璃对不上。
+ */
+fun Context.toast(@StringRes resId: Int, @DrawableRes iconRes: Int = 0) =
+    HudToast.show(this, getString(resId), iconRes)
 
-fun Context.toast(message: CharSequence?) {
-    if (!message.isNullOrBlank()) Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-}
+fun Context.toast(message: CharSequence?, @DrawableRes iconRes: Int = 0) =
+    HudToast.show(this, message, iconRes)

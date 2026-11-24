@@ -6,7 +6,7 @@
     android:clipToPadding="false"
     android:fillViewport="true"
     android:overScrollMode="never"
-    android:paddingBottom="150dp"
+    android:paddingBottom="136dp"
     android:scrollbars="none">
 
     <LinearLayout
@@ -66,159 +66,7 @@
                 android:src="@drawable/ic_glass"
                 app:tint="?attr/auInk" />
 
-            <ImageButton
-                android:id="@+id/mineAbout"
-                style="@style/Widget.IconButton"
-                android:layout_marginBottom="4dp"
-                android:contentDescription="@string/mine_entry_about"
-                android:src="@drawable/ic_info"
-                app:tint="?attr/auInk" />
         </LinearLayout>
-
-        <!-- 资料卡 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="18dp"
-            android:layout_marginEnd="20dp"
-            android:background="@drawable/bg_mine_card"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingTop="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="16dp">
-
-            <com.google.android.material.imageview.ShapeableImageView
-                android:id="@+id/mineAvatar"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:contentDescription="@null"
-                android:scaleType="centerCrop"
-                app:shapeAppearanceOverlay="@style/Shape.Circle" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="14dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/mineName"
-                    style="@style/Text.RowTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mine_user"
-                    android:textSize="17sp" />
-
-                <TextView
-                    android:id="@+id/mineSubtitle"
-                    style="@style/Text.Caption"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mine_subtitle"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:src="@drawable/ic_chevron_right"
-                app:tint="?attr/auInkTertiary" />
-        </LinearLayout>
-
-        <!-- 三项数据 -->
-        <LinearLayout
-            android:id="@+id/mineStats"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginTop="12dp"
-            android:layout_marginEnd="20dp"
-            android:background="@drawable/bg_mine_card"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp">
-
-            <LinearLayout
-                style="@style/Widget.MineStat"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/statMinutes"
-                    style="@style/Text.Numeric"
-                    android:textColor="?attr/auInk"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    style="@style/Text.Caption"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mine_listen_minutes" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="28dp"
-                android:background="?attr/auHairline" />
-
-            <LinearLayout
-                style="@style/Widget.MineStat"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/statFavorites"
-                    style="@style/Text.Numeric"
-                    android:textColor="?attr/auInk"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    style="@style/Text.Caption"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mine_favorites" />
-            </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="28dp"
-                android:background="?attr/auHairline" />
-
-            <LinearLayout
-                style="@style/Widget.MineStat"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/statRecent"
-                    style="@style/Text.Numeric"
-                    android:textColor="?attr/auInk"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    style="@style/Text.Caption"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/mine_recent" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- 入口宫格 -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/mineEntries"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginTop="18dp"
-            android:layout_marginEnd="12dp"
-            android:nestedScrollingEnabled="false"
-            android:overScrollMode="never" />
 
         <!-- 我喜欢 -->
         <LinearLayout
@@ -226,7 +74,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="18dp"
             android:layout_marginEnd="20dp"
             android:background="@drawable/bg_mine_card"
             android:clickable="true"
@@ -243,27 +91,14 @@
                 android:scaleType="centerCrop"
                 app:shapeAppearanceOverlay="@style/Shape.Cover.Row" />
 
-            <LinearLayout
+            <TextView
+                style="@style/Text.RowTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="12dp"
                 android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    style="@style/Text.RowTitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mine_favorites_card"
-                    android:textSize="15sp" />
-
-                <TextView
-                    android:id="@+id/mineFavoritesCount"
-                    style="@style/Text.Caption"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp" />
-            </LinearLayout>
+                android:text="@string/mine_favorites_card"
+                android:textSize="15sp" />
 
             <ImageButton
                 android:id="@+id/mineFavoritesPlay"
@@ -277,30 +112,44 @@
                 app:tint="?attr/auAccent" />
         </LinearLayout>
 
-        <!-- 最近播放 -->
-        <LinearLayout
+        <!-- 入口宫格 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/mineEntries"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="12dp"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never" />
+
+        <!-- 最近播放：整行可点进全部 -->
+        <LinearLayout
+            android:id="@+id/mineRecentHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_ripple_row"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="20dp"
-            android:paddingTop="24dp"
-            android:paddingEnd="20dp">
+            android:paddingTop="10dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="2dp">
 
             <TextView
                 style="@style/Text.Section"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/mine_recent_card" />
-
-            <TextView
-                android:id="@+id/mineRecentAll"
-                style="@style/Text.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/recommend_more"
-                android:textSize="12sp" />
+                android:text="@string/mine_recent_card" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="?attr/auInkTertiary" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -313,14 +162,5 @@
             android:paddingStart="20dp"
             android:paddingEnd="8dp"
             android:scrollbars="none" />
-
-        <TextView
-            style="@style/Text.Caption"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:gravity="center"
-            android:text="@string/mine_footer"
-            android:textSize="11sp" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

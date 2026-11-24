@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  列表行级按压高亮。圆角与行内封面（Shape.Cover.Row）同档 radius_row，
+  整行宽度下用更小的半径才不至于看起来像胶囊。
+-->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="?attr/colorControlHighlight">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/white" />
+            <corners android:radius="@dimen/radius_row" />
+        </shape>
+    </item>
+</ripple>

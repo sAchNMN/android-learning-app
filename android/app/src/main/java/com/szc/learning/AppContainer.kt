@@ -12,6 +12,7 @@ import com.szc.learning.music.data.FavoritesStore
 import com.szc.learning.music.data.ListenStatsStore
 import com.szc.learning.music.data.LocalMusicRepository
 import com.szc.learning.music.data.LocalRecommendEngine
+import com.szc.learning.music.data.LoginStore
 import com.szc.learning.music.data.LyricsRepository
 import com.szc.learning.music.data.OnlineSourceRouter
 import com.szc.learning.music.data.PlayableFilter
@@ -32,7 +33,7 @@ import kotlinx.coroutines.SupervisorJob
  *
  * 依赖方向：Activity/Fragment → ViewModel → Repository → ApiClient → OkHttp。
  * 播放器是例外：它与页面生命周期无关，所以在容器里只建一次，
- * MainActivity 和 NowPlayingActivity 共享同一个实例，切页面不断音。
+ * 主界面与各 tab 共享同一个实例，切页面不断音。
  */
 class AppContainer(context: Context) {
 
@@ -72,6 +73,9 @@ class AppContainer(context: Context) {
 
     /** 设备号：后端用它归属「我喜欢」，App 没有登录体系。 */
     val deviceIdStore: DeviceIdStore = DeviceIdStore(context)
+
+    /** 首次启动的登录选择：登录页是否走完、从哪个入口进来。 */
+    val loginStore: LoginStore = LoginStore(context)
 
     /** 推荐结果缓存：断网时推荐页回放上一次的结果，而不是空白。 */
     val recommendCacheStore: RecommendCacheStore = RecommendCacheStore(context)

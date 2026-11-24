@@ -19,8 +19,10 @@
     <dimen name="gutter">20dp</dimen>
     <dimen name="gutter_card">16dp</dimen>
 
-    <!-- 圆角阶梯 -->
+    <!-- 圆角阶梯。按压高亮（ripple）必须复用同一档，
+         否则点下去会露出直角的灰块，和容器的圆角对不上 -->
     <dimen name="radius_sm">10dp</dimen>
+    <dimen name="radius_row">12dp</dimen>
     <dimen name="radius_md">16dp</dimen>
     <dimen name="radius_lg">20dp</dimen>
     <dimen name="radius_xl">26dp</dimen>

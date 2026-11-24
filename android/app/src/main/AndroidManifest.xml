@@ -38,11 +38,10 @@
             </intent-filter>
         </activity>
 
+        <!-- 首次启动登录页：三个在线平台 + 仅本地播放 -->
         <activity
-            android:name=".music.ui.now.NowPlayingActivity"
-            android:exported="false"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.Aurora" />
+            android:name=".ui.login.LoginActivity"
+            android:exported="false" />
 
         <!-- 搜索：独立整屏，带键盘 -->
         <activity
@@ -70,6 +69,13 @@
             android:name=".music.ui.source.CookieLoginActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- 沉浸式全屏播放：隐藏系统栏，横竖屏各自一套布局 -->
+        <activity
+            android:name=".music.ui.now.ImmersivePlayerActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.Aurora" />
 
         <!-- MediaSessionService 负责后台播放与通知栏/锁屏控制 -->
         <service

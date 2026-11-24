@@ -93,7 +93,6 @@ class ThemeDialog(private val activity: AppCompatActivity) : BottomSheetDialog(a
             val row = ItemThemeOptionBinding.inflate(LayoutInflater.from(context), list, false)
             val selected = theme == current
             row.themeName.setText(theme.labelRes)
-            row.themeNote.setText(theme.noteRes)
             row.themeSwatch.background = swatchOf(theme)
             row.themeCheck.visibility = if (selected) View.VISIBLE else View.INVISIBLE
             row.themeCheck.imageTintList =

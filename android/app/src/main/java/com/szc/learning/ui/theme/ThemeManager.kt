@@ -25,33 +25,32 @@ import com.szc.learning.music.ui.common.CoverArt
 enum class AuroraTheme(
     val key: String,
     @StringRes val labelRes: Int,
-    @StringRes val noteRes: Int,
     @StyleRes val styleRes: Int,
     /** 选择器里的色样：4 个色斑色，画成一条小极光 */
     val swatchAttrs: IntArray,
 ) {
     AURORA(
-        "aurora", R.string.theme_aurora, R.string.theme_aurora_note,
+        "aurora", R.string.theme_aurora,
         R.style.Theme_Aurora,
         intArrayOf(R.attr.auAccent, R.attr.auBlobA, R.attr.auBlobC),
     ),
     EMBER(
-        "ember", R.string.theme_ember, R.string.theme_ember_note,
+        "ember", R.string.theme_ember,
         R.style.Theme_Aurora_Ember,
         intArrayOf(R.attr.auAccent, R.attr.auBlobA, R.attr.auBlobC),
     ),
     SAGE(
-        "sage", R.string.theme_sage, R.string.theme_sage_note,
+        "sage", R.string.theme_sage,
         R.style.Theme_Aurora_Sage,
         intArrayOf(R.attr.auAccent, R.attr.auBlobA, R.attr.auBlobC),
     ),
     COBALT(
-        "cobalt", R.string.theme_cobalt, R.string.theme_cobalt_note,
+        "cobalt", R.string.theme_cobalt,
         R.style.Theme_Aurora_Cobalt,
         intArrayOf(R.attr.auAccent, R.attr.auBlobA, R.attr.auBlobC),
     ),
     NOIR(
-        "noir", R.string.theme_noir, R.string.theme_noir_note,
+        "noir", R.string.theme_noir,
         R.style.Theme_Aurora_Noir,
         intArrayOf(R.attr.auAccent, R.attr.auBlobA, R.attr.auBlobC),
     );

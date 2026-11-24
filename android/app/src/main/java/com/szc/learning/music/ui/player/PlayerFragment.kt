@@ -19,6 +19,8 @@ import com.szc.learning.music.ui.comments.CommentSheet
 import com.szc.learning.music.ui.common.iconRes
 import com.szc.learning.music.ui.common.labelRes
 import com.szc.learning.music.ui.common.showQueueSheet
+import com.szc.learning.music.ui.now.ImmersivePlayerActivity
+import com.szc.learning.music.ui.now.NowPlayingMenuSheet
 import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.theme.themeColor
 import kotlinx.coroutines.Job
@@ -75,6 +77,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
             toast(R.string.player_disliked)
         },
         onShowComments = { track -> CommentSheet(requireActivity(), viewModel, track).show() },
+        onMore = { showMenu() },
+        onFullscreen = { ImmersivePlayerActivity.start(requireContext()) },
     )
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -280,6 +284,32 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         }
     }
 
+    /** 低频播放设置收进「更多」，不挤占底部传输控制条。 */
+    private fun showMenu() {
+        NowPlayingMenuSheet(
+            activity = requireActivity(),
+            viewModel = viewModel,
+            onSleepChanged = { minutes ->
+                val message = when (minutes) {
+                    SLEEP_OFF -> getString(R.string.sleep_cancelled)
+                    SLEEP_TRACK_END -> getString(R.string.sleep_applied_track_end)
+                    else -> getString(
+                        R.string.sleep_applied,
+                        getString(R.string.sleep_minutes, minutes),
+                    )
+                }
+                toastMessage(message)
+            },
+            onSpeedChanged = { speed ->
+                toastMessage(getString(R.string.speed_applied, formatSpeed(speed)))
+            },
+        ).show()
+    }
+
+    /** 0.75 → "0.75"，1.0 → "1"：整数倍速不带小数点更干净。 */
+    private fun formatSpeed(speed: Float): String =
+        if (speed == speed.toInt().toFloat()) speed.toInt().toString() else speed.toString()
+
     private fun showLyrics(track: MusicTrack, lyrics: String) {
         val content = android.widget.TextView(requireContext()).apply {
             text = lyrics
@@ -331,8 +361,16 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         HudToast.show(requireContext(), getString(resId), iconRes, bottomMarginDp = 276)
     }
 
+    private fun toastMessage(message: CharSequence) {
+        HudToast.show(requireContext(), message, bottomMarginDp = 276)
+    }
+
     private companion object {
         /** 离末尾还剩几首就补下一批：留出下一批解析地址的时间。 */
         const val LOAD_MORE_THRESHOLD = 3
+
+        /** 与 PlayerController.setSleepTimer 的约定一致。 */
+        const val SLEEP_OFF = 0
+        const val SLEEP_TRACK_END = -1
     }
 }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   玻璃材质面板：一张封面 + 一条压在上面的玻璃播放栏做实时预览，
-  下面是材质二选一和唯一的旋钮「磨砂程度」。
+  下面是材质二选一和唯一的旋钮「磨砂」。
   预览不是截图，就是真正的 GlassSurfaceView —— 拖动滑块时它和主界面同步变。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -28,15 +28,6 @@
         android:layout_marginEnd="20dp"
         android:text="@string/glass_title"
         android:textSize="17sp" />
-
-    <TextView
-        style="@style/Text.Caption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginEnd="20dp"
-        android:text="@string/glass_subtitle" />
 
     <!-- 预览：封面 + 悬浮玻璃条 -->
     <FrameLayout
@@ -110,44 +101,6 @@
         </com.szc.learning.music.ui.glass.GlassSurfaceView>
     </FrameLayout>
 
-    <TextView
-        style="@style/Text.Caption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="20dp"
-        android:text="@string/glass_preview_hint" />
-
-    <TextView
-        style="@style/Text.Caption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="18dp"
-        android:text="@string/glass_mode_title" />
-
-    <!-- 材质二选一：液态玻璃 / 高斯模糊 -->
-    <LinearLayout
-        android:id="@+id/glassMode"
-        android:layout_width="match_parent"
-        android:layout_height="38dp"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="20dp"
-        android:background="@drawable/bg_segment_track"
-        android:orientation="horizontal"
-        android:padding="3dp" />
-
-    <TextView
-        android:id="@+id/glassModeNote"
-        style="@style/Text.Caption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="20dp" />
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -179,14 +132,6 @@
         android:layout_height="42dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="4dp"
-        android:layout_marginEnd="20dp" />
-
-    <TextView
-        style="@style/Text.Caption"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
-        android:text="@string/glass_frost_hint" />
+        android:layout_marginBottom="20dp" />
 </LinearLayout>
