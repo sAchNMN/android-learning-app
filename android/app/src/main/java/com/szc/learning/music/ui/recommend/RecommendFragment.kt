@@ -34,7 +34,10 @@ import com.szc.learning.music.ui.track.PlaylistRailAdapter
 import com.szc.learning.music.ui.widget.ShimmerSkeletonView
 import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.main.MainActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 推荐页。
@@ -95,6 +98,9 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
 
     /** 卡片 key → 音源歌单，点卡片时用它回查 source/id。 */
     private val sourceIndex = mutableMapOf<String, UserPlaylistInfo>()
+
+    /** 本机歌单重算的协程：新输入到来时取消上一次。 */
+    private var playlistsJob: Job? = null
 
     // 首屏入场只播一次：切 tab 回来不再抖一遍
     private var entrancePlayed = false
@@ -388,17 +394,27 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
 
     private fun renderPlaylists() {
         val context = context ?: return
-        val playlists = Playlists.build(
-            context,
-            viewModel.local.value,
-            viewModel.recent.value,
-            viewModel.favoriteTracks(),
-            viewModel.sharedPlaylists.value,
-            limit = 8,
-        )
-        playlistAdapter.submitList(playlists)
-        binding.recommendPlaylistsHeader.isVisible = playlists.isNotEmpty()
-        binding.recommendPlaylists.isVisible = playlists.isNotEmpty()
+        // 按歌手分组是整库计算，且每次切歌（recent 变化）都会重算 —— 挪到后台
+        val local = viewModel.local.value
+        val recent = viewModel.recent.value
+        val favorites = viewModel.favoriteTracks()
+        val shared = viewModel.sharedPlaylists.value
+        playlistsJob?.cancel()
+        playlistsJob = viewLifecycleOwner.lifecycleScope.launch {
+            val playlists = withContext(Dispatchers.Default) {
+                Playlists.build(
+                    context.applicationContext,
+                    local,
+                    recent,
+                    favorites,
+                    shared,
+                    limit = 8,
+                )
+            }
+            playlistAdapter.submitList(playlists)
+            binding.recommendPlaylistsHeader.isVisible = playlists.isNotEmpty()
+            binding.recommendPlaylists.isVisible = playlists.isNotEmpty()
+        }
     }
 
     // ---------------------------------------------------------------- 播放

@@ -25,8 +25,11 @@ import com.szc.learning.music.ui.track.TrackGroup
 import com.szc.learning.music.ui.widget.ShimmerSkeletonView
 import com.szc.learning.music.ui.widget.dp
 import com.szc.learning.ui.main.MainActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 本地音乐。
@@ -52,8 +55,12 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
     private var sort = Sort.TITLE
     private var query = ""
 
+    /** 上一次渲染出的可见曲目：点击播放时直接用它，避免再过滤一遍整库。 */
+    private var lastVisible: List<MusicTrack> = emptyList()
+    private var renderJob: Job? = null
+
     private val trackAdapter = TrackAdapter { index ->
-        val tracks = visibleTracks()
+        val tracks = lastVisible
         if (index in tracks.indices) viewModel.play(tracks, index)
     }
 
@@ -90,7 +97,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         }
         binding.localRescan.setOnClickListener { rescan() }
         binding.localPlayAll.setOnClickListener {
-            val tracks = visibleTracks()
+            val tracks = lastVisible
             if (tracks.isNotEmpty()) viewModel.play(tracks, 0)
         }
         binding.localSort.setOnClickListener { showSortDialog() }
@@ -128,7 +135,6 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
     private fun render() {
         val granted = (activity as? MainActivity)?.audioPermissionGranted() ?: true
         val all = viewModel.local.value
-        val visible = visibleTracks()
         val loading = granted && all.isEmpty() && query.isEmpty() &&
             viewModel.localLoading.value
 
@@ -141,49 +147,81 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
 
         binding.localSkeleton.visibility = if (loading) View.VISIBLE else View.GONE
         if (loading) {
+            // 旧的后台计算不能再把结果落到骨架屏上
+            renderJob?.cancel()
             binding.localEmpty.visibility = View.GONE
             binding.localList.visibility = View.INVISIBLE
             return
         }
 
-        val empty = !granted || visible.isEmpty()
-        binding.localEmpty.visibility = if (empty) View.VISIBLE else View.GONE
-        binding.localList.visibility = if (empty) View.INVISIBLE else View.VISIBLE
-        binding.localPlayAll.isVisible = visible.isNotEmpty()
-        if (empty) {
-            val needsPermission = !granted
-            // 搜索无结果时不给动作：这里没有"重新扫描"能解决的问题
-            binding.localGrant.isVisible = needsPermission || all.isEmpty()
-            binding.localGrant.setText(
-                if (needsPermission) R.string.local_grant else R.string.local_scan,
-            )
-            binding.localEmptyTitle.setText(
-                when {
-                    needsPermission -> R.string.local_permission
-                    query.isNotEmpty() -> R.string.local_search_empty
-                    else -> R.string.local_empty
-                },
-            )
-        }
+        // 过滤 / 分组 / 排序都挪到后台：千首曲库下每个按键都同步跑一遍会卡输入。
+        // 新输入到来就取消旧计算（计算本身不可中断，但结果不会再落到 UI）。
+        val keyword = query
+        val currentMode = mode
+        val currentSort = sort
+        val labels = GroupLabels(
+            unknownArtist = getString(R.string.player_unknown_artist),
+            unknownAlbum = getString(R.string.player_unknown_album),
+            unknownFolder = getString(R.string.local_unknown_folder),
+        )
+        renderJob?.cancel()
+        renderJob = viewLifecycleOwner.lifecycleScope.launch {
+            val visible = withContext(Dispatchers.Default) {
+                filterAndSort(all, keyword, currentSort)
+            }
+            val groups = withContext(Dispatchers.Default) {
+                if (currentMode == Mode.SONGS) emptyList() else buildGroups(visible, currentMode, labels)
+            }
+            lastVisible = visible
 
-        if (mode == Mode.SONGS) {
-            if (binding.localList.adapter !== trackAdapter) {
-                binding.localList.adapter = trackAdapter
+            val empty = !granted || visible.isEmpty()
+            binding.localEmpty.visibility = if (empty) View.VISIBLE else View.GONE
+            binding.localList.visibility = if (empty) View.INVISIBLE else View.VISIBLE
+            binding.localPlayAll.isVisible = visible.isNotEmpty()
+            if (empty) {
+                val needsPermission = !granted
+                // 搜索无结果时不给动作：这里没有"重新扫描"能解决的问题
+                binding.localGrant.isVisible = needsPermission || all.isEmpty()
+                binding.localGrant.setText(
+                    if (needsPermission) R.string.local_grant else R.string.local_scan,
+                )
+                binding.localEmptyTitle.setText(
+                    when {
+                        needsPermission -> R.string.local_permission
+                        keyword.isNotEmpty() -> R.string.local_search_empty
+                        else -> R.string.local_empty
+                    },
+                )
             }
-            trackAdapter.submitList(visible)
-        } else {
-            if (binding.localList.adapter !== groupAdapter) {
-                binding.localList.adapter = groupAdapter
+
+            if (currentMode == Mode.SONGS) {
+                if (binding.localList.adapter !== trackAdapter) {
+                    binding.localList.adapter = trackAdapter
+                }
+                trackAdapter.submitList(visible)
+            } else {
+                if (binding.localList.adapter !== groupAdapter) {
+                    binding.localList.adapter = groupAdapter
+                }
+                groupAdapter.submitList(groups)
             }
-            groupAdapter.submitList(buildGroups(visible))
         }
     }
 
-    private fun buildGroups(tracks: List<MusicTrack>): List<TrackGroup> {
-        val unknown = getString(R.string.player_unknown_artist)
+    private data class GroupLabels(
+        val unknownArtist: String,
+        val unknownAlbum: String,
+        val unknownFolder: String,
+    )
+
+    private fun buildGroups(
+        tracks: List<MusicTrack>,
+        mode: Mode,
+        labels: GroupLabels,
+    ): List<TrackGroup> {
         return when (mode) {
             Mode.ARTISTS -> tracks
-                .groupBy { it.artist.ifBlank { unknown } }
+                .groupBy { it.artist.ifBlank { labels.unknownArtist } }
                 .map { (name, list) ->
                     TrackGroup(
                         "artist:$name",
@@ -197,19 +235,19 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                 .sortedBy { it.title }
 
             Mode.ALBUMS -> tracks
-                .groupBy { it.album.ifBlank { getString(R.string.player_unknown_album) } }
+                .groupBy { it.album.ifBlank { labels.unknownAlbum } }
                 .map { (album, list) ->
                     TrackGroup(
                         "album:$album",
                         album,
-                        list.first().artist.ifBlank { unknown },
+                        list.first().artist.ifBlank { labels.unknownArtist },
                         list,
                     )
                 }
                 .sortedBy { it.title }
 
             Mode.FOLDERS -> tracks
-                .groupBy { it.folder.ifBlank { getString(R.string.local_unknown_folder) } }
+                .groupBy { it.folder.ifBlank { labels.unknownFolder } }
                 .map { (folder, list) ->
                     // 路径当标题太长，标题只留最后一级，完整路径放副标题
                     val name = folder.trimEnd('/').substringAfterLast('/').ifBlank { folder }
@@ -226,9 +264,13 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         }
     }
 
-    private fun visibleTracks(): List<MusicTrack> {
-        val keyword = query
-        val filtered = viewModel.local.value.filter { track ->
+    /** 纯函数：过滤 + 排序。可以在任意线程跑。 */
+    private fun filterAndSort(
+        tracks: List<MusicTrack>,
+        keyword: String,
+        sort: Sort,
+    ): List<MusicTrack> {
+        val filtered = tracks.filter { track ->
             keyword.isEmpty() ||
                 track.title.contains(keyword, ignoreCase = true) ||
                 track.artist.contains(keyword, ignoreCase = true) ||

@@ -26,8 +26,11 @@ import com.szc.learning.ui.theme.ThemeManager
 import com.szc.learning.music.ui.track.SectionHeaderAdapter
 import com.szc.learning.music.ui.track.TrackAdapter
 import com.szc.learning.ui.main.MainActivity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 搜索页。
@@ -46,6 +49,9 @@ class SearchActivity : AppCompatActivity() {
     private val viewModel: MusicViewModel by viewModels()
 
     private var localResults: List<MusicTrack> = emptyList()
+
+    /** 本地过滤的协程：新输入到来时取消上一次。 */
+    private var renderJob: Job? = null
 
     private val onlineHeader = SectionHeaderAdapter()
     private val localHeader = SectionHeaderAdapter()
@@ -137,7 +143,6 @@ class SearchActivity : AppCompatActivity() {
 
     private fun render() {
         val query = binding.searchInput.text?.toString().orEmpty().trim()
-        localResults = viewModel.search(query)
         val online = viewModel.online.value
         val loading = viewModel.onlineLoading.value
         val onlineError = viewModel.onlineError.value
@@ -150,29 +155,37 @@ class SearchActivity : AppCompatActivity() {
                 else -> null
             },
         )
-        localHeader.setTitle(
-            if (localResults.isNotEmpty()) getString(R.string.search_section_mine) else null,
-        )
         onlineAdapter.submitList(online)
-        localAdapter.submitList(localResults)
 
-        val hasContent = online.isNotEmpty() || localResults.isNotEmpty()
-        val placeholder = when {
-            // 空输入时只留一个搜索图标，输入框本身已经说明了这是干什么的
-            query.isEmpty() -> ""
-            attempted && online.isEmpty() && localResults.isEmpty() && loading -> null
-            attempted && onlineError != null && localResults.isEmpty() ->
-                getString(R.string.search_online_failed, onlineError)
-            !hasContent -> getString(R.string.search_empty)
-            else -> null
+        // 本地过滤整库是纯 CPU 活：每个按键都在主线程跑一遍会卡输入，挪到后台。
+        // 新按键取消旧计算，旧结果不会再落到 UI。
+        renderJob?.cancel()
+        renderJob = lifecycleScope.launch {
+            val results = withContext(Dispatchers.Default) { viewModel.search(query) }
+            localResults = results
+            localHeader.setTitle(
+                if (results.isNotEmpty()) getString(R.string.search_section_mine) else null,
+            )
+            localAdapter.submitList(results)
+
+            val hasContent = online.isNotEmpty() || results.isNotEmpty()
+            val placeholder = when {
+                // 空输入时只留一个搜索图标，输入框本身已经说明了这是干什么的
+                query.isEmpty() -> ""
+                attempted && online.isEmpty() && results.isEmpty() && loading -> null
+                attempted && onlineError != null && results.isEmpty() ->
+                    getString(R.string.search_online_failed, onlineError)
+                !hasContent -> getString(R.string.search_empty)
+                else -> null
+            }
+            binding.searchPlaceholder.visibility =
+                if (placeholder == null) View.GONE else View.VISIBLE
+            binding.searchPlaceholderText.text = placeholder.orEmpty()
+            binding.searchPlaceholderText.visibility =
+                if (placeholder.isNullOrEmpty()) View.GONE else View.VISIBLE
+            binding.searchList.visibility =
+                if (placeholder == null || loading) View.VISIBLE else View.INVISIBLE
         }
-        binding.searchPlaceholder.visibility =
-            if (placeholder == null) View.GONE else View.VISIBLE
-        binding.searchPlaceholderText.text = placeholder.orEmpty()
-        binding.searchPlaceholderText.visibility =
-            if (placeholder.isNullOrEmpty()) View.GONE else View.VISIBLE
-        binding.searchList.visibility =
-            if (placeholder == null || loading) View.VISIBLE else View.INVISIBLE
     }
 
     private fun hideKeyboard() {

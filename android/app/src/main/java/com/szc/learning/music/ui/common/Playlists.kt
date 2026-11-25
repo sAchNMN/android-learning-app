@@ -19,6 +19,15 @@ import com.szc.learning.music.data.StoredPlaylist
  */
 object Playlists {
 
+    /**
+     * 按歌手分组的结果缓存。
+     *
+     * 推荐页每次切歌、收藏变化都会重算卡片，而这些事件里曲库实例根本没变。
+     * 用 `===` 认曲库实例：只有重新扫描出新的列表才重算分组。
+     */
+    private var cachedLocal: List<MusicTrack>? = null
+    private var cachedArtistGroups: List<Pair<String, List<MusicTrack>>> = emptyList()
+
     fun build(
         context: Context,
         local: List<MusicTrack>,
@@ -70,14 +79,7 @@ object Playlists {
         }
 
         // 同一个歌手至少两首才值得单独成单，否则卡片看起来像重复
-        val byArtist = local
-            .filter { it.artist.isNotBlank() }
-            .groupBy { it.artist }
-            .filterValues { it.size >= 2 }
-            .entries
-            .sortedByDescending { it.value.size }
-
-        for ((artist, tracks) in byArtist) {
+        for ((artist, tracks) in artistGroups(local)) {
             if (out.size >= limit) break
             out += Playlist(
                 key = "artist:$artist",
@@ -88,5 +90,21 @@ object Playlists {
         }
 
         return out.distinctBy { it.key }.take(limit)
+    }
+
+    /** 按曲库实例缓存歌手分组；可能在后台线程调用，所以加锁。 */
+    @Synchronized
+    private fun artistGroups(local: List<MusicTrack>): List<Pair<String, List<MusicTrack>>> {
+        if (cachedLocal === local) return cachedArtistGroups
+        val groups = local
+            .filter { it.artist.isNotBlank() }
+            .groupBy { it.artist }
+            .filterValues { it.size >= 2 }
+            .entries
+            .sortedByDescending { it.value.size }
+            .map { it.key to it.value }
+        cachedLocal = local
+        cachedArtistGroups = groups
+        return groups
     }
 }
