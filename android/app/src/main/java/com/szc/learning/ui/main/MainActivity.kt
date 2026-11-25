@@ -110,6 +110,10 @@ class MainActivity : AppCompatActivity() {
         bindMiniPlayer()
         observePlayer()
 
+        // 权限已授予就先开始扫曲库（IO 线程），不等启动动画的 reveal 回调；
+        // 没授权时仍然等动画结束再弹框，不打断入场。
+        if (audioPermissionGranted()) viewModel.loadLocal()
+
         val restored = when {
             savedInstanceState != null -> savedInstanceState.getInt(KEY_TAB, DEFAULT_TAB)
             // 登录页选了「仅本地播放」时会带一个起始 tab，冷启动时优先用它
