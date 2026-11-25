@@ -28,7 +28,7 @@ class ApiClient(
 
     private val normalizedBaseUrl: String = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
 
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+    private val okHttpClient: OkHttpClient = SharedHttp.base.newBuilder()
         .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .writeTimeout(WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import com.szc.learning.core.network.SharedHttp
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -51,7 +52,7 @@ class WanTransport(
     private val _alive = MutableStateFlow(false)
     override val alive: StateFlow<Boolean> = _alive.asStateFlow()
 
-    private val client = OkHttpClient.Builder()
+    private val client = SharedHttp.base.newBuilder()
         .pingInterval(PING_SECONDS, TimeUnit.SECONDS)
         .build()
 

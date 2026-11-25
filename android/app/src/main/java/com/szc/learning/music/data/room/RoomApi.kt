@@ -2,6 +2,7 @@ package com.szc.learning.music.data.room
 
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import com.szc.learning.core.network.SharedHttp
 import com.szc.learning.music.data.source.objectOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,7 +33,7 @@ data class RoomSnapshot(
  */
 class RoomApi(private val baseUrl: String) {
 
-    private val client = OkHttpClient.Builder()
+    private val client = SharedHttp.base.newBuilder()
         .connectTimeout(CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
         .readTimeout(READ_TIMEOUT_S, TimeUnit.SECONDS)
         .build()

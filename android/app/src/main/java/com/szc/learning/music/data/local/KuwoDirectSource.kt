@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.TrackSource
+import com.szc.learning.core.network.SharedHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -220,7 +221,7 @@ class KuwoDirectSource(
             "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 " +
                 "(KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
 
-        private fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+        private fun defaultClient(): OkHttpClient = SharedHttp.base.newBuilder()
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(12, TimeUnit.SECONDS)
             .followRedirects(true)
