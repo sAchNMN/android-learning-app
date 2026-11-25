@@ -26,8 +26,39 @@ interface ClientSourceProvider {
     /** 搜索结果。 */
     suspend fun search(keyword: String, limit: Int, cookie: String): List<MusicTrack>
 
-    /** 换取播放地址。成功时返回的 track 已填好 [MusicTrack.uri]。 */
-    suspend fun resolve(track: MusicTrack, cookie: String): OnlinePlayback
+    /**
+     * 换取播放地址。
+     *
+     * 成功时返回的 track 已填好 [MusicTrack.uri]。
+     * [quality] 是用户选的档位，平台不支持某个档位时可以忽略它 ——
+     * 但必须在返回的 [OnlinePlayback] 里带上**实际**档位/码率，
+     * 上层靠这个比对「请求的」和「拿到的」来决定要不要提示权限不足。
+     */
+    suspend fun resolve(
+        track: MusicTrack,
+        cookie: String,
+        quality: AudioQuality = AudioQuality.DEFAULT,
+    ): OnlinePlayback
+
+    /**
+     * 平台是否有真正的批量取址接口。
+     *
+     * 只有网易云的 `/api/song/enhance/player/url` 支持一次问多个 id；
+     * 酷狗只能逐首换，硬凑批量只会把并发度降低，所以保持 false。
+     */
+    val supportsBatch: Boolean get() = false
+
+    /**
+     * 批量取址，返回 `key = MusicTrack.key` 的映射，**必须包含每个输入曲目**
+     * （不可播的项放 `track == null` 的结果）。
+     *
+     * 默认实现逐首调用 [resolve]，语义与单曲路径完全一致；有批量接口的平台覆盖它。
+     */
+    suspend fun resolveBatch(
+        tracks: List<MusicTrack>,
+        cookie: String,
+        quality: AudioQuality = AudioQuality.DEFAULT,
+    ): Map<String, OnlinePlayback> = tracks.associate { it.key to resolve(it, cookie, quality) }
 
     /** LRC 文本。 */
     suspend fun lyric(track: MusicTrack, cookie: String): String

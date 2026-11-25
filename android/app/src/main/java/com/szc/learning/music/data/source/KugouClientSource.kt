@@ -84,7 +84,19 @@ internal class KugouClientSource : ClientSourceProvider {
 
     // ---------------------------------------------------------------- 取址
 
-    override suspend fun resolve(track: MusicTrack, cookie: String): OnlinePlayback =
+    /**
+     * 取址。
+     *
+     * [quality] 在这里**不参与请求**：酷狗移动端接口不接受码率参数，
+     * 而是按该 hash 能给的最高档返回一条地址（通常 128k，带 Cookie 时可能 320k）。
+     * 所以不假装支持选择 —— 只把响应里的 `bitrate` 带出去，
+     * 上层据此告诉用户「实际拿到的是多少」，而不是让设置项空转。
+     */
+    override suspend fun resolve(
+        track: MusicTrack,
+        cookie: String,
+        quality: AudioQuality,
+    ): OnlinePlayback =
         withContext(Dispatchers.IO) {
             val hash = track.hash.ifBlank { track.id }
             if (hash.isBlank()) return@withContext fail("缺少酷狗 FileHash")
@@ -103,7 +115,7 @@ internal class KugouClientSource : ClientSourceProvider {
             }
         }
 
-    private fun playViaMobile(
+    private suspend fun playViaMobile(
         track: MusicTrack,
         hash: String,
         albumId: String,
@@ -124,12 +136,12 @@ internal class KugouClientSource : ClientSourceProvider {
             ?: return fail("酷狗取址请求失败")
         val playUrl = pickUrl(json)
         if (json.intValue("status") == 1 && playUrl.isNotBlank()) {
-            return OnlinePlayback(track = track.copy(uri = SourceHttp.secure(playUrl)))
+            return play(track, playUrl, json)
         }
         return failure(json)
     }
 
-    private fun playViaWeb(
+    private suspend fun playViaWeb(
         track: MusicTrack,
         hash: String,
         albumId: String,
@@ -164,7 +176,7 @@ internal class KugouClientSource : ClientSourceProvider {
             ?: return fail("酷狗网页取址请求失败")
         val playUrl = pickUrl(json)
         if (json.intValue("status") == 1 && playUrl.isNotBlank()) {
-            return OnlinePlayback(track = track.copy(uri = SourceHttp.secure(playUrl)))
+            return play(track, playUrl, json)
         }
         return failure(json)
     }
@@ -371,6 +383,19 @@ internal class KugouClientSource : ClientSourceProvider {
     }
 
     private fun fail(message: String): OnlinePlayback = OnlinePlayback(track = null, message = message)
+
+    /**
+     * 成功结果。
+     *
+     * 酷狗把码率放在顶层 `bitrate`，网页版可能塞在 `data` 里，两个位置都要看。
+     * 拿不到就是 0 —— UI 会把 0 当成「不知道」，不显示任何音质说明。
+     */
+    private fun play(track: MusicTrack, playUrl: String, json: JsonObject): OnlinePlayback {
+        val br = json.intValue("bitrate").takeIf { it > 0 }
+            ?: json.objectOrNull("data")?.intValue("bitrate")
+            ?: 0
+        return OnlinePlayback(track = track.copy(uri = SourceHttp.secure(playUrl)), br = br)
+    }
 
     private data class Auth(
         val mid: String,

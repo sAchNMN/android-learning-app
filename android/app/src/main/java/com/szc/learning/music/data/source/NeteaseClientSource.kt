@@ -53,42 +53,131 @@ internal class NeteaseClientSource : ClientSourceProvider {
 
     // ---------------------------------------------------------------- 取址
 
-    override suspend fun resolve(track: MusicTrack, cookie: String): OnlinePlayback =
+    /**
+     * 换取播放地址。
+     *
+     * `br` 直接决定平台下发什么码率，但它只是**请求**：非会员、曲目本身没有
+     * 无损母带、地区限制，平台都会静默降到它能给的档位，甚至在
+     * `freeTrialInfo` 里塞一个 30 秒片段。所以返回值必须把平台实际给的
+     * `level` / `br` / 试听标记一起带出去，由上层判断要不要提示用户。
+     */
+    override suspend fun resolve(
+        track: MusicTrack,
+        cookie: String,
+        quality: AudioQuality,
+    ): OnlinePlayback =
         withContext(Dispatchers.IO) {
             val id = track.id
             if (id.isBlank()) return@withContext fail("缺少网易云歌曲 id")
             val jar = mergedCookie(cookie)
-            val url = "$BASE/api/song/enhance/player/url?ids=%5B${SourceHttp.encode(id)}%5D&br=$BITRATE"
+            val url = "$BASE/api/song/enhance/player/url?ids=%5B${SourceHttp.encode(id)}%5D&br=${quality.br}"
             val json = SourceHttp.getJson(url, referer = "$BASE/", cookie = jar)
-
-            // 1.1 增强接口正常下发地址
             val item = json?.arrayOrNull("data")?.firstOrNull()
                 ?.takeIf { it.isJsonObject }?.asJsonObject
-            val playUrl = item?.str("url").orEmpty()
-            if (playUrl.isNotBlank()) {
-                return@withContext OnlinePlayback(
-                    track = track.copy(uri = SourceHttp.secure(playUrl)),
-                )
-            }
-
-            // 1.2 增强接口对部分免费曲目也不下发地址，用外链 302 兜一层
-            val outer = "$BASE/song/media/outer/url?id=${SourceHttp.encode(id)}.mp3"
-            SourceHttp.probeAudio(outer, referer = "$BASE/", cookie = jar)?.let { final ->
-                return@withContext OnlinePlayback(track = track.copy(uri = SourceHttp.secure(final)))
-            }
-
-            // 1.3 都没有，按平台错误码翻译成人话
-            val code = item?.intValue("code") ?: 0
-            val fee = item?.intValue("fee") ?: 0
-            when {
-                code == -110 || code == 301 ->
-                    fail("网易云需要登录后才能获取完整播放地址，可在音源管理里填入 Cookie")
-                fee == 4 -> fail("网易云这首歌需要购买单曲或专辑")
-                fee == 1 -> fail("网易云这首歌需要会员权限")
-                code == 404 || code == -105 -> fail("网易云这首歌暂无版权或受地区限制")
-                else -> fail("网易云没有返回可播放地址")
-            }
+            resolveFromItem(track, item, jar)
         }
+
+    override val supportsBatch: Boolean get() = true
+
+    /**
+     * 批量取址：同一接口一次问多个 id，按响应里的 `id` 对回曲目。
+     *
+     * 这是首屏等待时间的主要来源 —— 原先每首一次请求，被同域名 450ms 节流串行化，
+     * 51 首「我喜欢的音乐」要等二十多秒。一次最多 100 个 id（URL 长度足够，平台也接受）。
+     *
+     * 有 `url` 的直接算可播；没有的仍然逐首走外链探测与错误码翻译，
+     * 和 [resolve] 共用 [resolveFromItem]，因此判定结果与逐首路径逐项一致。
+     */
+    override suspend fun resolveBatch(
+        tracks: List<MusicTrack>,
+        cookie: String,
+        quality: AudioQuality,
+    ): Map<String, OnlinePlayback> =
+        withContext(Dispatchers.IO) {
+            val out = LinkedHashMap<String, OnlinePlayback>(tracks.size * 2)
+            if (tracks.isEmpty()) return@withContext out
+            val jar = mergedCookie(cookie)
+
+            for (chunk in tracks.chunked(BATCH_MAX_IDS)) {
+                val items = HashMap<String, JsonObject>(chunk.size * 2)
+                val ids = chunk.map { it.id }.filter { it.isNotBlank() }
+                if (ids.isNotEmpty()) {
+                    val url = "$BASE/api/song/enhance/player/url" +
+                        "?ids=%5B${SourceHttp.encode(ids.joinToString(","))}%5D&br=${quality.br}"
+                    SourceHttp.getJson(url, referer = "$BASE/", cookie = jar)
+                        ?.arrayOrNull("data")
+                        ?.forEach { element ->
+                            val item = element.takeIf { it.isJsonObject }?.asJsonObject
+                                ?: return@forEach
+                            // 不依赖返回顺序，按 id 对回曲目
+                            val id = item.str("id")
+                            if (id.isNotBlank()) items[id] = item
+                        }
+                }
+                for (track in chunk) {
+                    out[track.key] = if (track.id.isBlank()) {
+                        fail("缺少网易云歌曲 id")
+                    } else {
+                        resolveFromItem(track, items[track.id], jar)
+                    }
+                }
+            }
+            out
+        }
+
+    /**
+     * 从一条取址响应得出最终结果。单曲与批量共用，保证两条路径判定一致。
+     *
+     * 1.1 增强接口正常下发地址；
+     * 1.2 没地址时用外链 302 兜一层（固定 128k 转码流，不带 level）；
+     * 1.3 都没有，按平台错误码翻译成人话。
+     */
+    private suspend fun resolveFromItem(
+        track: MusicTrack,
+        item: JsonObject?,
+        jar: String,
+    ): OnlinePlayback {
+        val playUrl = item?.str("url").orEmpty()
+        if (playUrl.isNotBlank()) {
+            return play(track, playUrl, item)
+        }
+
+        // 1.2 增强接口对部分免费曲目也不下发地址，用外链 302 兜一层。
+        //     这一层不认 br 参数，拿到的固定是 128k 转码流，不带 level。
+        val outer = "$BASE/song/media/outer/url?id=${SourceHttp.encode(track.id)}.mp3"
+        SourceHttp.probeAudio(outer, referer = "$BASE/", cookie = jar)?.let { final ->
+            return OnlinePlayback(
+                track = track.copy(uri = SourceHttp.secure(final)),
+                qualityLevel = AudioQuality.STANDARD.level,
+            )
+        }
+
+        // 1.3 都没有，按平台错误码翻译成人话
+        val code = item?.intValue("code") ?: 0
+        val fee = item?.intValue("fee") ?: 0
+        return when {
+            code == -110 || code == 301 ->
+                fail("网易云需要登录后才能获取完整播放地址，可在音源管理里填入 Cookie")
+            fee == 4 -> fail("网易云这首歌需要购买单曲或专辑")
+            fee == 1 -> fail("网易云这首歌需要会员权限")
+            code == 404 || code == -105 -> fail("网易云这首歌暂无版权或受地区限制")
+            else -> fail("网易云没有返回可播放地址")
+        }
+    }
+
+    /**
+     * 把取址响应里和音质有关的三件事抠出来。
+     *
+     * `freeTrialInfo` 非 null 就是试听片段 —— 这是唯一可信的「没有完整播放权」
+     * 信号，比 `fee` 准：有些会员曲目在会员态下 `fee` 仍是 1，但会给完整地址。
+     */
+    private fun play(track: MusicTrack, rawUrl: String, item: JsonObject?): OnlinePlayback =
+        OnlinePlayback(
+            track = track.copy(uri = SourceHttp.secure(rawUrl)),
+            qualityLevel = item?.str("level").orEmpty().ifBlank { null },
+            br = item?.intValue("br") ?: 0,
+            trial = item?.objectOrNull("freeTrialInfo") != null,
+        )
 
     // ---------------------------------------------------------------- 歌词
 
@@ -251,14 +340,14 @@ internal class NeteaseClientSource : ClientSourceProvider {
         }
 
     /** 当前登录账号的 uid；未登录返回 null。 */
-    private fun currentUid(jar: String): Long? {
+    private suspend fun currentUid(jar: String): Long? {
         val account = SourceHttp.getJson("$BASE/api/nuser/account/get", referer = "$BASE/", cookie = jar)
             ?.objectOrNull("account") ?: return null
         val uid = account.longValue("id")
         return if (uid > 0) uid else null
     }
 
-    private fun playlistsOf(uid: Long, jar: String): List<UserPlaylistInfo> {
+    private suspend fun playlistsOf(uid: Long, jar: String): List<UserPlaylistInfo> {
         val list = SourceHttp.getJson(
             "$BASE/api/user/playlist?uid=$uid&limit=100&offset=0",
             referer = "$BASE/",
@@ -387,10 +476,12 @@ internal class NeteaseClientSource : ClientSourceProvider {
 
         private const val BASE = "https://music.163.com"
         private const val IMG_CDN = "https://p1.music.126.net"
-        private const val BITRATE = 320_000
         private const val MAGIC = "3go8&$8*3*3h0k(2)2"
 
         /** 账号页只摆十首「最近常听」，再多就是一张歌单了。 */
         private const val RECENT_LIMIT = 10
+
+        /** 批量取址一次最多问多少个 id：再多 URL 会超长，平台也会截断。 */
+        private const val BATCH_MAX_IDS = 100
     }
 }

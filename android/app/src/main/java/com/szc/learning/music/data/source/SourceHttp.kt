@@ -4,11 +4,21 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.szc.learning.core.network.SharedHttp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
 import java.net.URLEncoder
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * 客户端音源的公共请求层。
@@ -32,7 +42,7 @@ internal object SourceHttp {
             "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     /** 共享连接池：三个平台共用一条，避免每次切音源都重建 TLS 握手。 */
-    val client: OkHttpClient = OkHttpClient.Builder()
+    val client: OkHttpClient = SharedHttp.base.newBuilder()
         .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .followRedirects(true)
@@ -43,9 +53,12 @@ internal object SourceHttp {
     /**
      * GET 一段文本。失败返回 null —— 调用方靠 null 判断降级，不该收到异常。
      *
+     * 节流等待与 HTTP 调用都可取消：调用方 `withTimeout` / 协程取消时，
+     * 排队中的请求立刻放弃，在途请求 `call.cancel()`，不会继续占后面的名额。
+     *
      * @param referer 平台要校验来源，传错直接 403（QQ 的歌词接口尤其严格）
      */
-    fun getText(
+    suspend fun getText(
         url: String,
         referer: String,
         cookie: String = "",
@@ -62,19 +75,21 @@ internal object SourceHttp {
             .header("Referer", referer)
             .header("Accept", "application/json, text/plain, */*")
         if (cookie.isNotBlank()) builder.header("Cookie", cookie.trim())
-        return runCatching {
-            client.newCall(builder.build()).execute().use { response ->
-                // 1.2 一次性读完 body：OkHttp 的 ResponseBody 只能读一次
-                val body = runCatching { response.body?.string() }.getOrNull()
-                // 1.3 判定风控（403/429 或响应体里的限流码），命中就进冷却
-                SourceThrottle.inspect(host, response.code, body)
-                if (!response.isSuccessful) null else body
-            }
-        }.getOrNull()
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                client.newCall(builder.build()).await().use { response ->
+                    // 1.2 一次性读完 body：OkHttp 的 ResponseBody 只能读一次
+                    val body = runCatching { response.body?.string() }.getOrNull()
+                    // 1.3 判定风控（403/429 或响应体里的限流码），命中就进冷却
+                    SourceThrottle.inspect(host, response.code, body)
+                    if (!response.isSuccessful) null else body
+                }
+            }.getOrNull()
+        }
     }
 
     /** GET 一段 JSON。非对象、空串、解析失败一律返回 null。 */
-    fun getJson(
+    suspend fun getJson(
         url: String,
         referer: String,
         cookie: String = "",
@@ -92,7 +107,7 @@ internal object SourceHttp {
      * 版权受限时它 302 回来的是错误页，看起来像「能播」。
      * 所以只返回**确认是 audio 且跳转离开了外链接口**的最终 URL。
      */
-    fun probeAudio(
+    suspend fun probeAudio(
         url: String,
         referer: String,
         cookie: String = "",
@@ -106,19 +121,21 @@ internal object SourceHttp {
             .header("Referer", referer)
             .header("Range", "bytes=0-0")
         if (cookie.isNotBlank()) builder.header("Cookie", cookie.trim())
-        return runCatching {
-            client.newCall(builder.build()).execute().use { response ->
-                SourceThrottle.inspect(host, response.code, null)
-                val finalUrl = response.request.url.toString()
-                val type = response.body?.contentType()?.toString().orEmpty()
-                when {
-                    !response.isSuccessful -> null
-                    !type.contains("audio", ignoreCase = true) -> null
-                    finalUrl.contains("outer/url") -> null
-                    else -> finalUrl
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                client.newCall(builder.build()).await().use { response ->
+                    SourceThrottle.inspect(host, response.code, null)
+                    val finalUrl = response.request.url.toString()
+                    val type = response.body?.contentType()?.toString().orEmpty()
+                    when {
+                        !response.isSuccessful -> null
+                        !type.contains("audio", ignoreCase = true) -> null
+                        finalUrl.contains("outer/url") -> null
+                        else -> finalUrl
+                    }
                 }
-            }
-        }.getOrNull()
+            }.getOrNull()
+        }
     }
 
     // ---------------------------------------------------------------- 编码
@@ -153,6 +170,25 @@ internal object SourceHttp {
 
     private const val CONNECT_TIMEOUT_MS = 8_000L
     private const val READ_TIMEOUT_MS = 12_000L
+}
+
+/**
+ * 可取消的 OkHttp 调用。
+ *
+ * 用 enqueue 而不是阻塞的 execute：协程取消时 `call.cancel()` 会真的掐断连接，
+ * 而不是等 HTTP 自己返回后才发现结果已经没人要了。
+ */
+private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCancellation { cancel() }
+    enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            if (continuation.isActive) continuation.resumeWithException(e)
+        }
+
+        override fun onResponse(call: Call, response: Response) {
+            if (continuation.isActive) continuation.resume(response) else response.close()
+        }
+    })
 }
 
 // ---------------------------------------------------------------- JSON 安全取值

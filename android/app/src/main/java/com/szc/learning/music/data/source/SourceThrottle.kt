@@ -1,7 +1,11 @@
 package com.szc.learning.music.data.source
 
 import android.os.SystemClock
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 出站请求的节流与熔断。
@@ -21,6 +25,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
  * 有意为之的取舍：冷却时间（10 分钟）比平台实际要求的长。宁可少看一会儿数据，
  * 也不要把账号打进更长的黑名单。缓存层（[com.szc.learning.music.data.SourceAccountCache]）
  * 保证这段时间里用户看到的是上次的内容，不是空白。
+ *
+ * 等待用 `delay` 而不是 `Thread.sleep`：调用方都在协程里，页面切走 / 搜索作废时
+ * 能立刻取消，不会把已经没人要的请求排进队列、继续占后面的节流名额。
  */
 internal object SourceThrottle {
 
@@ -35,28 +42,26 @@ internal object SourceThrottle {
 
     private val RISK_PATTERN = Regex("\"code\"\\s*:\\s*-?460|\"err_code\"\\s*:\\s*30020")
 
-    private val locks = HashMap<String, Any>()
-    private val lastAt = HashMap<String, Long>()
-    private val cooldownUntil = HashMap<String, Long>()
+    /** 每个域名一把锁：等锁就是排队，delay 期间可被协程取消。 */
+    private val mutexes = ConcurrentHashMap<String, Mutex>()
+    private val lastAt = ConcurrentHashMap<String, Long>()
+    private val cooldownUntil = ConcurrentHashMap<String, Long>()
 
     /**
      * 取得一次请求许可。返回 false 表示该域名正在冷却，**不要发这个请求**。
      *
-     * 内部会 sleep 补足间隔，所以只能在 IO 线程调用。
+     * 会在协程里等待补足间隔；协程取消时立即返回（调用方随之取消，不发请求）。
      */
-    fun acquire(host: String): Boolean {
+    suspend fun acquire(host: String): Boolean {
         if (host.isBlank()) return true
-        val lock = lockFor(host)
-        synchronized(lock) {
+        return mutexFor(host).withLock {
             val now = SystemClock.elapsedRealtime()
             val until = cooldownUntil[host] ?: 0L
-            if (until > now) return false
+            if (until > now) return@withLock false
             val gap = (lastAt[host] ?: 0L) + MIN_GAP_MS - now
-            if (gap > 0) {
-                runCatching { Thread.sleep(gap) }
-            }
+            if (gap > 0) delay(gap)
             lastAt[host] = SystemClock.elapsedRealtime()
-            return true
+            true
         }
     }
 
@@ -86,7 +91,5 @@ internal object SourceThrottle {
 
     fun hostOf(url: String): String = runCatching { url.toHttpUrlOrNull()?.host }.getOrNull().orEmpty()
 
-    private fun lockFor(host: String): Any = synchronized(locks) {
-        locks.getOrPut(host) { Any() }
-    }
+    private fun mutexFor(host: String): Mutex = mutexes.getOrPut(host) { Mutex() }
 }

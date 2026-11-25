@@ -3,11 +3,14 @@ package com.szc.learning.music.data
 import com.szc.learning.core.common.AppResult
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.TrackSource
+import com.szc.learning.core.network.SharedHttp
 import com.szc.learning.core.network.music.MusicRepository
 import com.szc.learning.core.network.music.OnlinePlayback
 import com.szc.learning.core.network.music.OnlineSearchResult
 import com.szc.learning.core.network.music.UserPlaylistInfo
+import com.szc.learning.music.data.download.DownloadStore
 import com.szc.learning.music.data.local.KuwoDirectSource
+import com.szc.learning.music.data.source.AudioQuality
 import com.szc.learning.music.data.source.ClientSourceProvider
 import com.szc.learning.music.data.source.SourceAccount
 import kotlinx.coroutines.CoroutineScope
@@ -19,11 +22,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
@@ -49,6 +56,7 @@ class OnlineSourceRouter(
     providers: List<ClientSourceProvider>,
     private val configStore: SourceConfigStore,
     private val accountCache: SourceAccountCache,
+    private val downloadStore: DownloadStore,
     private val baseUrl: String,
     private val scope: CoroutineScope,
 ) {
@@ -60,6 +68,9 @@ class OnlineSourceRouter(
     /** 账号资料的单飞锁：两个页面同时要，只发一轮请求。 */
     private val accountMutex = Mutex()
 
+    /** 批量取址里后端兜底的并发上限：与 [com.szc.learning.music.data.PlayableFilter] 的并发度一致。 */
+    private val fallbackPermits = Semaphore(8)
+
     /**
      * 后端可达性。`null` = 还没探测过。
      *
@@ -69,7 +80,7 @@ class OnlineSourceRouter(
     private val _backendOnline = MutableStateFlow<Boolean?>(null)
     val backendOnline: StateFlow<Boolean?> = _backendOnline.asStateFlow()
 
-    private val probeClient = OkHttpClient.Builder()
+    private val probeClient = SharedHttp.base.newBuilder()
         .connectTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .readTimeout(PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         .build()
@@ -77,18 +88,35 @@ class OnlineSourceRouter(
     private var lastProbeAt = 0L
     private var watchJobStarted = false
 
+    /** 有没有前台页面。后台时后台探测循环挂起，回前台立即探一次。 */
+    private val foreground = MutableStateFlow(true)
+
+    /**
+     * 由 `LearningApp` 的 Activity 生命周期回调驱动。
+     *
+     * 不引入 ProcessLifecycleOwner：一个计数器就够了，也少一个依赖。
+     */
+    fun setForeground(active: Boolean) {
+        foreground.value = active
+    }
+
     /**
      * 启动后台探测。只在 [com.szc.learning.AppContainer] 里调一次。
      *
      * 间隔分两档：在线时 45 秒探一次（省电），离线时 15 秒探一次（用户可能在等兜底）。
+     * 没有前台页面时整个循环挂起 —— 播放服务会让进程长期存活，
+     * 但用户看不见的时候每 15 秒打一次后端纯属耗电。
      */
     fun startWatching() {
         if (watchJobStarted) return
         watchJobStarted = true
         scope.launch {
             while (isActive) {
+                foreground.first { it }
                 probeNow()
-                delay(if (_backendOnline.value == true) ONLINE_TTL_MS else OFFLINE_TTL_MS)
+                val wait = if (_backendOnline.value == true) ONLINE_TTL_MS else OFFLINE_TTL_MS
+                // 到点继续下一轮；中途退到后台就先停在这里
+                withTimeoutOrNull(wait) { foreground.first { !it } }
             }
         }
     }
@@ -210,18 +238,29 @@ class OnlineSourceRouter(
             return OnlinePlayback(track = null, message = KUWO_DISABLED_MESSAGE)
         }
 
-        // 1.1 客户端直连
+        // 1.0 已下载的曲目直接给本地文件，不起任何请求 ——
+        //     这是「离线可用」的落点：飞行模式下走的就是这一条
+        downloadStore.playableFile(track.key)?.let { file ->
+            return OnlinePlayback(
+                track = track.copy(uri = file.toURI().toString(), playable = true),
+            )
+        }
+
+        // 1.1 音质在这里读一次，客户端直连和后端兜底用同一个档位
+        val quality = configStore.quality()
+
+        // 1.2 客户端直连
         val provider = providerByKey[track.sourceKey]
         var clientFailure: OnlinePlayback? = null
         if (provider != null) {
             val cookie = configStore.cookieOf(provider.key)
-            val result = runCatching { provider.resolve(track, cookie) }.getOrNull()
+            val result = runCatching { provider.resolve(track, cookie, quality) }.getOrNull()
             if (result?.track != null) return result
             clientFailure = result
         }
 
-        // 1.2 后端兜底：换成别的平台也算成功，换不到再回客户端给的原因
-        val fallback = fallbackPlay(track)
+        // 1.3 后端兜底：换成别的平台也算成功，换不到再回客户端给的原因
+        val fallback = fallbackPlay(track, quality)
         if (fallback?.track != null) return fallback
 
         return clientFailure ?: fallback ?: OnlinePlayback(
@@ -230,9 +269,93 @@ class OnlineSourceRouter(
         )
     }
 
-    private suspend fun fallbackPlay(track: MusicTrack): OnlinePlayback? {
-        if (!probeNow(force = false)) return null
-        return when (val result = remote.playOnline(track, cookies = configStore.cookiesJson())) {
+    /** 该平台是否有真正的批量取址能力（目前只有网易云）。 */
+    fun canBatch(sourceKey: String): Boolean = providerByKey[sourceKey]?.supportsBatch == true
+
+    /**
+     * 批量取址：同一平台的曲目一次问一批，失败的逐首走后端兜底。
+     *
+     * 降级顺序与单曲 [play] 完全一致（客户端直连 → 后端换源），
+     * 返回 `key = MusicTrack.key`，包含全部输入曲目。
+     */
+    suspend fun playBatch(tracks: List<MusicTrack>): Map<String, OnlinePlayback> = coroutineScope {
+        if (tracks.isEmpty()) return@coroutineScope emptyMap()
+        // 音质整批只读一次，避免每条曲目都去读配置
+        val quality = configStore.quality()
+        val results = LinkedHashMap<String, OnlinePlayback>(tracks.size)
+        val pending = ArrayList<MusicTrack>(tracks.size)
+
+        // 与单曲 [play] 相同的前置判定：酷我直接判死，已下载的直接给本地文件
+        for (track in tracks) {
+            when {
+                track.sourceKey == KuwoDirectSource.KEY -> {
+                    results[track.key] = OnlinePlayback(track = null, message = KUWO_DISABLED_MESSAGE)
+                }
+                else -> {
+                    val file = downloadStore.playableFile(track.key)
+                    if (file != null) {
+                        results[track.key] = OnlinePlayback(
+                            track = track.copy(uri = file.toURI().toString(), playable = true),
+                        )
+                    } else {
+                        pending += track
+                    }
+                }
+            }
+        }
+
+        for ((sourceKey, group) in pending.groupBy { it.sourceKey }) {
+            val provider = providerByKey[sourceKey]
+            val clientResults: Map<String, OnlinePlayback> = if (provider == null) {
+                emptyMap()
+            } else {
+                val cookie = configStore.cookieOf(provider.key)
+                runCatching { provider.resolveBatch(group, cookie, quality) }.getOrElse {
+                    // 批量实现整体失败（不该发生）：退回逐首，保证结果完整
+                    group.mapNotNull { track ->
+                        runCatching { provider.resolve(track, cookie, quality) }.getOrNull()
+                            ?.let { track.key to it }
+                    }.toMap()
+                }
+            }
+
+            // 客户端拿不到的再走后端换源；并发上限与逐首验证保持一致
+            val fallbackResults = group
+                .filter { clientResults[it.key]?.track == null }
+                .map { track ->
+                    async {
+                        track.key to fallbackPermits.withPermit { fallbackPlay(track, quality) }
+                    }
+                }
+                .awaitAll()
+                .toMap()
+
+            for (track in group) {
+                val client = clientResults[track.key]
+                val fallback = fallbackResults[track.key]
+                results[track.key] = when {
+                    client?.track != null -> client
+                    fallback?.track != null -> fallback
+                    else -> client ?: fallback ?: OnlinePlayback(
+                        track = null,
+                        message = if (_backendOnline.value == false) {
+                            UNREACHABLE_MESSAGE
+                        } else {
+                            UNPLAYABLE_MESSAGE
+                        },
+                    )
+                }
+            }
+        }
+        results
+    }
+
+    private suspend fun fallbackPlay(track: MusicTrack, quality: AudioQuality): OnlinePlayback? {        if (!probeNow(force = false)) return null
+        return when (val result = remote.playOnline(
+            track,
+            cookies = configStore.cookiesJson(),
+            quality = quality.key,
+        )) {
             is AppResult.Success -> {
                 val resolved = result.data.track
                 // 后端换源后 source 可能变成酷我，同样要拦住
