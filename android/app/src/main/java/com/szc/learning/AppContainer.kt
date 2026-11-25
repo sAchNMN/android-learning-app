@@ -8,6 +8,7 @@ import com.szc.learning.music.data.DeviceIdStore
 import com.szc.learning.music.data.DislikeStore
 import com.szc.learning.music.data.FavoritesRepository
 import com.szc.learning.music.data.FavoritesStore
+import com.szc.learning.music.data.ListenDiaryStore
 import com.szc.learning.music.data.ListenStatsStore
 import com.szc.learning.music.data.ListenEventReporter
 import com.szc.learning.music.data.LocalMusicRepository
@@ -19,9 +20,14 @@ import com.szc.learning.music.data.PlayableFilter
 import com.szc.learning.music.data.QueueSnapshotStore
 import com.szc.learning.music.data.RecentStore
 import com.szc.learning.music.data.RecommendCacheStore
+import com.szc.learning.music.data.LocalPlaylistStore
+import com.szc.learning.music.data.LyricsOffsetStore
+import com.szc.learning.music.data.MusicSession
 import com.szc.learning.music.data.SharedPlaylistStore
 import com.szc.learning.music.data.SourceAccountCache
 import com.szc.learning.music.data.SourceConfigStore
+import com.szc.learning.music.data.download.DownloadManager
+import com.szc.learning.music.data.download.DownloadStore
 import com.szc.learning.music.data.room.TogetherListenManager
 import com.szc.learning.music.data.source.KugouClientSource
 import com.szc.learning.music.data.source.NeteaseClientSource
@@ -76,13 +82,16 @@ class AppContainer(context: Context) {
     val loginStore: LoginStore = LoginStore(context)
 
     /** 推荐结果缓存：断网时推荐页回放上一次的结果，而不是空白。 */
-    val recommendCacheStore: RecommendCacheStore = RecommendCacheStore(context)
+    val recommendCacheStore: RecommendCacheStore by lazy { RecommendCacheStore(context) }
 
     /** 听歌时长：累计真实播放秒数，用于"我的"页的小统计。 */
     val listenStatsStore: ListenStatsStore = ListenStatsStore(context)
 
+    /** 听歌日记：按天记时长与曲目，周报的数据来源。 */
+    val listenDiaryStore: ListenDiaryStore = ListenDiaryStore(context)
+
     /** 刷歌流的音频缓存：边播边写盘 + 预取下一首，只在本次会话有效。 */
-    val feedCache: FeedAudioCache = FeedAudioCache(context)
+    val feedCache: FeedAudioCache = FeedAudioCache(context, appScope)
 
     /** 音源开关 / 优先级 / Cookie，全部本机存，不再依赖 `/app/music/sources`。 */
     val sourceConfigStore: SourceConfigStore = SourceConfigStore(context)
@@ -96,6 +105,14 @@ class AppContainer(context: Context) {
     val sourceAccountCache: SourceAccountCache = SourceAccountCache(context)
 
     /**
+     * 离线文件索引。
+     *
+     * 必须在 [onlineSourceRouter] 之前创建：路由在取址前要先查它 ——
+     * 命中本地文件就完全不发请求，这是飞行模式下还能听歌的唯一路径。
+     */
+    val downloadStore: DownloadStore = DownloadStore(context)
+
+    /**
      * 在线音源路由：**客户端直连优先**，后端只在三个平台都失败时兜底。
      *
      * [OnlineSourceRouter.startWatching] 在构造时启动，把首次探测的 2.5 秒
@@ -106,9 +123,23 @@ class AppContainer(context: Context) {
         providers = listOf(NeteaseClientSource(), KugouClientSource()),
         configStore = sourceConfigStore,
         accountCache = sourceAccountCache,
+        downloadStore = downloadStore,
         baseUrl = BuildConfig.BASE_URL,
         scope = appScope,
     ).also { it.startWatching() }
+
+    /**
+     * 离线下载。
+     *
+     * 取址函数直接复用路由，下载与在线播放共用同一份音源优先级、Cookie 与音质设置。
+     * 传 lambda 而不是传 router 对象，是为了让依赖关系保持单向：
+     * 路由不知道下载器的存在，下载器只知道「怎么把一首歌换成地址」。
+     */
+    val downloadManager: DownloadManager = DownloadManager(
+        store = downloadStore,
+        resolve = { onlineSourceRouter.play(it) },
+        scope = appScope,
+    )
 
     /** 列表入库前验证可播性：换不到地址的在线曲目不展示。 */
     val playableFilter: PlayableFilter = PlayableFilter(onlineSourceRouter)
@@ -126,7 +157,13 @@ class AppContainer(context: Context) {
     )
 
     /** 导入的分享歌单：码在后端，但「我导入过哪些」是本机事实，离线也要能看。 */
-    val sharedPlaylistStore: SharedPlaylistStore = SharedPlaylistStore(context)
+    val sharedPlaylistStore: SharedPlaylistStore by lazy { SharedPlaylistStore(context) }
+
+    /** 自建歌单：用户可以随时增删改，和导入的分享歌单是两种语义，分表存。 */
+    val localPlaylistStore: LocalPlaylistStore by lazy { LocalPlaylistStore(context) }
+
+    /** 歌词校准：按曲目存的毫秒偏移，只影响本机渲染，不写回文件。 */
+    val lyricsOffsetStore: LyricsOffsetStore = LyricsOffsetStore(context)
 
     /** 全局唯一播放器。 */
     val playerController: PlayerController = PlayerController(context, appScope)
@@ -161,6 +198,27 @@ class AppContainer(context: Context) {
     )
 
     /**
+     * 进程级的曲库 / 最近播放 / 收藏 / 听歌时长 / 音源配置。
+     *
+     * 必须在这里、而不是每个 Activity 的 ViewModel 里各建一份：否则开着沉浸播放页听歌
+     * 会把听歌时长按开着的页面数重复累计，每次切歌也会写多遍「最近播放」。
+     * 所有页面共享这一份，VM 只负责转发。
+     */
+    val musicSession: MusicSession = MusicSession(
+        localMusicRepository = localMusicRepository,
+        recentStore = recentStore,
+        favoritesStore = favoritesStore,
+        favoritesRepository = favoritesRepository,
+        listenStatsStore = listenStatsStore,
+        listenDiaryStore = listenDiaryStore,
+        sourceConfigStore = sourceConfigStore,
+        onlineSourceRouter = onlineSourceRouter,
+        musicRepository = musicRepository,
+        player = playerController,
+        scope = appScope,
+    )
+
+    /**
      * 一起听。
      *
      * 构造不建连接：房间是用户主动开才存在的东西，App 一启动就连一个
@@ -169,12 +227,14 @@ class AppContainer(context: Context) {
      * 作用域挂在 [appScope] 上而不是某个页面：用户退出房间界面去翻歌单时，
      * 同步必须继续 —— 一起听的听众不会因为你翻到了"我的"页就听不到声音。
      */
-    val togetherListenManager: TogetherListenManager = TogetherListenManager(
-        appContext = context.applicationContext,
-        player = playerController,
-        router = onlineSourceRouter,
-        deviceId = deviceIdStore.id,
-        baseUrl = BuildConfig.BASE_URL,
-        parentScope = appScope,
-    )
+    val togetherListenManager: TogetherListenManager by lazy {
+        TogetherListenManager(
+            appContext = context.applicationContext,
+            player = playerController,
+            router = onlineSourceRouter,
+            deviceId = deviceIdStore.id,
+            baseUrl = BuildConfig.BASE_URL,
+            parentScope = appScope,
+        )
+    }
 }

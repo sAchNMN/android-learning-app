@@ -11,7 +11,9 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.szc.learning.core.common.music.MusicTrack
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -29,7 +31,7 @@ import java.io.File
  * SimpleCache 要求同一目录在进程内**只有一个实例**，所以它挂在 AppContainer 上，
  * 由 PlaybackService 取用，不要在这里以外的地方 new。
  */
-class FeedAudioCache(context: Context) {
+class FeedAudioCache(context: Context, private val scope: CoroutineScope) {
 
     private val appContext = context.applicationContext
     private val cacheDir = File(appContext.cacheDir, DIR_NAME)
@@ -38,14 +40,28 @@ class FeedAudioCache(context: Context) {
     private val cache: SimpleCache
 
     init {
-        // 上个进程的残留：先删干净再开缓存，SimpleCache 初始化时会重建索引文件
-        runCatching { cacheDir.deleteRecursively() }
+        // 上个进程的残留：改名是瞬时操作，先把旧目录挪开，新建的缓存照常从空开始；
+        // 真正的删除放到后台 IO。deleteRecursively 放主线程会拖慢首帧，
+        // 而且只删文件不删库会留下 ExoPlayer 索引表，启动次数越多表越大。
+        val stale = File(appContext.cacheDir, "$STALE_PREFIX${System.currentTimeMillis()}")
+        runCatching { if (cacheDir.exists()) cacheDir.renameTo(stale) }
         cacheDir.mkdirs()
         cache = SimpleCache(
             cacheDir,
             LeastRecentlyUsedCacheEvictor(MAX_BYTES),
             databaseProvider,
         )
+        scope.launch(Dispatchers.IO) { sweepStale() }
+    }
+
+    /** 后台清掉所有改名后的旧目录（含上次没删完的），连 ExoPlayer 索引一起。 */
+    private fun sweepStale() {
+        val keep = cacheDir.absolutePath
+        appContext.cacheDir.listFiles()?.forEach { old ->
+            if (old.absolutePath == keep || !old.name.startsWith(STALE_PREFIX)) return@forEach
+            runCatching { SimpleCache.delete(old, databaseProvider) }
+                .onFailure { runCatching { old.deleteRecursively() } }
+        }
     }
 
     /**
@@ -109,6 +125,9 @@ class FeedAudioCache(context: Context) {
 
     private companion object {
         const val DIR_NAME = "feed_audio"
+
+        /** 改名后的旧目录前缀，后台清理时按它识别。 */
+        const val STALE_PREFIX = "feed_audio-old-"
 
         /** 一次会话的内存上限：刷一小时也到不了，超了按 LRU 淘汰。 */
         const val MAX_BYTES = 256L * 1024 * 1024
