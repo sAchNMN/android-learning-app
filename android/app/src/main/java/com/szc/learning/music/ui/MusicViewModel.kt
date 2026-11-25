@@ -14,6 +14,7 @@ import com.szc.learning.core.network.music.ShareResult
 import com.szc.learning.core.network.music.SharedPlaylist
 import com.szc.learning.core.network.music.UserPlaylistInfo
 import com.szc.learning.music.data.PlayableFilter
+import com.szc.learning.music.data.QueueOrder
 import com.szc.learning.music.data.StoredPlaylist
 import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
@@ -1189,6 +1190,51 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun cyclePlayMode(): PlayMode? = player.cyclePlayMode()
 
     fun playAt(index: Int) = player.playAt(index)
+
+    /*
+     * ========================================================================
+     * 队列编辑
+     * ========================================================================
+     * 队列和 [feed] 是同一批歌的两个视图：队列是 media3 的播放时间线，
+     * feed 是播放页 ViewPager 的数据源。改队列不改 feed，翻页就会和实际播放错位。
+     *
+     * feed 按 key 定位而不是按索引：feed 里可能还有尚未换到地址的曲目
+     * （它们没进队列，索引天然不同）。按 key 改，多出来的那些原地不动。
+     */
+
+    /** 拖动排序。返回队列是否真的变了。 */
+    fun moveInQueue(from: Int, to: Int): Boolean {
+        val list = player.queue.value
+        if (from !in list.indices || to !in list.indices || from == to) return false
+        val moved = list[from]
+        val anchor = list[to]
+        if (!player.moveItem(from, to)) return false
+        _feed.value = QueueOrder.move(
+            feed = _feed.value,
+            movedKey = moved.key,
+            anchorKey = anchor.key,
+            toLater = to > from,
+        )
+        return true
+    }
+
+    /** 左滑移除。正在播的那首不动，返回 false 供 UI 还原行。 */
+    fun removeFromQueue(index: Int): Boolean {
+        val track = player.queue.value.getOrNull(index) ?: return false
+        if (!player.removeItem(index)) return false
+        _feed.value = _feed.value.filterNot { it.key == track.key }
+        return true
+    }
+
+    /** 清空队列只留当前曲，返回删掉的条数。 */
+    fun clearQueue(): Int {
+        val removed = player.clearQueue()
+        if (removed <= 0) return 0
+        // 清完之后队列只剩一首，就是刚才在播的那首（clearQueue 保证不删它）
+        val playing = player.queue.value.firstOrNull()?.key ?: return removed
+        _feed.value = _feed.value.filter { it.key == playing }
+        return removed
+    }
 
     // ---------------------------------------------------------------- 搜索
 

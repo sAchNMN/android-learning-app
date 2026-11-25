@@ -174,6 +174,67 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         }
     }
 
+    /*
+     * ========================================================================
+     * 队列编辑
+     * ========================================================================
+     * 三条限制写在方法里，UI 不用重复判断：
+     * 1) 不动正在播的那一首 —— 移除它会让音乐当场停掉，用户以为是 bug；
+     * 2) 索引以 [_queue] 为准，它和 media3 的时间线是同一份顺序；
+     * 3) 先算再改：media3 的 index 在删除后会整体前移，边删边读会删错歌。
+     *
+     * 命令发给跨进程的 MediaController，回执要等 onEvents；所以这里直接改
+     * [_queue] 并返回新值，不回头读 state（会读到上一帧）。
+     */
+
+    /**
+     * 队列内换位置。长按拖动排序用。
+     *
+     * `moveMediaItem` 的 to 是**移动前**的目标索引，和 UI 列表里"拖到第几行"
+     * 一致；所以本地 [_queue] 用同样的语义重排，两边不会错位。
+     */
+    fun moveItem(from: Int, to: Int): Boolean {
+        val current = controller ?: return false
+        val list = _queue.value
+        if (from !in list.indices || to !in list.indices || from == to) return false
+        current.moveMediaItem(from, to)
+        _queue.value = list.toMutableList().apply { add(to, removeAt(from)) }
+        return true
+    }
+
+    /** 从队列移除一首。正在播的那首拒绝移除，返回 false 让 UI 把行还原。 */
+    fun removeItem(index: Int): Boolean {
+        val current = controller ?: return false
+        val list = _queue.value
+        if (index !in list.indices) return false
+        if (index == current.currentMediaItemIndex) return false
+        current.removeMediaItem(index)
+        _queue.value = list.toMutableList().apply { removeAt(index) }
+        return true
+    }
+
+    /**
+     * 清空队列，只留正在播的那一首。
+     *
+     * 不留空队列、也不附赠"停播"：用户的预期是"把后面的删掉，这首继续放"。
+     * 随机模式下"后面"没有确定含义，所以这里按时间线顺序删，语义统一成"只留当前"。
+     *
+     * 从后往前删：往前删会让当前索引一路前移，得边删边算。
+     */
+    fun clearQueue(): Int {
+        val current = controller ?: return 0
+        val count = current.mediaItemCount
+        if (count <= 1) return 0
+        val playing = current.currentMediaItemIndex
+        if (playing !in 0 until count) return 0
+        val kept = _queue.value.getOrNull(playing) ?: return 0
+        for (index in count - 1 downTo 0) {
+            if (index != playing) current.removeMediaItem(index)
+        }
+        _queue.value = listOf(kept)
+        return count - 1
+    }
+
     /**
      * 推荐续流的兜底：队列变长时播放器可能已经停在 ENDED，加 MediaItem 不会自动起播。
      *

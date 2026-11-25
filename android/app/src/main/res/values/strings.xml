@@ -100,6 +100,10 @@
     <string name="player_feed_loading">正在为你选歌…</string>
     <string name="player_feed_ended">暂时拿不到新歌，看看网络或音源设置</string>
     <string name="queue_title">播放队列</string>
+    <string name="queue_count">%1$d 首</string>
+    <string name="queue_clear">清空</string>
+    <string name="queue_drag">拖动排序</string>
+    <string name="queue_clear_confirm">清空队列？正在播放的这首会保留</string>
 
     <!-- ================= 歌曲评论 ================= -->
     <string name="comment_title">评论</string>
@@ -114,6 +118,7 @@
     <string name="comment_delete_confirm">删除这条评论？</string>
     <string name="comment_no_track">还没有正在播放的歌</string>
     <string name="action_close">关闭</string>
+    <string name="action_cancel">取消</string>
 
     <!-- ================= 列表页 ================= -->
     <string name="track_list_play_all">播放全部</string>
