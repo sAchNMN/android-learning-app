@@ -1,6 +1,6 @@
 package com.szc.learning.music.ui.common
 
-import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.widget.ImageView
 import coil.load
 import com.szc.learning.core.common.music.MusicTrack
@@ -20,8 +20,7 @@ import com.szc.learning.core.common.music.MusicTrack
 fun ImageView.bindArt(track: MusicTrack, sizePx: Int = 320) {
     // 已经量过就用真实宽度：调用方传的 sizePx 都是估的，普遍偏大（列表行 48dp 却画 220px），
     // 白白多占 2~3 倍显存和绘制时间。还没量到时才退回调用方的估值。
-    val target = if (width > 0) width else sizePx
-    val fallback = BitmapDrawable(resources, CoverArt.of(track.key, target))
+    val fallback: Drawable = CoverArtDrawable(track.key)
     val art = track.artUri
     if (art.isNullOrBlank()) {
         setImageDrawable(fallback)
@@ -47,7 +46,7 @@ fun ImageView.bindArt(track: MusicTrack, sizePx: Int = 320) {
  */
 fun ImageView.bindBackdropArt(track: MusicTrack, sizePx: Int = 160, alpha: Float = 0.35f) {
     this.alpha = alpha
-    val fallback = BitmapDrawable(resources, CoverArt.of(track.key, sizePx))
+    val fallback: Drawable = CoverArtDrawable(track.key)
     val art = track.artUri
     if (art.isNullOrBlank()) {
         setImageDrawable(fallback)
