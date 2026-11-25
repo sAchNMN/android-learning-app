@@ -3,6 +3,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 /**
@@ -206,6 +207,9 @@ dependencies {
     implementation(libs.coil)
     // 封面取色：播放页背景跟着封面换色，Palette 是唯一官方实现，别自己写聚类
     implementation(libs.androidx.palette)
+    // 安装时把 baseline profile 编译进 dex / 落进 ART，首帧与滚动预热更早
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     // 购物车落盘（与 SessionStore 同一个 DataStore 库，各自一个文件名）
     implementation(libs.androidx.datastore.preferences)
