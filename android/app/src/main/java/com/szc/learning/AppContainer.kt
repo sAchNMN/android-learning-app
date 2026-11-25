@@ -20,11 +20,11 @@ import com.szc.learning.music.data.QueueSnapshotStore
 import com.szc.learning.music.data.RecentStore
 import com.szc.learning.music.data.RecommendCacheStore
 import com.szc.learning.music.data.SharedPlaylistStore
+import com.szc.learning.music.data.SourceAccountCache
 import com.szc.learning.music.data.SourceConfigStore
 import com.szc.learning.music.data.room.TogetherListenManager
 import com.szc.learning.music.data.source.KugouClientSource
 import com.szc.learning.music.data.source.NeteaseClientSource
-import com.szc.learning.music.data.source.QqClientSource
 import com.szc.learning.music.player.FeedAudioCache
 import com.szc.learning.music.player.PlayerController
 import kotlinx.coroutines.CoroutineScope
@@ -88,6 +88,14 @@ class AppContainer(context: Context) {
     val sourceConfigStore: SourceConfigStore = SourceConfigStore(context)
 
     /**
+     * 账号资料缓存（TTL 10 分钟 + 落盘）。
+     *
+     * 有了它，账号页才是「看一眼」而不是「抓一次」：进出页面、切 tab、
+     * 冷启动都不会重复打平台接口，这是避免被风控的基础。
+     */
+    val sourceAccountCache: SourceAccountCache = SourceAccountCache(context)
+
+    /**
      * 在线音源路由：**客户端直连优先**，后端只在三个平台都失败时兜底。
      *
      * [OnlineSourceRouter.startWatching] 在构造时启动，把首次探测的 2.5 秒
@@ -95,8 +103,9 @@ class AppContainer(context: Context) {
      */
     val onlineSourceRouter: OnlineSourceRouter = OnlineSourceRouter(
         remote = musicRepository,
-        providers = listOf(NeteaseClientSource(), KugouClientSource(), QqClientSource()),
+        providers = listOf(NeteaseClientSource(), KugouClientSource()),
         configStore = sourceConfigStore,
+        accountCache = sourceAccountCache,
         baseUrl = BuildConfig.BASE_URL,
         scope = appScope,
     ).also { it.startWatching() }

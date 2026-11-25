@@ -79,52 +79,13 @@ object SourceLoginSpecs {
         userAgent = DESKTOP_UA,
     )
 
-    private val QQ = SourceLoginSpec(
-        sourceKey = "qq",
-        labelRes = R.string.source_qq,
-        // 登录页只有桌面版才有二维码；移动版直接跳下载 App
-        loginUrl = "https://y.qq.com/",
-        cookieUrls = listOf("https://y.qq.com/", "https://c.y.qq.com/"),
-        allowedCookies = setOf(
-            "uin",
-            "p_uin",
-            "wxuin",
-            "qm_keyst",
-            "qqmusic_key",
-            "skey",
-            "p_skey",
-            "psrf_musickey_createtime",
-            "psrf_qqopenid",
-            "psrf_access_token_expiresat",
-        ),
-        // 真正能解锁播放的是 qm_keyst（网页端的 qqmusic_key），光有 uin 只是标识
-        requiredCookies = setOf("qm_keyst", "qqmusic_key"),
-        userAgent = DESKTOP_UA,
-    )
-
-    private val KUWO = SourceLoginSpec(
-        sourceKey = "kuwo",
-        labelRes = R.string.source_kuwo,
-        loginUrl = "https://www.kuwo.cn/",
-        cookieUrls = listOf("https://www.kuwo.cn/", "http://www.kuwo.cn/"),
-        allowedCookies = setOf(
-            "kw_token",
-            "kw_id",
-            "userid",
-            "kw_ukey",
-            "Hm_token",
-        ),
-        // kw_token 是酷我的 CSRF/设备令牌，游客访问首页也会下发 ——
-        // 这里只要有它就算「拿到了可用登录态」，不宣称是会员态。
-        requiredCookies = setOf("kw_token", "kw_id"),
-        userAgent = DESKTOP_UA,
-    )
-
+    /**
+     * 只保留网易云和酷狗：QQ 的网页登录态即便拿到，匿名/会员曲目取址仍大面积失败，
+     * 酷我的抗抓取接口已失效（返回的是提示音）。给一个登不进也听不了的入口没有意义。
+     */
     fun of(sourceKey: String): SourceLoginSpec? = when (sourceKey) {
         "netease" -> NETEASE
         "kugou" -> KUGOU
-        "qq" -> QQ
-        "kuwo" -> KUWO
         else -> null
     }
 }

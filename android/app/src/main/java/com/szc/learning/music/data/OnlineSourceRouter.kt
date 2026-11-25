@@ -9,6 +9,7 @@ import com.szc.learning.core.network.music.OnlineSearchResult
 import com.szc.learning.core.network.music.UserPlaylistInfo
 import com.szc.learning.music.data.local.KuwoDirectSource
 import com.szc.learning.music.data.source.ClientSourceProvider
+import com.szc.learning.music.data.source.SourceAccount
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -20,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -28,11 +31,11 @@ import java.util.concurrent.TimeUnit
 /**
  * 在线音源的统一入口。
  *
- * **主路径是客户端直连**：网易云 / 酷狗 / QQ 各有一份 [ClientSourceProvider]，
+ * **主路径是客户端直连**：网易云 / 酷狗各有一份 [ClientSourceProvider]，
  * 按用户在音源管理页排的优先级并行搜索，合并去重后返回。
  * 后端只在三种情况下参与：
  *
- * 1. 客户端三个平台全都没结果 —— 可能是平台改版，后端还有适配空间；
+ * 1. 客户端两个平台全都没结果 —— 可能是平台改版，后端还有适配空间；
  * 2. 客户端取址失败 —— 后端有换源策略，能再试别的平台；
  * 3. 分享码和评论 —— 这两件事物理上没法在单机上做。
  *
@@ -45,6 +48,7 @@ class OnlineSourceRouter(
     private val remote: MusicRepository,
     providers: List<ClientSourceProvider>,
     private val configStore: SourceConfigStore,
+    private val accountCache: SourceAccountCache,
     private val baseUrl: String,
     private val scope: CoroutineScope,
 ) {
@@ -52,6 +56,9 @@ class OnlineSourceRouter(
     /** 客户端直连实现，按 sourceKey 索引。 */
     private val providerByKey: Map<String, ClientSourceProvider> =
         providers.associateBy { it.key }
+
+    /** 账号资料的单飞锁：两个页面同时要，只发一轮请求。 */
+    private val accountMutex = Mutex()
 
     /**
      * 后端可达性。`null` = 还没探测过。
@@ -160,7 +167,7 @@ class OnlineSourceRouter(
      * 并行搜所有启用的平台，按平台**轮转交错**合并。
      *
      * 不能直接把各平台结果首尾相接再截断：网易云一家就能返回满 [limit] 条，
-     * 接在后面酷狗和 QQ 会被 `take(limit)` 整批切掉，用户看到的全是同一个平台，
+     * 接在后面酷狗会被 `take(limit)` 整批切掉，用户看到的全是同一个平台，
      * 而且一首播不了就无处可换。轮转保证每个平台都有代表。
      *
      * 单个平台失败只丢它自己的结果，不影响其它平台。
@@ -331,6 +338,45 @@ class OnlineSourceRouter(
             onSuccess = { AppResult.Success(it) },
             onFailure = { AppResult.Failure(it.message ?: "歌单加载失败") },
         )
+    }
+
+    // ---------------------------------------------------------------- 账号资料
+
+    /**
+     * 登录后的账号资料。
+     *
+     * 三层保护，顺序不能换：
+     * 1. **没有 Cookie 直接返回 null** —— 未登录不该产生任何请求；
+     * 2. **TTL 内读缓存** —— 进出页面、切 tab 都不打平台；
+     * 3. **Mutex 内二次检查** —— 两个页面同时要数据时只发一轮请求（单飞）。
+     *
+     * 请求失败时退回过期缓存：显示旧数据比显示空白有用，用户至少知道
+     * 自己登录的是哪个账号。真的连旧缓存都没有才返回 null。
+     */
+    suspend fun account(key: String, force: Boolean = false): SourceAccount? {
+        val provider = providerByKey[key] ?: return null
+        val cookie = configStore.cookieOf(key)
+        if (cookie.isBlank()) return null
+        if (!force) accountCache.get(key)?.let { return it }
+
+        return accountMutex.withLock {
+            // 4.1 等锁期间别的调用可能已经填好缓存，再查一次
+            if (!force) accountCache.get(key)?.let { return@withLock it }
+            // 4.2 真正的请求：provider 内部已按 3 次接口 + 节流执行
+            val fetched = runCatching { provider.account(cookie) }.getOrNull()
+            if (fetched != null) {
+                accountCache.put(fetched)
+                fetched
+            } else {
+                // 4.3 拿不到就退过期缓存，别让页面变空白
+                accountCache.getStale(key)
+            }
+        }
+    }
+
+    /** 退出登录时连同缓存一起清，下次登录不会读到上一个人的资料。 */
+    fun clearAccount(key: String) {
+        accountCache.clear(key)
     }
 
     // ---------------------------------------------------------------- 工具

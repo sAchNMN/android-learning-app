@@ -17,6 +17,7 @@ import com.szc.learning.music.data.PlayableFilter
 import com.szc.learning.music.data.StoredPlaylist
 import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
+import com.szc.learning.music.ui.account.AccountUiState
 import com.szc.learning.music.ui.common.sourceLabel
 import com.szc.learning.music.ui.rank.RankType
 import com.szc.learning.music.ui.rank.RankUiState
@@ -200,6 +201,15 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _sourceError = MutableStateFlow<String?>(null)
     val sourceError: StateFlow<String?> = _sourceError.asStateFlow()
+
+    // ---------------------------------------------------------------- 账号资料
+
+    /**
+     * 账号页状态。声明在所有依赖之后 —— 顶部 `init` 块里读后面声明的
+     * StateFlow 会拿到 null（属性按源码顺序初始化），启动即崩。
+     */
+    private val _accountState = MutableStateFlow(AccountUiState())
+    val accountState: StateFlow<AccountUiState> = _accountState.asStateFlow()
 
     /** 播放器状态直接转出去，页面不需要知道 PlayerController 的存在。 */
     val playerState: StateFlow<PlayerUiState> = player.state
@@ -1320,8 +1330,39 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setSourceCookie(key: String, cookie: String) {
+        val previous = container.sourceConfigStore.cookieOf(key)
+        // 换了账号（包括退出登录）就先清缓存：否则下一个账号的页面
+        // 会先闪一下上一个人的昵称和歌单
+        if (previous != cookie) container.onlineSourceRouter.clearAccount(key)
         container.sourceConfigStore.setCookie(key, cookie)
         loadSources()
+    }
+
+    /**
+     * 读取登录后的账号资料。
+     *
+     * 只做展示，不参与播放。缓存与节流都在 [OnlineSourceRouter.account] 里：
+     * 同一次会话反复进出账号页不会重复请求，这是避免被平台风控的前提。
+     */
+    fun loadAccount(sourceKey: String, force: Boolean = false) {
+        if (sourceKey.isBlank()) return
+        val current = _accountState.value
+        // 同一平台正在加载就不重复发起，防止连点刷新刷出一串请求
+        if (current.loading && current.sourceKey == sourceKey) return
+        _accountState.value = AccountUiState(
+            sourceKey = sourceKey,
+            account = if (current.sourceKey == sourceKey) current.account else null,
+            loading = true,
+        )
+        viewModelScope.launch {
+            val account = container.onlineSourceRouter.account(sourceKey, force)
+            _accountState.value = AccountUiState(
+                sourceKey = sourceKey,
+                account = account,
+                loading = false,
+                failed = account == null,
+            )
+        }
     }
 
     /** 上移/下移：交换两项的 priority，语义与原后端 `PUT /sources/{key}` 一致。 */

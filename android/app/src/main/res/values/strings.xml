@@ -11,7 +11,6 @@
     <!-- ================= 歌单 ================= -->
     <string name="playlist_tracks">%1$d 首</string>
     <string name="playlist_favorite_title">我喜欢的音乐</string>
-    <string name="playlist_cloud_title">云端热歌</string>
     <string name="playlist_local_title">本地珍藏</string>
     <string name="playlist_recent_title">最近播放</string>
     <string name="playlist_artist_title">%1$s精选</string>
@@ -64,7 +63,6 @@
     <string name="mine_stats_title">听歌统计</string>
     <string name="mine_stats_body">累计听歌 %1$d 分钟\n收藏 %2$d 首 · 最近播放 %3$d 首</string>
     <string name="mine_ok">知道了</string>
-    <string name="mine_entry_cloud">云端热歌</string>
     <string name="mine_entry_stats">听歌统计</string>
     <string name="mine_favorites_card">我喜欢的音乐</string>
     <string name="mine_recent_card">最近播放</string>
@@ -203,6 +201,39 @@
     <string name="source_saved">已保存</string>
     <string name="action_save">保存</string>
     <string name="source_empty">还没有可用的音源</string>
+
+    <!-- 音乐账号页：登录后能读到的平台资料 -->
+    <string name="mine_account_sub">%1$s · ID %2$s</string>
+    <string name="mine_account_no_stats">这个平台只提供昵称和头像</string>
+    <string name="account_title">音乐账号</string>
+    <string name="account_refresh">刷新账号</string>
+    <string name="account_action_view">查看账号</string>
+    <string name="account_failed">读不到账号信息，登录态可能已失效，重新登录一次</string>
+    <string name="account_user_id">ID %1$s</string>
+    <string name="account_vip_black">黑胶 VIP</string>
+    <string name="account_vip_package">音乐包</string>
+    <string name="account_vip_none">普通用户</string>
+    <string name="account_stat_level">等级</string>
+    <string name="account_stat_listen">累计听歌</string>
+    <string name="account_stat_follows">关注</string>
+    <string name="account_stat_fans">粉丝</string>
+    <string name="account_fact_vip">会员类型</string>
+    <string name="account_fact_playlists">歌单数量</string>
+    <string name="account_fact_subscribed">收藏歌单</string>
+    <string name="account_fact_created">注册时间</string>
+    <string name="account_fact_last_login">最近登录</string>
+    <string name="account_fact_gender">性别</string>
+    <string name="account_fact_birthday">生日</string>
+    <string name="account_gender_male">男</string>
+    <string name="account_gender_female">女</string>
+    <string name="account_play_count">%1$s 次</string>
+    <string name="account_playlists">我的歌单</string>
+    <string name="account_recent">最近常听</string>
+    <string name="account_recent_all">常听排行（全部时间）</string>
+    <string name="account_empty_playlists">这个账号还没有歌单</string>
+    <string name="account_no_profile">这个平台没有公开的账号资料接口，这里只能读到登录标识。登录它的作用是提高会员曲目的取址成功率。</string>
+    <string name="account_partial_profile">昵称和头像来自登录 Cookie，本地解析，不发请求。平台没有公开的听歌数据接口，等级和歌单读不到。登录的作用是提高会员曲目的取址成功率。</string>
+    <string name="account_cached_at">数据更新于 %1$s</string>
 
     <string name="search_section_online">在线</string>
     <string name="search_section_online_loading">在线 …</string>

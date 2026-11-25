@@ -21,7 +21,10 @@ import com.szc.learning.ui.main.MainActivity
 import com.szc.learning.ui.theme.ThemeManager
 
 /**
- * 首次启动的登录页：三个在线平台 + 仅本地播放。
+ * 首次启动的登录页：两个在线平台 + 仅本地播放。
+ *
+ * 只保留网易云和酷狗：QQ 音乐匿名态几乎取不到播放地址（`payplay=0` 也常回 104003），
+ * 留着入口只会让用户以为登录后能听，实际一首也放不出来。
  *
  * 在线平台沿用 [CookieLoginActivity] 的半自动网页登录：账号密码只在平台页面里输入，
  * App 只拿鉴权 Cookie 存到本机音源配置里，不经过任何第三方服务器。
@@ -91,14 +94,13 @@ class LoginActivity : AppCompatActivity() {
     private fun bindOptions() {
         binding.loginNetease.setOnClickListener { openPlatform(LoginStore.MODE_NETEASE) }
         binding.loginKugou.setOnClickListener { openPlatform(LoginStore.MODE_KUGOU) }
-        binding.loginQq.setOnClickListener { openPlatform(LoginStore.MODE_QQ) }
         binding.loginLocal.setOnClickListener {
             if (navigating) return@setOnClickListener
             navigating = true
             finishLogin(LoginStore.MODE_LOCAL)
         }
 
-        listOf(binding.loginNetease, binding.loginKugou, binding.loginQq).forEach {
+        listOf(binding.loginNetease, binding.loginKugou).forEach {
             it.installSpringPress(0.98f)
         }
         binding.loginLocal.installSpringPress(0.98f)

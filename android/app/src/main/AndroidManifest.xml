@@ -76,6 +76,11 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- 音乐账号：登录后能读到的平台资料 -->
+        <activity
+            android:name=".music.ui.account.AccountActivity"
+            android:exported="false" />
+
         <activity
             android:name=".music.ui.source.CookieLoginActivity"
             android:exported="false"

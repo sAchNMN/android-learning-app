@@ -26,6 +26,7 @@ import com.szc.learning.core.network.music.MusicSourceInfo
 import com.szc.learning.databinding.ActivitySourceBinding
 import com.szc.learning.music.data.local.KuwoDirectSource
 import com.szc.learning.music.ui.MusicViewModel
+import com.szc.learning.music.ui.account.AccountActivity
 import com.szc.learning.music.ui.common.sourceLabel
 import com.szc.learning.ui.theme.ThemeManager
 import kotlinx.coroutines.flow.combine
@@ -120,20 +121,35 @@ class SourceActivity : AppCompatActivity() {
         binding.sourceError.text = error.orEmpty()
     }
 
+    /**
+     * 音源操作菜单。
+     *
+     * 已登录的平台多一项「查看账号」：登录之后能读到什么，都收在账号页，
+     * 音源页只负责开关和凭证，不在这里堆资料。
+     */
     private fun showCookieOptions(item: MusicSourceInfo) {
-        val actions = mutableListOf(
-            getString(R.string.source_login_action),
-            getString(R.string.source_cookie_manual),
-        )
-        if (item.hasCookie) {
-            actions += getString(R.string.source_cookie_clear)
+        val canViewAccount = item.hasCookie && SourceLoginSpecs.of(item.key) != null
+        val actions = buildList {
+            if (canViewAccount) add(getString(R.string.account_action_view))
+            add(getString(R.string.source_login_action))
+            add(getString(R.string.source_cookie_manual))
+            if (item.hasCookie) add(getString(R.string.source_cookie_clear))
         }
+        val offset = if (canViewAccount) 1 else 0
+
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.source_cookie_dialog_title, item.label))
             .setItems(actions.toTypedArray()) { _, which ->
-                when (which) {
-                    0 -> cookieLoginLauncher.launch(CookieLoginActivity.intent(this, item.key))
-                    1 -> showManualCookieDialog(item)
+                when {
+                    canViewAccount && which == 0 ->
+                        AccountActivity.start(this, item.key)
+
+                    which == offset ->
+                        cookieLoginLauncher.launch(CookieLoginActivity.intent(this, item.key))
+
+                    which == offset + 1 ->
+                        showManualCookieDialog(item)
+
                     else -> {
                         viewModel.setSourceCookie(item.key, "")
                         toast(getString(R.string.source_login_cookie_cleared, item.label))

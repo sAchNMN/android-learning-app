@@ -13,8 +13,11 @@ import java.util.concurrent.TimeUnit
 /**
  * 客户端音源的公共请求层。
  *
- * 三个平台（网易云 / 酷狗 / QQ）的差异只在参数拼装和字段名，HTTP 部分完全一样，
+ * 两个平台（网易云 / 酷狗）的差异只在参数拼装和字段名，HTTP 部分完全一样，
  * 所以请求、Cookie 透传、日志、JSON 取值都收在这里，provider 只写业务。
+ *
+ * 所有出站请求都先过 [SourceThrottle]：同域名串行 + 最小间隔 + 风控熔断。
+ * 这是客户端直连的必需品 —— 没有服务端帮我们排队，一次连点就可能把登录态打降权。
  *
  * 一条硬规则：**任何 `JsonObject` 的取值都必须走本文件里的 [str] / [longValue] /
  * [objectOrNull] / [arrayOrNull]**。Gson 的 `getAsJsonObject(key)` 遇到 `"key": null`
@@ -48,6 +51,10 @@ internal object SourceHttp {
         cookie: String = "",
         ua: String = DESKTOP_UA,
     ): String? {
+        val host = SourceThrottle.hostOf(url)
+        // 1.1 冷却期内不发请求：继续打只会延长平台的封禁
+        if (!SourceThrottle.acquire(host)) return null
+
         val builder = Request.Builder()
             .url(url)
             .get()
@@ -57,7 +64,11 @@ internal object SourceHttp {
         if (cookie.isNotBlank()) builder.header("Cookie", cookie.trim())
         return runCatching {
             client.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) null else response.body?.string()
+                // 1.2 一次性读完 body：OkHttp 的 ResponseBody 只能读一次
+                val body = runCatching { response.body?.string() }.getOrNull()
+                // 1.3 判定风控（403/429 或响应体里的限流码），命中就进冷却
+                SourceThrottle.inspect(host, response.code, body)
+                if (!response.isSuccessful) null else body
             }
         }.getOrNull()
     }
@@ -86,6 +97,8 @@ internal object SourceHttp {
         referer: String,
         cookie: String = "",
     ): String? {
+        val host = SourceThrottle.hostOf(url)
+        if (!SourceThrottle.acquire(host)) return null
         val builder = Request.Builder()
             .url(url)
             .get()
@@ -95,6 +108,7 @@ internal object SourceHttp {
         if (cookie.isNotBlank()) builder.header("Cookie", cookie.trim())
         return runCatching {
             client.newCall(builder.build()).execute().use { response ->
+                SourceThrottle.inspect(host, response.code, null)
                 val finalUrl = response.request.url.toString()
                 val type = response.body?.contentType()?.toString().orEmpty()
                 when {

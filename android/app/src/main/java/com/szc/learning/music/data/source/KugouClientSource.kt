@@ -213,7 +213,114 @@ internal class KugouClientSource : ClientSourceProvider {
             }.getOrDefault("")
         }
 
+    // ---------------------------------------------------------------- 账号资料
+
+    /**
+     * 酷狗登录后能读到的东西，比网易云少得多。
+     *
+     * 用户资料接口（`mobilecdn` 的 user 系列、`gateway.kugou.com`）要么直接
+     * `Access Deny`，要么要 App 侧签名；网页版个人主页 302 回首页。
+     * 硬凑一套签名算法能拿到昵称，但那是把「随时会坏」当成功能交付，
+     * 还会因为请求变多而更容易被风控。
+     *
+     * 好消息是网页登录写进去的 `KuGoo=` 这条 Cookie 本身就是个小档案：
+     * `KugooID` / `UserName` / `NickName` / `Pic`（头像 URL）都在里面。
+     * 所以昵称和头像是**本地解析，一个请求都不发**。
+     *
+     * 等级、关注、累计听歌这些它确实没有，[SourceAccount.statsFromPlatform]
+     * 保持 false，页面只显示头部，不摆四个 0。
+     */
+    override suspend fun account(cookie: String): SourceAccount? {
+        val jar = parseCookie(cookie)
+        // 两种存法：手动粘贴的只带 userid；网页登录写入的是整条 KuGoo=
+        val kugoo = parseKugoo(jar["KuGoo"].orEmpty())
+        val userId = jar["userid"] ?: jar["user_id"] ?: kugoo["KugooID"].orEmpty()
+        if (userId.isBlank() || userId == "0") return null
+
+        // NickName 是给人看的；UserName 是 kgopen1932095019 这种登录名，只作兜底
+        val nickname = decodeKugouText(kugoo["NickName"].orEmpty())
+            .ifBlank { kugoo["UserName"].orEmpty() }
+
+        return SourceAccount(
+            sourceKey = KEY,
+            userId = userId,
+            nickname = nickname,
+            avatarUrl = kugoo["Pic"].orEmpty().takeIf { it.startsWith("http") }.orEmpty(),
+        )
+    }
+
     // ---------------------------------------------------------------- 工具
+
+    /** `KuGoo=KugooID=..&NickName=..&Pic=..` 这种内嵌串 → Map。 */
+    private fun parseKugoo(raw: String): Map<String, String> {
+        val map = LinkedHashMap<String, String>()
+        if (raw.isBlank()) return map
+        for (part in raw.split("&")) {
+            val index = part.indexOf('=')
+            if (index <= 0) continue
+            map[part.substring(0, index)] = part.substring(index + 1)
+        }
+        return map
+    }
+
+    /**
+     * 解码酷狗 Cookie 里的转义文本。
+     *
+     * 酷狗用 `%u4E2D`（UTF-16 码元）写中文，和标准的 `%E4%B8%AD`（UTF-8 字节）
+     * 混在同一条 Cookie 里。`URLDecoder` 只认后者，前者会原样吐出来变成乱码，
+     * 所以两种都得自己处理 —— 先攒连续的字节再按 UTF-8 解，才能拼对三字节汉字。
+     */
+    private fun decodeKugouText(raw: String): String {
+        if (raw.isBlank()) return ""
+        val out = StringBuilder(raw.length)
+        val pending = java.io.ByteArrayOutputStream()
+
+        fun flush() {
+            if (pending.size() > 0) {
+                out.append(String(pending.toByteArray(), Charsets.UTF_8))
+                pending.reset()
+            }
+        }
+
+        var i = 0
+        while (i < raw.length) {
+            val ch = raw[i]
+            if (ch != '%' || i + 1 >= raw.length) {
+                flush()
+                out.append(ch)
+                i++
+                continue
+            }
+            // %uXXXX：UTF-16 码元，直接就是一个字符
+            if (raw[i + 1] == 'u' || raw[i + 1] == 'U') {
+                val hex = raw.substring(i + 2, minOf(i + 6, raw.length))
+                val code = hex.toIntOrNull(16)
+                if (code != null && hex.length == 4) {
+                    flush()
+                    out.append(code.toChar())
+                    i += 6
+                    continue
+                }
+                flush()
+                out.append(ch)
+                i++
+                continue
+            }
+            // %XX：UTF-8 字节，攒起来一起解
+            val hex = raw.substring(i + 1, minOf(i + 3, raw.length))
+            val byte = hex.toIntOrNull(16)
+            if (byte != null && hex.length == 2) {
+                pending.write(byte)
+                i += 3
+                continue
+            }
+            flush()
+            out.append(ch)
+            i++
+        }
+        flush()
+        return out.toString()
+    }
 
     private fun auth(cookie: String): Auth {
         val jar = parseCookie(cookie)

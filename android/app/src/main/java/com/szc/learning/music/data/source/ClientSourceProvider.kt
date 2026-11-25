@@ -42,9 +42,16 @@ interface ClientSourceProvider {
 
     /**
      * 账号里的歌单。需要用户填了 Cookie，否则返回空 —— 只有网易云实现了这一层
-     * （酷狗和 QQ 的网页版没有等价的匿名/半匿名入口）。
+     * （酷狗的网页版没有等价的匿名/半匿名入口）。
      */
     suspend fun myPlaylists(cookie: String): List<UserPlaylistInfo> = emptyList()
+
+    /**
+     * 登录后的账号资料。拿不到就返回 null（未登录、登录态失效、平台没有公开接口）。
+     *
+     * 实现方**不抛异常**：账号页是纯展示，不该因为一个字段解析失败整页报错。
+     */
+    suspend fun account(cookie: String): SourceAccount? = null
 
     /** 歌单里的曲目。 */
     suspend fun playlistTracks(

@@ -114,13 +114,13 @@ class SourceConfigStore(context: Context) {
     fun seedFromRemote(remote: List<MusicSourceInfo>): Boolean {
         if (remote.isEmpty()) return false
         val existing = items.map { it.key }.toSet()
-        val missing = remote.filter { it.key !in existing }
+        // 后端的初始配置还带着酷我/QQ，本版本不支持，不能跟着它把死入口搬回来
+        val missing = remote.filter { it.key in SUPPORTED_KEYS && it.key !in existing }
         if (missing.isEmpty()) return false
         items += missing.map {
             SourceConfig(
                 key = it.key,
-                // 后端 SQL 初始值是酷我 enabled=1，但它的取址接口已失效；不跟随
-                enabled = it.enabled && it.key != KuwoDirectSource.KEY,
+                enabled = it.enabled,
                 priority = it.priority,
                 cookie = "",
             )
@@ -137,23 +137,28 @@ class SourceConfigStore(context: Context) {
         return true
     }
 
+    /**
+     * 只保留网易云和酷狗。
+     *
+     * 酷我 anti.s 失效（播出来是「请下载酷我 App」的提示音）；
+     * QQ 匿名态取址成功率接近零，且网页登录态实测也救不回来。
+     * 两个都从配置里彻底剔除，否则老用户的存档会一直把它们带回来。
+     */
     private fun load(): MutableList<SourceConfig> {
         val stored = runCatching {
             val json = prefs.getString(KEY_CONFIG, null)
             if (json.isNullOrBlank()) null else gson.fromJson<List<SourceConfig>>(json, type)
         }.getOrNull()
         if (!stored.isNullOrEmpty()) {
-            // 一次性迁移：老版本把酷我存成了 enabled=true，这里强制关掉并回写。
-            // 不这么做的话，音源管理页会显示一个点了没反应的开关，纯属误导。
-            val migrated = stored.map {
-                if (it.key == KuwoDirectSource.KEY && it.enabled) it.copy(enabled = false)
-                else it
-            }
-            if (migrated != stored) {
+            // 1.1 一次性迁移：剔除已下线的平台，酷我若被老版本存成开启也强制关掉
+            val migrated = stored
+                .filter { it.key in SUPPORTED_KEYS }
+                .map { if (it.key == KuwoDirectSource.KEY) it.copy(enabled = false) else it }
+            if (migrated.size != stored.size || migrated != stored) {
                 // 不能直接调 persist()：它读 items，而 items 正在初始化（by lazy 递归）。
                 prefs.edit().putString(KEY_CONFIG, gson.toJson(migrated)).apply()
             }
-            return migrated.toMutableList()
+            if (migrated.isNotEmpty()) return migrated.toMutableList()
         }
         return defaults().toMutableList()
     }
@@ -166,15 +171,13 @@ class SourceConfigStore(context: Context) {
         const val PREFS = "aurora_sources"
         const val KEY_CONFIG = "config_json"
 
-        /**
-         * 默认三个平台开启；酷我关闭 —— anti.s 取址接口失效，播出来是
-         * 「请下载酷我 App」的提示音，开着只会污染列表和播放。
-         */
+        /** 当前版本支持的音源。其余 key 一律视为历史数据，读配置时剔除。 */
+        val SUPPORTED_KEYS = setOf("netease", "kugou")
+
+        /** 默认两个平台开启，顺序即优先级。 */
         fun defaults(): List<SourceConfig> = listOf(
             SourceConfig("netease", enabled = true, priority = 10),
             SourceConfig("kugou", enabled = true, priority = 20),
-            SourceConfig("kuwo", enabled = false, priority = 30),
-            SourceConfig("qq", enabled = true, priority = 40),
         )
     }
 }

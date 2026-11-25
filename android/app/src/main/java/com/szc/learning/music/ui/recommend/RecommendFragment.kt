@@ -73,21 +73,25 @@ class RecommendFragment : Fragment(R.layout.fragment_recommend) {
     }
 
     /** 音源账号里的歌单：卡片只有标题/封面/总数，点开进详情页看曲目。 */
-    private val sourceAdapter = PlaylistRailAdapter { card ->
-        val playlist = sourceIndex[card.key]
-        if (playlist == null) {
-            viewModel.playTracks(card.tracks, 0, ::onPlayEvent)
-        } else {
-            PlaylistDetailActivity.start(
-                context = requireContext(),
-                source = playlist.source,
-                id = playlist.id,
-                name = playlist.name,
-                coverUrl = playlist.coverUrl,
-                trackCount = playlist.trackCount,
-            )
-        }
-    }
+    private val sourceAdapter = PlaylistRailAdapter(
+        onClick = { card ->
+            val playlist = sourceIndex[card.key]
+            if (playlist == null) {
+                viewModel.playTracks(card.tracks, 0, ::onPlayEvent)
+            } else {
+                PlaylistDetailActivity.start(
+                    context = requireContext(),
+                    source = playlist.source,
+                    id = playlist.id,
+                    name = playlist.name,
+                    coverUrl = playlist.coverUrl,
+                    trackCount = playlist.trackCount,
+                )
+            }
+        },
+        // 这一轨点下去是进详情页，封面不挂播放三角
+        showPlayBadge = false,
+    )
 
     /** 卡片 key → 音源歌单，点卡片时用它回查 source/id。 */
     private val sourceIndex = mutableMapOf<String, UserPlaylistInfo>()

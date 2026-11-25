@@ -139,42 +139,6 @@
                         app:tint="#80FFFFFF" />
                 </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="72dp"
-                    android:layout_marginEnd="16dp"
-                    android:background="#14FFFFFF" />
-
-                <LinearLayout
-                    android:id="@+id/loginQq"
-                    style="@style/Widget.LoginRow">
-
-                    <ImageView
-                        android:layout_width="42dp"
-                        android:layout_height="42dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_login_qq" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="14dp"
-                        android:layout_weight="1"
-                        android:fontFamily="sans-serif-medium"
-                        android:includeFontPadding="false"
-                        android:letterSpacing="-0.01"
-                        android:text="@string/source_qq"
-                        android:textColor="#F2F5FA"
-                        android:textSize="16sp" />
-
-                    <ImageView
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_chevron_right"
-                        app:tint="#80FFFFFF" />
-                </LinearLayout>
             </LinearLayout>
 
             <LinearLayout

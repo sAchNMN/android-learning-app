@@ -21,6 +21,7 @@
             app:coverRadius="@dimen/radius_lg" />
 
         <LinearLayout
+            android:id="@+id/playlistBadge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|start"
