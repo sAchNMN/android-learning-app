@@ -26,6 +26,7 @@ import com.szc.learning.LearningApp
 import com.szc.learning.R
 import com.szc.learning.ui.login.LoginActivity
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.theme.clearWindowBackground
 import com.szc.learning.databinding.ActivityMainBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.library.LibraryFragment
@@ -90,6 +91,8 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // 根布局已用 auCanvas 铺满整屏，窗口背景这层永远看不见
+        clearWindowBackground()
 
         // 启动时把焦点压在根布局上，避免第一个 tab 被系统焦点高亮套一圈
         binding.root.apply {

@@ -23,6 +23,7 @@ import com.szc.learning.databinding.ActivitySearchBinding
 import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.theme.clearWindowBackground
 import com.szc.learning.music.ui.track.SectionHeaderAdapter
 import com.szc.learning.music.ui.track.TrackAdapter
 import com.szc.learning.ui.main.MainActivity
@@ -88,6 +89,7 @@ class SearchActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivitySearchBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        clearWindowBackground()
 
         // 导航栏保持透明：不要系统给手势条下面加那层白色蒙版
         if (android.os.Build.VERSION.SDK_INT >= 29) {

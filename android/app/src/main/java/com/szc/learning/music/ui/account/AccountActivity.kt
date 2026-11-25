@@ -29,6 +29,7 @@ import com.szc.learning.music.ui.common.sourceLabel
 import com.szc.learning.music.ui.track.PlaylistRailAdapter
 import com.szc.learning.music.ui.track.TrackCardAdapter
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.theme.clearWindowBackground
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,6 +72,7 @@ class AccountActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityAccountBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        clearWindowBackground()
 
         sourceKey = intent.getStringExtra(EXTRA_KEY).orEmpty()
         if (sourceKey.isBlank()) {

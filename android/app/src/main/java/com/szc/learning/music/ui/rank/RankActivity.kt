@@ -25,6 +25,7 @@ import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.OnlinePlayEvent
 import com.szc.learning.ui.main.MainActivity
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.theme.clearWindowBackground
 import com.szc.learning.ui.theme.themeColor
 import kotlinx.coroutines.launch
 
@@ -52,6 +53,7 @@ class RankActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivityRankBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        clearWindowBackground()
 
         if (Build.VERSION.SDK_INT >= 29) {
             window.isNavigationBarContrastEnforced = false

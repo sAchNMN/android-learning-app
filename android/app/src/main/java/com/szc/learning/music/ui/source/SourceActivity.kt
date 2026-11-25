@@ -29,6 +29,7 @@ import com.szc.learning.music.ui.MusicViewModel
 import com.szc.learning.music.ui.account.AccountActivity
 import com.szc.learning.music.ui.common.sourceLabel
 import com.szc.learning.ui.theme.ThemeManager
+import com.szc.learning.ui.theme.clearWindowBackground
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -69,6 +70,7 @@ class SourceActivity : AppCompatActivity() {
         enableEdgeToEdge()
         binding = ActivitySourceBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        clearWindowBackground()
 
         if (android.os.Build.VERSION.SDK_INT >= 29) {
             window.isNavigationBarContrastEnforced = false
