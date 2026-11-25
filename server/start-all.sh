@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
-# 一键启动后端：Redis + RuoYi-Vue（8080）
+# 一键启动后端：MySQL + Redis + RuoYi-Vue（8080）
 #
 # 用法（仓库任意位置）：
 #   ./server/start-all.sh
+#   MYSQL_HOME=D:/mysql ./server/start-all.sh     # MySQL 装在别处时
 #
-# 相比原来的 start-redis.sh + start-backend.sh 两个终端：
-#   1) 幂等：Redis / 后端已在跑就跳过，不会起第二份
-#   2) 预检：jar、端口、MySQL、依赖命令，出错直接说人话
-#   3) 显式 --server.port=8080，压过本机把端口顶到 8066 的外部覆盖
-#   4) 轮询 /captchaImage 直到 200，失败时打印日志尾部
+# 覆盖范围：
+#   1) 幂等：MySQL / Redis / 后端已在跑就跳过，不会起第二份
+#   2) MySQL 不再是「只警告」——3306 没监听就拉起 mysqld 并等就绪
+#   3) 预检：jar、端口、Redis 二进制，出错直接说人话
+#   4) 显式 --server.port=8080，压过本机把端口顶到 8066 的外部覆盖
+#   5) 轮询 /captchaImage 直到 200，失败时打印日志尾部
 #
 # 服务用 nohup 脱离终端，脚本返回后继续运行。
-# 日志：server/redis-run.log、server/backend-run.log
+# 停止：./server/stop-all.sh
+# 日志：server/mysql-run.log、server/redis-run.log、server/backend-run.log
 set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -20,6 +23,11 @@ REDIS_CLI="$REDIS_DIR/redis-cli.exe"
 REDIS_LOG="$ROOT/redis-run.log"
 JAR="$ROOT/RuoYi-Vue/ruoyi-admin/target/ruoyi-admin.jar"
 BACKEND_LOG="$ROOT/backend-run.log"
+# MySQL 位置允许外部覆盖；本机绿色版装在 C:/tools/mysql，datadir 是 data2
+MYSQL_HOME="${MYSQL_HOME:-C:/tools/mysql}"
+MYSQLD="$MYSQL_HOME/bin/mysqld.exe"
+MYSQL_INI="$MYSQL_HOME/my.ini"
+MYSQL_LOG="$ROOT/mysql-run.log"
 PORT=8080
 HEALTH="http://localhost:${PORT}/captchaImage"
 
@@ -67,6 +75,15 @@ redis_alive() {
   [ -n "$(listener_pid 6379 || true)" ]
 }
 
+# my.ini 里 log-error 指向哪就去哪读，不硬编码 data2。
+# 取不到时按 mysqld 默认命名兜底，保证启动失败一定有日志可看。
+mysql_error_log() {
+  local p
+  p="$(grep -iE '^[[:space:]]*log-error' "$MYSQL_INI" 2>/dev/null \
+    | head -1 | cut -d= -f2- | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [ -n "$p" ]; then printf '%s' "$p"; else printf '%s' "$MYSQL_HOME/data/mysql-error.log"; fi
+}
+
 # ---------- 预检 ----------
 for cmd in java curl netstat; do
   command -v "$cmd" >/dev/null 2>&1 || die "找不到命令 $cmd，先配好 PATH。"
@@ -97,9 +114,32 @@ if [ -n "$PID" ]; then
   esac
 fi
 
-# MySQL 没起时后端可能仍能启动，但登录必挂，提前说清楚
-if [ -z "$(listener_pid 3306 || true)" ]; then
-  log "警告：3306 没监听，MySQL 未启动。后端能起来，但登录会失败。"
+# ---------- MySQL ----------
+# 顺序是硬依赖：库不起后端照样能拉起来，但每个查询都 500、登录必挂。
+# 与其起个半废的服务再让人猜，不如在这里就等它就绪。
+if [ -n "$(listener_pid 3306 || true)" ]; then
+  log "MySQL 已在运行（3306），跳过。"
+else
+  [ -x "$MYSQLD" ] || die "找不到 $MYSQLD。用 MYSQL_HOME=<MySQL 安装目录> ./server/start-all.sh 指定。"
+  [ -f "$MYSQL_INI" ] || die "找不到 $MYSQL_INI，MySQL 配置不完整。"
+  log "启动 MySQL（3306）…"
+  (
+    cd "$MYSQL_HOME" || exit 1
+    # my.ini 里的 basedir / datadir 是 Windows 路径，这里也传 Windows 路径：
+    # 别让 MSYS 把 C:/ 改写成 /c/，mysqld 不认
+    nohup ./bin/mysqld.exe --defaults-file="$(cygpath -w "$MYSQL_INI")" >> "$MYSQL_LOG" 2>&1 &
+  )
+  for _ in $(seq 1 30); do
+    [ -n "$(listener_pid 3306 || true)" ] && break
+    sleep 1
+  done
+  if [ -z "$(listener_pid 3306 || true)" ]; then
+    ERR="$(mysql_error_log)"
+    printf -- '--- MySQL 日志尾部（%s）---\n' "$ERR" >&2
+    tail -15 "$ERR" >&2
+    die "MySQL 30 秒内未监听 3306。常见原因：端口被占、datadir 被别的实例锁、my.ini 路径不对。"
+  fi
+  log "MySQL 就绪，PID=$(listener_pid 3306 || echo '?')"
 fi
 
 # ---------- Redis ----------
@@ -156,4 +196,4 @@ fi
 log "后端就绪：$HEALTH 返回 200，PID=$(listener_pid "$PORT" || echo '?')"
 ensure_adb_tunnel
 
-log "停止服务：netstat -ano | grep -E ':(8080|6379)[[:space:]]' 查 PID，再 taskkill //PID <PID> //F（Git Bash 写法）。"
+log "停止服务：./server/stop-all.sh"

@@ -47,6 +47,18 @@ cp -r server/RuoYi-Vue/ruoyi-admin/src/main/java/com/ruoyi/takeout/. server/busi
 cp -r server/RuoYi-Vue/ruoyi-admin/src/main/java/com/ruoyi/music/. server/business/music/
 ```
 
+## 若依工程必须补的三处改动
+
+这三处改在 `RuoYi-Vue/` 里，不入版本控制。**重新 clone 之后必须再改一遍**，否则编译不过或运行时出问题。
+
+| 文件 | 改什么 | 漏了会怎样 |
+| --- | --- | --- |
+| `ruoyi-admin/pom.xml` | 加 `spring-boot-starter-websocket` 依赖 | `RoomWebSocketHandler` 找不到 `WebSocketSession`，编译失败 |
+| `ruoyi-framework/.../config/SecurityConfig.java` | 放行 `/app/music/room/ws/**` | 一起听 WS 一直 401 重连，REST 接口却全正常 |
+| `ruoyi-admin/src/main/resources/application.yml` | `ruoyi.profile` 改成 `C:/ruoyi/uploadPath` | 默认 `D:/ruoyi/uploadPath`，D 盘不存在时上传/封面写不进去 |
+
+前两处的上下文理由写在 `RoomWebSocketConfig` 的类注释里，改之前先读那段。
+
 ## 为什么不做成独立 Maven 模块
 
 做成 `ruoyi-takeout` 模块能彻底摆脱「复制」这一步，但要改 `pom.xml` 的

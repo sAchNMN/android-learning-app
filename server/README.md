@@ -16,6 +16,8 @@ Android 与后台管理端的所有数据都来自这里。
 | --- | --- | --- |
 | `RuoYi-Vue/` | 若依服务端源码，独立 clone，不入版本控制 | `mvn package` 通过 |
 | `business/takeout/` | 外卖业务源码（包 `com.ruoyi.takeout`），版本控制中的唯一可信来源 | 已同步到 `RuoYi-Vue/` |
+| `start-all.sh` | MySQL + Redis + 后端，幂等启动 | 实测通过 |
+| `stop-all.sh` | 反序停止，MySQL 走 mysqladmin | 实测通过 |
 | `docker-compose.yml` | MySQL + Redis（可选；本机 3306 已被占用） | — |
 
 `business/` 是业务代码的备份与可信来源：`RuoYi-Vue/` 被 gitignore，
@@ -49,7 +51,7 @@ MYSQL="/c/Program Files/MySQL/MySQL Server 26.10/bin/mysql.exe"
 
 "$MYSQL" -uroot -p -e "CREATE DATABASE IF NOT EXISTS \`ry-vue\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
 
-"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20260417.sql   # 系统表
+"$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/ry_20261117.sql   # 系统表（文件名随版本变，以 ls RuoYi-Vue/sql 为准）
 "$MYSQL" -uroot -p ry-vue < RuoYi-Vue/sql/quartz.sql         # 定时任务表
 ```
 
@@ -74,23 +76,24 @@ WSL 里 `sudo` 需要交互密码装不了，Docker 也没装，所以用了 **W
 ### 3.1 服务端
 
 ```bash
-# 1) Redis，占用一个终端窗口
-./server/start-redis.sh
-
-# 2) 服务端，另开一个终端
-./server/start-backend.sh
+./server/start-all.sh     # MySQL → Redis → RuoYi，逐个等到就绪
+./server/stop-all.sh      # 反序停：后端 → Redis → MySQL
 ```
 
-**必须用 `start-backend.sh`，不要直接 `java -jar`。**
-本机环境会把端口顶到 **8066**（被 WorkBuddy 服务占用），只靠 `application.yml`
-里的 `server.port: 8080` 会启动失败。脚本里显式带 `--server.port=8080`，
-命令行参数优先级最高，能压过那个外部覆盖源。
+两个脚本都幂等：已在跑的服务跳过，没在跑的跳过。全部起完约 40 秒。
 
-首次启动约 25 秒。验证：
+MySQL 装在别处时用 `MYSQL_HOME=/d/mysql ./server/start-all.sh`；root 密码不是 `password`
+时停止用 `MYSQL_PWD=xxxx ./server/stop-all.sh`。
+
+**不要直接 `java -jar`。** 本机环境会把端口顶到 **8066**（被 WorkBuddy 服务占用），
+只靠 `application.yml` 里的 `server.port: 8080` 会启动失败。脚本里显式带
+`--server.port=8080`，命令行参数优先级最高，能压过那个外部覆盖源。
+
+验证：
 
 ```bash
 curl --noproxy '*' http://localhost:8080/captchaImage
-# 期望: {"msg":"操作成功","captchaEnabled":true,"uuid":"...","img":"..."}
+# 期望: {"msg":"操作成功","captchaEnabled":false,...}
 ```
 
 `--noproxy '*'` 不能省：本机代理会拦截 localhost 请求，导致看到 502 却以为服务没起。
