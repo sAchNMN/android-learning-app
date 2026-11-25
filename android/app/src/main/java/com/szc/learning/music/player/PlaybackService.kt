@@ -135,6 +135,10 @@ class PlaybackService : MediaSessionService() {
             .build()
             .also { refreshLikeButton(it) }
 
+        // 服务被单独拉起（通知栏 / 蓝牙续播）时可能没有页面来触发连接：
+        // 让门面也连上，播放埋点与听歌时长才能继续工作。已有连接时是空操作。
+        (application as LearningApp).container.playerController.connect()
+
         // 换歌后心形要立刻切到新歌的状态；顺便把播放现场落盘（续播要用）
         player.addListener(
             object : Player.Listener {

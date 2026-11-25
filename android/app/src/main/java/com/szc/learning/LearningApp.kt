@@ -39,6 +39,8 @@ class LearningApp : Application(), ImageLoaderFactory, Application.ActivityLifec
     // ---------------------------------------------------------------- 前后台
 
     override fun onActivityStarted(activity: Activity) {
+        // 首个页面出来后再连播放服务：冷启动时播放器是空队列，不必抢在首帧之前
+        container.playerController.connect()
         startedActivities++
         if (startedActivities == 1) container.onlineSourceRouter.setForeground(true)
     }
