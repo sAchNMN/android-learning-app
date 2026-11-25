@@ -7,7 +7,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.szc.learning.core.common.music.MusicTrack
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 
 /**
  * 上次的播放现场：队列、播到第几首、播到哪一秒。
@@ -43,7 +45,8 @@ class QueueSnapshotStore(context: Context) {
     }
 
     suspend fun write(snapshot: QueueSnapshot) {
-        val json = gson.toJson(snapshot)
+        // 整队序列化是纯 CPU 活，别让它落在调用方可能所在的主线程上
+        val json = withContext(Dispatchers.Default) { gson.toJson(snapshot) }
         appContext.queueDataStore.edit { it[KEY] = json }
     }
 

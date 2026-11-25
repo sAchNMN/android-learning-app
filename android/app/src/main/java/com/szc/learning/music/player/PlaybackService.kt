@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
@@ -27,6 +28,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 
@@ -76,6 +78,36 @@ class PlaybackService : MediaSessionService() {
     private val feedCache: FeedAudioCache
         get() = (application as LearningApp).container.feedCache
 
+    /**
+     * 播放现场落盘用的协程作用域。
+     *
+     * 不能用 [serviceScope]：它在 `onDestroy` 里被取消，会把正在写的那份快照一起掐掉。
+     * 队列的 `toTrack` 与 JSON 序列化都在这里的后台线程上做，主线程只取一次不可变列表。
+     */
+    private val snapshotScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** 队列内容的版本号：只有时间线因换队列 / 追加 / 删除而变化时才 +1。 */
+    private var playlistVersion = 0
+
+    /** 等写盘的最新现场。300ms 内的多次变化合并成一次。 */
+    private var pendingSnapshot: SnapshotRequest? = null
+    private var snapshotJob: Job? = null
+
+    /** 上一次真正写过的内容标识（队列版本, 索引, 位置），用于跳过重复落盘。 */
+    private var lastWrittenSnapshot: SnapshotKey? = null
+
+    private data class SnapshotRequest(
+        val items: List<MediaItem>,
+        val index: Int,
+        val positionMs: Long,
+        val version: Int,
+    )
+
+    private data class SnapshotKey(val version: Int, val index: Int, val positionMs: Long)
+
+    /** 通知栏「喜欢」按钮的当前输入：同一首歌、同一个收藏状态就不重设布局。 */
+    private var lastLikeButton: Pair<String, Boolean>? = null
+
     override fun onCreate() {
         super.onCreate()
 
@@ -103,6 +135,10 @@ class PlaybackService : MediaSessionService() {
             .build()
             .also { refreshLikeButton(it) }
 
+        // 服务被单独拉起（通知栏 / 蓝牙续播）时可能没有页面来触发连接：
+        // 让门面也连上，播放埋点与听歌时长才能继续工作。已有连接时是空操作。
+        (application as LearningApp).container.playerController.connect()
+
         // 换歌后心形要立刻切到新歌的状态；顺便把播放现场落盘（续播要用）
         player.addListener(
             object : Player.Listener {
@@ -119,13 +155,16 @@ class PlaybackService : MediaSessionService() {
                     timeline: androidx.media3.common.Timeline,
                     reason: Int,
                 ) {
-                    // 换队列 / 追加歌曲都走这里
+                    // SOURCE_UPDATE 只是时长等元数据就绪，队列内容没变，快照逐字节相同，不落盘
+                    if (reason != Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) return
+                    playlistVersion++
+                    updateWakeMode()
                     persistSnapshot(withPosition = false)
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     // 暂停这一刻的位置最值得记：用户下次点播放就该从这儿继续
-                    if (!isPlaying) persistSnapshot(withPosition = true)
+                    if (!isPlaying) persistSnapshot(withPosition = true, immediate = true)
                 }
             },
         )
@@ -240,12 +279,24 @@ class PlaybackService : MediaSessionService() {
      *
      * 只有「当前曲目 + 是否已收藏」两个输入：没有曲目时给空布局，
      * 别在通知栏上留一颗点了没反应的心的。
+     *
+     * 每次播放状态变化（缓冲 ↔ 就绪）都会走到这里，而 media3 每设一次布局
+     * 就会推给所有控制器、通知随之重建。输入没变就跳过。
      */
     private fun refreshLikeButton(session: MediaSession? = mediaSession) {
         val target = session ?: return
         val item = target.player.currentMediaItem
-            ?: return target.setCustomLayout(emptyList())
+        if (item == null) {
+            if (lastLikeButton != null) {
+                lastLikeButton = null
+                target.setCustomLayout(emptyList())
+            }
+            return
+        }
         val liked = favorites.isFavorite(item.mediaId)
+        val key = item.mediaId to liked
+        if (key == lastLikeButton) return
+        lastLikeButton = key
         val button = CommandButton.Builder()
             .setDisplayName(
                 getString(if (liked) R.string.player_unlike else R.string.player_like),
@@ -291,26 +342,77 @@ class PlaybackService : MediaSessionService() {
      * 落盘当前播放现场。
      *
      * [withPosition] 只有暂停时才为 true：切歌/换队列时上一首的位置已经没有意义，
-     * 记 0 才是对的。写盘一律走 Service 的作用域（异步），不阻塞播放线程。
+     * 记 0 才是对的。
+     *
+     * 主线程只做一次不可变快照（MediaItem 列表 + 索引/位置），`toTrack` 与 `toJson`
+     * 都在 [snapshotScope] 的后台线程上做 —— 切歌那一帧正是封面、歌词最忙的时候。
+     * [immediate] 为 true 时立即写（暂停 / 划掉任务 / 销毁），忽略 300ms 合并窗口。
      */
-    private fun persistSnapshot(withPosition: Boolean) {
+    private fun persistSnapshot(withPosition: Boolean, immediate: Boolean = false) {
         val player = mediaSession?.player ?: return
         if (player.mediaItemCount == 0) return
-        val tracks = (0 until player.mediaItemCount).map {
-            TrackMediaItem.toTrack(player.getMediaItemAt(it))
-        }
-        val snapshot = QueueSnapshot(
-            tracks = tracks,
+        pendingSnapshot = SnapshotRequest(
+            items = (0 until player.mediaItemCount).map { player.getMediaItemAt(it) },
             index = player.currentMediaItemIndex,
             positionMs = if (withPosition) player.currentPosition.coerceAtLeast(0L) else 0L,
+            version = playlistVersion,
         )
-        serviceScope?.launch { snapshotStore.write(snapshot) }
+        if (immediate) writePendingSnapshot() else scheduleSnapshotWrite()
+    }
+
+    private fun scheduleSnapshotWrite() {
+        if (snapshotJob?.isActive == true) return
+        // 合并窗口挂在 serviceScope（主线程）上，真正的重活才丢到 IO
+        snapshotJob = serviceScope?.launch {
+            delay(SNAPSHOT_COALESCE_MS)
+            writePendingSnapshot()
+        }
+    }
+
+    private fun writePendingSnapshot() {
+        snapshotJob?.cancel()
+        snapshotJob = null
+        val request = pendingSnapshot ?: return
+        pendingSnapshot = null
+        val key = SnapshotKey(request.version, request.index, request.positionMs)
+        // 内容没变（单曲循环的 transition、缓冲/就绪来回切）就不重写整份文件
+        if (key == lastWrittenSnapshot) return
+        lastWrittenSnapshot = key
+        snapshotScope.launch {
+            val snapshot = withContext(Dispatchers.Default) {
+                QueueSnapshot(
+                    tracks = request.items.map(TrackMediaItem::toTrack),
+                    index = request.index,
+                    positionMs = request.positionMs,
+                )
+            }
+            snapshotStore.write(snapshot)
+        }
+    }
+
+    /**
+     * 按队列里有没有网络曲目切换持锁模式。
+     *
+     * `WAKE_MODE_NETWORK` 会在播放时持一个 WifiLock；纯本地队列根本不需要它，
+     * 开着只会白耗电。混合队列保持 NETWORK —— 在线那几首播到一半不能被断网掐掉。
+     */
+    private fun updateWakeMode() {
+        val player = exoPlayer ?: return
+        var network = false
+        for (index in 0 until player.mediaItemCount) {
+            val scheme = player.getMediaItemAt(index).localConfiguration?.uri?.scheme
+            if (scheme == "http" || scheme == "https") {
+                network = true
+                break
+            }
+        }
+        player.setWakeMode(if (network) C.WAKE_MODE_NETWORK else C.WAKE_MODE_LOCAL)
     }
 
     /** 用户从最近任务里划掉应用：没在播就顺手结束服务，别留一个空进程。 */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        // 划掉任务卡片前先记一笔：这是「进程下一秒可能就没了」的唯一时机
-        persistSnapshot(withPosition = true)
+        // 划掉任务卡片前先记一笔：这是「进程下一秒可能就没了」的唯一时机，不等合并窗口
+        persistSnapshot(withPosition = true, immediate = true)
         val player = mediaSession?.player ?: return
         if (!player.playWhenReady || player.mediaItemCount == 0) {
             stopSelf()
@@ -318,6 +420,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        // 先把最后一份现场落盘再放手播放器；写盘在独立的 IO 作用域上，不会被取消
+        persistSnapshot(withPosition = true, immediate = true)
         sleepJob?.cancel()
         sleepJob = null
         serviceScope?.cancel()
@@ -339,3 +443,6 @@ class PlaybackService : MediaSessionService() {
 /** 淡出参数：30 步 × 100ms = 3 秒，从当前音量线性降到 0。 */
 private const val FADE_STEPS = 30
 private const val FADE_STEP_MS = 100L
+
+/** 快照合并窗口：300ms 内的多次变化只在最后写一次。 */
+private const val SNAPSHOT_COALESCE_MS = 300L

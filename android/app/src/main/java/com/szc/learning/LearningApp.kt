@@ -1,6 +1,8 @@
 package com.szc.learning
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.szc.learning.core.common.Logger
@@ -14,10 +16,13 @@ import com.szc.learning.ui.theme.ThemeManager
  *
  * 依赖容器是手写的（没有 Hilt），依赖关系一眼看穿，学习项目里比注解处理器更好调试。
  */
-class LearningApp : Application(), ImageLoaderFactory {
+class LearningApp : Application(), ImageLoaderFactory, Application.ActivityLifecycleCallbacks {
 
     lateinit var container: AppContainer
         private set
+
+    /** 处于 started 状态的 Activity 数：>0 就是有前台页面。 */
+    private var startedActivities = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -27,7 +32,33 @@ class LearningApp : Application(), ImageLoaderFactory {
         Logger.enabled = BuildConfig.DEBUG
         Logger.i("App", "启动，baseUrl=${BuildConfig.BASE_URL}")
         container = AppContainer(this)
+        // 后台探测（P1-5）靠它判断有没有前台页面，不引入 ProcessLifecycleOwner
+        registerActivityLifecycleCallbacks(this)
     }
+
+    // ---------------------------------------------------------------- 前后台
+
+    override fun onActivityStarted(activity: Activity) {
+        // 首个页面出来后再连播放服务：冷启动时播放器是空队列，不必抢在首帧之前
+        container.playerController.connect()
+        startedActivities++
+        if (startedActivities == 1) container.onlineSourceRouter.setForeground(true)
+    }
+
+    override fun onActivityStopped(activity: Activity) {
+        startedActivities = (startedActivities - 1).coerceAtLeast(0)
+        if (startedActivities == 0) container.onlineSourceRouter.setForeground(false)
+    }
+
+    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+
+    override fun onActivityResumed(activity: Activity) = Unit
+
+    override fun onActivityPaused(activity: Activity) = Unit
+
+    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
+
+    override fun onActivityDestroyed(activity: Activity) = Unit
 
     /**
      * 全局 Coil 配置。
@@ -38,9 +69,12 @@ class LearningApp : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .components { add(AudioArtFetcher.Factory(contentResolver)) }
         .crossfade(true)
-        // 玻璃的"高斯模糊"模式会把页面容器重画进一张小画布再模糊。
-        // 硬件位图画不进软件画布（会抛 IllegalArgumentException），
-        // 关掉 allowHardware 之后所有封面都是软位图，采样才稳定。
-        .allowHardware(false)
+        // 曾经关掉硬件位图是为了「玻璃高斯模糊要把容器画进软件画布」，那条路径已经删除。
+        // API 26+ 由 Coil 自动用硬件位图；需要退回软件位图时改这个开关即可。
+        .allowHardware(ALLOW_HARDWARE_BITMAPS)
         .build()
+
+    private companion object {
+        const val ALLOW_HARDWARE_BITMAPS = true
+    }
 }

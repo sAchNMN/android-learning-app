@@ -2,6 +2,7 @@ package com.szc.learning.music.ui.track
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -19,6 +20,17 @@ import com.szc.learning.music.ui.common.bindArt
  * 那一层的跳转由页面自己处理，这里只负责抛点击。
  */
 class PlaylistRailAdapter(
+    /**
+     * 封面上那个播放三角要不要显示。
+     *
+     * 本机歌单点一下直接开播，三角是诚实的；音源账号里的歌单点进去是详情页，
+     * 再挂一个播放键就是骗点击，所以那两处传 false。
+     *
+     * 放在 [onClick] 前面是有意的：这样 `PlaylistRailAdapter { ... }` 这种
+     * 尾随 lambda 写法仍然落在点击上，不会因为加了参数就得改所有调用点。
+     */
+    private val showPlayBadge: Boolean = true,
+    /** 点卡片做什么。 */
     private val onClick: (Playlist) -> Unit,
 ) : ListAdapter<Playlist, PlaylistRailAdapter.Holder>(DIFF) {
 
@@ -34,6 +46,7 @@ class PlaylistRailAdapter(
 
         fun bind(playlist: Playlist) {
             binding.playlistTitle.text = playlist.title
+            binding.playlistBadge.isVisible = showPlayBadge
             // 同步回来的歌单没有曲目详情，封面是平台下发的 URL，包一层临时曲目交给 Coil
             val artTrack = playlist.cover ?: playlist.coverUrl?.let { url ->
                 MusicTrack(

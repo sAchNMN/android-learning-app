@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 播放设置：定时关闭 + 倍速两组。行由 NowPlayingMenuSheet 动态铺进容器，
+<!-- 播放设置：定时关闭 + 倍速 + 音质三组。行由 NowPlayingMenuSheet 动态铺进容器，
      不写死 10 个 id —— 选项以后增减只改一处列表。 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/playOptionsRoot"
@@ -47,4 +47,38 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical" />
+
+    <TextView
+        android:id="@+id/qualityCaption"
+        style="@style/Text.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:text="@string/player_quality"
+        android:textColor="?attr/auInkSecondary" />
+
+    <LinearLayout
+        android:id="@+id/optionsQuality"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        style="@style/Text.Caption"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:text="@string/player_actions"
+        android:textColor="?attr/auInkSecondary" />
+
+    <LinearLayout
+        android:id="@+id/optionsActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
 </LinearLayout>
+

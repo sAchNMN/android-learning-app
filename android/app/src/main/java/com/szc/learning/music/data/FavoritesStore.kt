@@ -7,6 +7,7 @@ import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.TrackSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.util.concurrent.Executors
 
 /** 收藏的一份快照：键与完整曲目一起发，免得订阅方要读两次、还可能读到中间状态。 */
 data class FavoritesSnapshot(
@@ -54,6 +55,12 @@ class FavoritesStore(context: Context) {
     private val _flow: MutableStateFlow<FavoritesSnapshot> by flowLazy
     val flow: StateFlow<FavoritesSnapshot> get() = _flow
 
+    /** 键集合缓存：`isFavorite()` 每次重建整个 Set，列表滚动时会反复调用。 */
+    private var cachedKeys: Set<String>? = null
+
+    /** 串行写盘：内存仍是真相源，序列化与写文件不占主线程。 */
+    private val writeExecutor = Executors.newSingleThreadExecutor()
+
     @Synchronized
     fun snapshot(): FavoritesSnapshot = FavoritesSnapshot(keys(), items.toList())
 
@@ -61,7 +68,10 @@ class FavoritesStore(context: Context) {
     fun tracks(): List<MusicTrack> = items.toList()
 
     @Synchronized
-    fun keys(): Set<String> = items.map { it.key }.toSet() + legacyKeys
+    fun keys(): Set<String> {
+        cachedKeys?.let { return it }
+        return (items.map { it.key }.toSet() + legacyKeys).also { cachedKeys = it }
+    }
 
     @Synchronized
     fun isFavorite(key: String): Boolean = key in keys()
@@ -80,6 +90,7 @@ class FavoritesStore(context: Context) {
             // 旧数据里只有键，删掉时也要把键清掉，否则 keys() 又会把它算回来
             prefs.edit().putStringSet(KEY_LEGACY_KEYS, legacyKeys - track.key).apply()
         }
+        cachedKeys = null
         persist()
         publish()
         return nowFavorite
@@ -96,6 +107,7 @@ class FavoritesStore(context: Context) {
         val added = remote.filter { it.key !in existing }
         if (added.isEmpty()) return 0
         items.addAll(added)
+        cachedKeys = null
         persist()
         publish()
         return added.size
@@ -109,13 +121,18 @@ class FavoritesStore(context: Context) {
     }
 
     private fun persist() {
-        // 在线曲目的 uri 可能是播放时换到的临时 CDN 地址，落盘后下次启动就过期。
-        // 这里统一清掉，点播时会重新换址；本地/云端曲目的有效 uri 保留。
-        val serializable = items.map {
-            if (it.source == TrackSource.ONLINE) it.copy(uri = "", lyrics = null)
-            else it.copy(lyrics = null)
+        // 快照必须在调用线程取：items 是可变列表，后台线程晚一点读可能读到后续改动
+        val snapshot = items.toList()
+        writeExecutor.execute {
+            // 在线曲目的 uri 可能是播放时换到的临时 CDN 地址，落盘后下次启动就过期。
+            // 这里统一清掉，点播时会重新换址；本地/云端曲目的有效 uri 保留。
+            val serializable = snapshot.map {
+                if (it.source == TrackSource.ONLINE) it.copy(uri = "", lyrics = null)
+                else it.copy(lyrics = null)
+            }
+            // 序列化整份收藏是纯 CPU 活，别让主线程（以及 onPause 的 QueuedWork）等它
+            prefs.edit().putString(KEY_TRACKS, gson.toJson(serializable)).apply()
         }
-        prefs.edit().putString(KEY_TRACKS, gson.toJson(serializable)).apply()
     }
 
     private companion object {

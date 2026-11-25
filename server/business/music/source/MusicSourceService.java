@@ -574,12 +574,19 @@ public class MusicSourceService {
         return artist.trim();
     }
 
+    /**
+     * 音质白名单。
+     *
+     * 与客户端 `AudioQuality` 的 key 一一对应：standard / high / exhigh / lossless / hires。
+     * 不认识的值一律退回 exhigh（320k），不报错 —— 旧版客户端不会传这个参数，
+     * 新版客户端可能先于后端上线，两侧的容错方向必须都是「保守降级」。
+     */
     private static String normalizeQuality(String quality) {
         if (quality == null || quality.isBlank()) {
             return "exhigh";
         }
         String value = quality.trim().toLowerCase(Locale.ROOT);
-        return Set.of("standard", "high", "exhigh", "lossless").contains(value) ? value : "exhigh";
+        return Set.of("standard", "high", "exhigh", "lossless", "hires").contains(value) ? value : "exhigh";
     }
 
     private static List<OnlineTrack> interleave(List<List<OnlineTrack>> buckets, int limit) {

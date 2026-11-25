@@ -4,8 +4,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?attr/auCanvas">
+    android:layout_height="match_parent">
 
 <androidx.core.widget.NestedScrollView
     android:id="@+id/recommendScroll"
@@ -56,6 +55,15 @@
                 android:layout_width="0dp"
                 android:layout_height="1dp"
                 android:layout_weight="1" />
+
+            <ImageButton
+                android:id="@+id/recommendRank"
+                style="@style/Widget.IconButton"
+                android:layout_marginEnd="6dp"
+                android:layout_marginBottom="4dp"
+                android:contentDescription="@string/rank_entry"
+                android:src="@drawable/ic_rank"
+                app:tint="?attr/auInk" />
 
             <ImageButton
                 android:id="@+id/recommendSearch"

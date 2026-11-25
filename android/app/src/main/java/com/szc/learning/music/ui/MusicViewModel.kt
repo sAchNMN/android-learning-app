@@ -14,10 +14,21 @@ import com.szc.learning.core.network.music.ShareResult
 import com.szc.learning.core.network.music.SharedPlaylist
 import com.szc.learning.core.network.music.UserPlaylistInfo
 import com.szc.learning.music.data.PlayableFilter
+import com.szc.learning.music.data.LocalPlaylist
+import com.szc.learning.music.data.WeekReport
+import com.szc.learning.music.data.QueueOrder
 import com.szc.learning.music.data.StoredPlaylist
+import com.szc.learning.music.data.download.DownloadTask
+import com.szc.learning.music.data.download.OfflineTrack
+import com.szc.learning.music.data.source.AudioQuality
+import com.szc.learning.music.data.source.qualityFallback
+import com.szc.learning.music.player.LoopRange
 import com.szc.learning.music.player.PlayMode
 import com.szc.learning.music.player.PlayerUiState
+import com.szc.learning.music.ui.account.AccountUiState
 import com.szc.learning.music.ui.common.sourceLabel
+import com.szc.learning.music.ui.rank.RankType
+import com.szc.learning.music.ui.rank.RankUiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -47,24 +58,18 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val container = (application as LearningApp).container
     private val player = container.playerController
 
+    /** 进程级状态：曲库 / 最近播放 / 收藏 / 听歌时长 / 音源配置，全 App 只有一份。 */
+    private val session = container.musicSession
+
     /** 收藏的写入口与 Service 共用同一条路径（通知栏也能点红心）。 */
     private val favoritesRepo = container.favoritesRepository
 
-    private val _cloud = MutableStateFlow<List<MusicTrack>>(emptyList())
-    val cloud: StateFlow<List<MusicTrack>> = _cloud.asStateFlow()
-
-    private val _local = MutableStateFlow<List<MusicTrack>>(emptyList())
-    val local: StateFlow<List<MusicTrack>> = _local.asStateFlow()
-
-    private val _recent = MutableStateFlow<List<MusicTrack>>(emptyList())
-    val recent: StateFlow<List<MusicTrack>> = _recent.asStateFlow()
-
-    private val _favorites = MutableStateFlow(container.favoritesStore.keys())
-    val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
+    val local: StateFlow<List<MusicTrack>> = session.local
+    val recent: StateFlow<List<MusicTrack>> = session.recent
+    val favorites: StateFlow<Set<String>> = session.favorites
 
     /** 收藏的完整曲目：在线曲目也在里面，不再依赖「曲库里有没有这首歌」。 */
-    private val _favoriteTracks = MutableStateFlow(container.favoritesStore.tracks())
-    val favoriteList: StateFlow<List<MusicTrack>> = _favoriteTracks.asStateFlow()
+    val favoriteList: StateFlow<List<MusicTrack>> = session.favoriteList
 
     // ---------------------------------------------------------------- 推荐
 
@@ -91,6 +96,58 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private var lastRecommendAt = 0L
 
+    // ---------------------------------------------------------------- 榜单
+
+    private val _rank = MutableStateFlow(RankUiState())
+    val rank: StateFlow<RankUiState> = _rank.asStateFlow()
+
+    private var lastRankAt = 0L
+
+    /**
+     * 拉一次榜单。
+     *
+     * 没有离线降级：榜单是跨用户聚合，本机算出来的东西不是榜单 ——
+     * 显示一份"自己的播放次数排行"比显示"连不上"更误导。
+     * 失败时把原因原样带到 [RankUiState.message]，页面照实说。
+     *
+     * @param refresh 用户点了刷新 / 刚播完歌回到榜单，绕过 30 秒节流
+     */
+    fun loadRank(type: String = RankType.HOT, refresh: Boolean = false) {
+        if (_rank.value.loading) return
+        val current = _rank.value
+        if (!refresh && current.type == type && current.tracks.isNotEmpty() &&
+            System.currentTimeMillis() - lastRankAt < RANK_TTL_MS
+        ) {
+            return
+        }
+        _rank.value = current.copy(type = type, loading = true, message = null)
+        viewModelScope.launch {
+            when (val result = container.musicRepository.rank(type)) {
+                is AppResult.Success -> {
+                    val data = result.data
+                    _rank.value = RankUiState(
+                        type = type,
+                        loading = false,
+                        tracks = data.tracks,
+                        eventCount = data.eventCount,
+                        windowStart = data.windowStart,
+                        updatedAt = data.updatedAt,
+                        message = data.message,
+                    )
+                    lastRankAt = System.currentTimeMillis()
+                }
+
+                is AppResult.Failure -> _rank.value = current.copy(
+                    type = type,
+                    loading = false,
+                    tracks = emptyList(),
+                    eventCount = 0,
+                    message = result.message,
+                )
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- 同步
 
     private val _syncedPlaylists = MutableStateFlow<List<UserPlaylistInfo>>(emptyList())
@@ -115,21 +172,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _likeNotice = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val likeNotice: SharedFlow<String> = _likeNotice.asSharedFlow()
 
-    private val _listenMinutes = MutableStateFlow(container.listenStatsStore.minutes())
-    val listenMinutes: StateFlow<Long> = _listenMinutes.asStateFlow()
+    val listenMinutes: StateFlow<Long> = session.listenMinutes
 
     /** 当前播放队列。正在播放页的"队列"弹层直接读它。 */
     val queue: StateFlow<List<MusicTrack>> = player.queue
 
-    private val _cloudLoading = MutableStateFlow(false)
-    val cloudLoading: StateFlow<Boolean> = _cloudLoading.asStateFlow()
-
-    private val _localLoading = MutableStateFlow(false)
-    val localLoading: StateFlow<Boolean> = _localLoading.asStateFlow()
-
-    private val _cloudError = MutableStateFlow<String?>(null)
-    val cloudError: StateFlow<String?> = _cloudError.asStateFlow()
-
+    val localLoading: StateFlow<Boolean> = session.localLoading
     // ---------------------------------------------------------------- 在线音源
 
     private val _online = MutableStateFlow<List<MusicTrack>>(emptyList())
@@ -147,14 +195,20 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private var onlineJob: Job? = null
 
-    private val _sources = MutableStateFlow<List<MusicSourceInfo>>(emptyList())
-    val sources: StateFlow<List<MusicSourceInfo>> = _sources.asStateFlow()
+    val sources: StateFlow<List<MusicSourceInfo>> = session.sources
 
-    private val _sourcesLoading = MutableStateFlow(false)
-    val sourcesLoading: StateFlow<Boolean> = _sourcesLoading.asStateFlow()
+    val sourcesLoading: StateFlow<Boolean> = session.sourcesLoading
 
-    private val _sourceError = MutableStateFlow<String?>(null)
-    val sourceError: StateFlow<String?> = _sourceError.asStateFlow()
+    val sourceError: StateFlow<String?> = session.sourceError
+
+    // ---------------------------------------------------------------- 账号资料
+
+    /**
+     * 账号页状态。声明在所有依赖之后 —— 顶部 `init` 块里读后面声明的
+     * StateFlow 会拿到 null（属性按源码顺序初始化），启动即崩。
+     */
+    private val _accountState = MutableStateFlow(AccountUiState())
+    val accountState: StateFlow<AccountUiState> = _accountState.asStateFlow()
 
     /** 播放器状态直接转出去，页面不需要知道 PlayerController 的存在。 */
     val playerState: StateFlow<PlayerUiState> = player.state
@@ -185,35 +239,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.getOrNull()
 
-    // 累计听歌时长的游标。放在 ViewModel 里是因为它比任何页面都活得久。
-    private var statKey: String? = null
-    private var statPosition = 0L
-    private var statCarryMs = 0L
-
     init {
-        loadCloud()
-        // 曲目切换时才写历史。位置回调每秒好几次，不能每次都想写盘。
-        viewModelScope.launch {
-            player.state
-                .map { it.track?.key }
-                .distinctUntilChanged()
-                .collect { key ->
-                    if (key == null) return@collect
-                    player.state.value.track?.let { track ->
-                        container.recentStore.record(track)
-                        refreshRecent()
-                    }
-                }
-        }
-        observeListeningTime()
-        // 收藏以 Store 的 Flow 为准：通知栏（PlaybackService）改了收藏，页面这边要立刻看到
-        viewModelScope.launch {
-            favoritesRepo.flow.collect { snapshot ->
-                _favorites.value = snapshot.keys
-                _favoriteTracks.value = snapshot.tracks
-            }
-        }
-        // 同步结果由仓库统一产出，这里只做转发，UI 的订阅面不变
+        // 同步结果由仓库统一产出，这里只做转发，UI 的订阅面不变。
+        // 切歌记最近播放、听歌时长累计、收藏镜像都已下沉到 MusicSession：
+        // 它们是全进程只该执行一次的副作用，不能随 Activity 数量翻倍。
         viewModelScope.launch {
             favoritesRepo.notice.collect { _likeNotice.emit(it) }
         }
@@ -221,46 +250,13 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------- 曲库
 
-    fun loadCloud(force: Boolean = false) {
-        if (_cloudLoading.value) return
-        if (!force && _cloud.value.isNotEmpty()) return
-        _cloudLoading.value = true
-        viewModelScope.launch {
-            when (val result = container.musicRepository.tracks()) {
-                is AppResult.Success -> {
-                    _cloud.value = result.data
-                    _cloudError.value = null
-                }
+    fun loadLocal() = session.loadLocal()
 
-                is AppResult.Failure -> {
-                    _cloudError.value = result.message
-                }
-            }
-            _cloudLoading.value = false
-            refreshRecent()
-        }
-    }
+    fun refreshLocal() = session.loadLocal()
 
-    fun loadLocal() {
-        if (_localLoading.value) return
-        _localLoading.value = true
-        viewModelScope.launch {
-            _local.value = runCatching { container.localMusicRepository.load() }
-                .getOrDefault(emptyList())
-            _localLoading.value = false
-            refreshRecent()
-        }
-    }
+    fun allTracks(): List<MusicTrack> = session.local.value
 
-    fun refreshLocal() = loadLocal()
-
-    private fun refreshRecent() {
-        _recent.value = container.recentStore.resolve(_cloud.value + _local.value)
-    }
-
-    fun allTracks(): List<MusicTrack> = (_cloud.value + _local.value).distinctBy { it.key }
-
-    fun favoriteTracks(): List<MusicTrack> = _favoriteTracks.value
+    fun favoriteTracks(): List<MusicTrack> = session.favoriteList.value
 
     // ---------------------------------------------------------------- 收藏
 
@@ -276,16 +272,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleFavorite(track: MusicTrack): Boolean {
         val nowFavorite = favoritesRepo.toggle(track)
         // Flow 的收集是异步调度的，这一帧 UI 要读到新状态，所以再同步读一次
-        refreshFavorites()
+        session.refreshFavorites()
         return nowFavorite
     }
 
     fun isFavorite(key: String): Boolean = favoritesRepo.isFavorite(key)
-
-    private fun refreshFavorites() {
-        _favorites.value = container.favoritesStore.keys()
-        _favoriteTracks.value = container.favoritesStore.tracks()
-    }
 
     // ---------------------------------------------------------------- 推荐
 
@@ -293,9 +284,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
      * 拉一次「猜你喜欢」。
      *
      * 三级策略：
-     * 1. 后端可达 → 后端聚合推荐（四平台 + 平台推荐流补齐）
-     * 2. 后端不可达 → [LocalRecommendEngine] 本机算（酷我单平台，算法同口径）
+     * 1. [ClientRecommendEngine] 客户端直连音源算（口味歌手聚合搜索 + 平台推荐流）
+     * 2. 在线一首可播的都没有 → [LocalRecommendEngine] 只从本机曲库出歌
      * 3. 本地也空 → 上一次的缓存，标记 [recommendOffline]
+     *
+     * 后端不再是这条链路的一环：推荐本质是「拿这些歌手去搜」，搜得到就有得推。
      *
      * @param refresh true = 用户点「换一批」，换洗牌种子，同一天也能出不同结果
      */
@@ -312,37 +305,22 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val seed = if (refresh) System.currentTimeMillis() else null
                 val artists = tasteArtists()
-                var message: String? = null
 
-                if (container.onlineSourceRouter.probeNow(force = false)) {
-                    when (val result = container.musicRepository.recommend(
-                        deviceId = container.deviceIdStore.id,
-                        artists = artists,
-                        seed = seed,
-                        cookies = container.sourceConfigStore.cookiesJson(),
-                    )) {
-                        is AppResult.Success -> {
-                            if (result.data.tracks.isNotEmpty()) {
-                                // 换不到地址的曲目不展示：宁可少几首，也别让用户点了播不了
-                                val playable = container.playableFilter.filter(result.data.tracks)
-                                if (playable.isNotEmpty()) {
-                                    publishRecommend(
-                                        tracks = playable,
-                                        basedOn = result.data.basedOn,
-                                        reason = result.data.reason,
-                                        offline = false,
-                                    )
-                                    return@launch
-                                }
-                                message = null
-                            }
-                        }
-
-                        is AppResult.Failure -> message = result.message
-                    }
+                // 1.1 客户端直连：搜得到就有得推，搜不到再往下走
+                val online = container.clientRecommendEngine.recommend(artists, seed)
+                // 换不到地址的曲目不展示：宁可少几首，也别让用户点了播不了
+                val playable = container.playableFilter.filter(online.tracks)
+                if (playable.isNotEmpty()) {
+                    publishRecommend(
+                        tracks = playable,
+                        basedOn = online.basedOn,
+                        reason = online.reason,
+                        offline = false,
+                    )
+                    return@launch
                 }
 
-                // 后端不在（或推荐结果里没有可播曲目）：本机接管
+                // 1.2 在线全空：本机曲库接管
                 val local = container.localRecommendEngine.recommend(artists, seed)
                 val playableLocal = container.playableFilter.filter(local.tracks)
                 if (playableLocal.isNotEmpty()) {
@@ -353,7 +331,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                         offline = true,
                     )
                 } else {
-                    fallbackToCache(message)
+                    fallbackToCache(null)
                 }
             } finally {
                 _recommendLoading.value = false
@@ -410,7 +388,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         val weighted = buildList {
             addAll(container.favoritesStore.tracks().map { it.artist })
             addAll(container.favoritesStore.tracks().map { it.artist })
-            addAll(_recent.value.map { it.artist })
+            addAll(recent.value.map { it.artist })
         }
         return weighted
             .filter { it.isNotBlank() && !container.dislikeStore.isSeedBlocked(it) }
@@ -632,14 +610,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     /** 推荐一批，顺手把种子歌手排进探索队列。 */
     private suspend fun recommendBatch(seed: Long): List<MusicTrack> {
-        val result = container.musicRepository.recommend(
-            deviceId = container.deviceIdStore.id,
+        val data = container.clientRecommendEngine.recommend(
             artists = tasteArtists(),
             seed = seed,
             limit = FEED_PAGE_SIZE,
-            cookies = container.sourceConfigStore.cookiesJson(),
         )
-        val data = (result as? AppResult.Success)?.data ?: return emptyList()
         data.basedOn.forEach(::enqueueArtist)
         data.tracks.forEach { enqueueArtist(mainArtist(it.artist)) }
         return data.tracks
@@ -649,12 +624,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun nextCandidates(): List<MusicTrack> {
         val artist = feedArtistQueue.removeFirstOrNull()
         if (artist != null) {
-            val result = container.musicRepository.searchOnline(
-                artist,
-                limit = FEED_PAGE_SIZE,
-                cookies = container.sourceConfigStore.cookiesJson(),
-            )
-            val tracks = (result as? AppResult.Success)?.data?.tracks.orEmpty()
+            // 刷歌流和搜索页共用一条客户端直连链路，不再走 /app/music/search
+            val tracks = container.onlineSourceRouter.search(artist, limit = FEED_PAGE_SIZE).tracks
             if (tracks.isNotEmpty()) return tracks
         }
         return recommendBatch(seed = System.nanoTime())
@@ -788,21 +759,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
                 val likesResult = container.musicRepository.likes(container.deviceIdStore.id)
-                val playlistsResult = container.musicRepository.userPlaylists(
-                    container.sourceConfigStore.cookiesJson(),
-                )
+                // 账号歌单走客户端直连：Cookie 留在本机，也不用等后端多中转一跳
+                val playlists = container.onlineSourceRouter.myPlaylists()
 
                 val restored = (likesResult as? AppResult.Success)?.data?.let {
                     container.favoritesStore.merge(it)
                 } ?: 0
-                if (restored > 0) refreshFavorites()
+                if (restored > 0) session.refreshFavorites()
 
-            val playlists = (playlistsResult as? AppResult.Success)?.data
-            if (playlists != null) {
-                _syncedPlaylists.value = playlists
-            }
-            // 失败时保留上一次的歌单列表：静默同步挂一次就把「来自音源」整段清空
-            // 比不刷新更糟，用户会以为歌单被删了
+                // 空列表不覆盖上一次结果：静默同步挂一次就把「来自音源」整段清空
+                // 比不刷新更糟，用户会以为歌单被删了
+                if (playlists.isNotEmpty()) {
+                    _syncedPlaylists.value = playlists
+                }
 
                 if (notify) {
                     val message = when {
@@ -810,15 +779,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                             R.string.sync_failed, likesResult.message,
                         )
 
-                        playlistsResult is AppResult.Failure -> context.getString(
-                            R.string.sync_failed, playlistsResult.message,
+                        else -> context.getString(
+                            R.string.sync_done,
+                            restored,
+                            playlists.size.takeIf { it > 0 } ?: _syncedPlaylists.value.size,
                         )
-
-                    else -> context.getString(
-                        R.string.sync_done,
-                        restored,
-                        playlists?.size ?: _syncedPlaylists.value.size,
-                    )
                     }
                     _syncNotice.emit(message)
                 }
@@ -832,11 +797,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     /** 打开同步回来的歌单：拉曲目后按在线队列播放。 */
     fun playSyncedPlaylist(playlist: UserPlaylistInfo, onEvent: (OnlinePlayEvent) -> Unit) {
         viewModelScope.launch {
-            when (val result = container.musicRepository.playlistTracks(
-                playlist.source,
-                playlist.id,
-                playlist.name,
-                cookies = container.sourceConfigStore.cookiesJson(),
+            when (val result = container.onlineSourceRouter.playlistTracks(
+                source = playlist.source,
+                playlistId = playlist.id,
+                name = playlist.name,
             )) {
                 is AppResult.Success -> {
                     if (result.data.isEmpty()) {
@@ -860,15 +824,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
      * 不该在推荐页一进页面就全部下回来。
      */
     suspend fun playlistTracks(source: String, id: String, name: String): AppResult<List<MusicTrack>> {
-        val result = container.musicRepository.playlistTracks(
-            source,
-            id,
-            name,
-            cookies = container.sourceConfigStore.cookiesJson(),
-        )
+        val result = container.onlineSourceRouter.playlistTracks(source, id, name)
         // 平台歌单里会员曲/下架曲很常见，入列表前先验证，播不了的剔除
         return when (result) {
-            is AppResult.Success -> result.copy(data = container.playableFilter.filter(result.data))
+            is AppResult.Success -> AppResult.Success(container.playableFilter.filter(result.data))
             is AppResult.Failure -> result
         }
     }
@@ -1119,9 +1078,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------------------------------------------------------- 播放
 
-    fun playCloud(startIndex: Int) = player.play(_cloud.value, startIndex)
-
-    fun playLocal(startIndex: Int) = player.play(_local.value, startIndex)
+    fun playLocal(startIndex: Int) = player.play(session.local.value, startIndex)
 
     fun play(tracks: List<MusicTrack>, startIndex: Int) {
         if (tracks.isNotEmpty()) player.play(tracks, startIndex)
@@ -1189,6 +1146,51 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun cyclePlayMode(): PlayMode? = player.cyclePlayMode()
 
     fun playAt(index: Int) = player.playAt(index)
+
+    /*
+     * ========================================================================
+     * 队列编辑
+     * ========================================================================
+     * 队列和 [feed] 是同一批歌的两个视图：队列是 media3 的播放时间线，
+     * feed 是播放页 ViewPager 的数据源。改队列不改 feed，翻页就会和实际播放错位。
+     *
+     * feed 按 key 定位而不是按索引：feed 里可能还有尚未换到地址的曲目
+     * （它们没进队列，索引天然不同）。按 key 改，多出来的那些原地不动。
+     */
+
+    /** 拖动排序。返回队列是否真的变了。 */
+    fun moveInQueue(from: Int, to: Int): Boolean {
+        val list = player.queue.value
+        if (from !in list.indices || to !in list.indices || from == to) return false
+        val moved = list[from]
+        val anchor = list[to]
+        if (!player.moveItem(from, to)) return false
+        _feed.value = QueueOrder.move(
+            feed = _feed.value,
+            movedKey = moved.key,
+            anchorKey = anchor.key,
+            toLater = to > from,
+        )
+        return true
+    }
+
+    /** 左滑移除。正在播的那首不动，返回 false 供 UI 还原行。 */
+    fun removeFromQueue(index: Int): Boolean {
+        val track = player.queue.value.getOrNull(index) ?: return false
+        if (!player.removeItem(index)) return false
+        _feed.value = _feed.value.filterNot { it.key == track.key }
+        return true
+    }
+
+    /** 清空队列只留当前曲，返回删掉的条数。 */
+    fun clearQueue(): Int {
+        val removed = player.clearQueue()
+        if (removed <= 0) return 0
+        // 清完之后队列只剩一首，就是刚才在播的那首（clearQueue 保证不删它）
+        val playing = player.queue.value.firstOrNull()?.key ?: return removed
+        _feed.value = _feed.value.filter { it.key == playing }
+        return removed
+    }
 
     // ---------------------------------------------------------------- 搜索
 
@@ -1269,11 +1271,43 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             val resolved = playback.track
             if (resolved != null) {
                 player.play(listOf(resolved), 0)
-                onEvent(OnlinePlayEvent.Ready(switchNotice(playback)))
+                onEvent(OnlinePlayEvent.Ready(playbackNotice(playback)))
             } else {
                 onEvent(OnlinePlayEvent.Failed(playback.message ?: "当前不可播放"))
             }
         }
+    }
+
+    /** 换源优先于音质：一次点播只提示一件最该知道的事。 */
+    private fun playbackNotice(playback: OnlinePlayback): String? =
+        switchNotice(playback) ?: qualityNotice(playback)
+
+    /**
+     * 音质回执提示。
+     *
+     * 只有「平台实际给的比用户选的差」或「只给了试听片段」才提示，
+     * 按用户所选原样拿到时不打扰。判断依据是接口返回的 level/br/freeTrialInfo，
+     * 不是本地查到的会员身份 —— 会员过期、曲目没有无损母带都会静默降级，
+     * 提前查 vipType 只会得出错误结论。
+     */
+    private fun qualityNotice(playback: OnlinePlayback): String? {
+        if (playback.track == null) return null
+        val requested = audioQuality()
+        val fallback = qualityFallback(
+            requested = requested,
+            actualLevel = playback.qualityLevel,
+            actualBr = playback.br,
+            trial = playback.trial,
+        ) ?: return null
+
+        val context = getApplication<Application>()
+        if (fallback.trial) return context.getString(R.string.quality_trial)
+        val actual = fallback.actual ?: AudioQuality.STANDARD
+        return context.getString(
+            R.string.quality_fallback,
+            context.getString(fallback.requested.labelRes),
+            context.getString(actual.labelRes),
+        )
     }
 
     private fun switchNotice(playback: OnlinePlayback): String? {
@@ -1287,102 +1321,146 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    // ---------------------------------------------------------------- 音源管理
+    // ---------------------------------------------------------------- 音质
 
-    /** 是否已经从后端补过一次初始配置，只做一次。 */
-    private var seededFromRemote = false
+    /**
+     * 当前音质档位。
+     *
+     * 只影响**下一次取址**：已经交给 ExoPlayer 的流不会因为改设置而变码率，
+     * 所以 UI 上提示「下一首生效」，不做重取址 —— 重取会打断正在播的这首。
+     */
+    fun audioQuality(): AudioQuality = container.sourceConfigStore.quality()
+
+    fun setAudioQuality(quality: AudioQuality) = container.sourceConfigStore.setQuality(quality)
+
+    // ---------------------------------------------------------------- 离线下载
+
+    /** 下载队列状态。页面订阅它刷新进度，退出页面不影响下载继续跑。 */
+    val downloadTasks: StateFlow<Map<String, DownloadTask>> get() = container.downloadManager.tasks
+
+    fun downloadEntries(): List<OfflineTrack> = container.downloadStore.all()
+
+    fun downloadTotalBytes(): Long = container.downloadStore.totalBytes()
+
+    /** 离线条目 → 可播放曲目。文件已被系统清掉时返回 null，调用方据此摘脏数据。 */
+    fun downloadTrack(key: String): MusicTrack? =
+        container.downloadStore.find(key)?.let { container.downloadStore.toTrack(it) }
+
+    fun enqueueDownload(tracks: List<MusicTrack>) = container.downloadManager.enqueue(tracks)
+
+    fun deleteDownload(key: String): Boolean = container.downloadStore.remove(key)
+
+    // ---------------------------------------------------------------- 自建歌单
+
+    fun localPlaylists(): List<LocalPlaylist> = container.localPlaylistStore.all()
+
+    fun localPlaylist(id: String): LocalPlaylist? = container.localPlaylistStore.find(id)
+
+    fun createPlaylist(title: String): LocalPlaylist = container.localPlaylistStore.create(title)
+
+    fun renamePlaylist(id: String, title: String): Boolean =
+        container.localPlaylistStore.rename(id, title)
+
+    fun deletePlaylist(id: String): Boolean = container.localPlaylistStore.remove(id)
+
+    /** 加一首到歌单。返回 false 表示已经存在，UI 要如实提示而不是假装成功。 */
+    fun addToPlaylist(id: String, track: MusicTrack): Boolean =
+        container.localPlaylistStore.addTrack(id, track)
+
+    fun removeFromPlaylist(id: String, trackKey: String): Boolean =
+        container.localPlaylistStore.removeTrack(id, trackKey)
+
+    /** 正在播放的曲目；没有在播时返回 null。 */
+    fun currentTrack(): MusicTrack? = player.state.value.track
+
+    // ---------------------------------------------------------------- 歌词校准
+
+    /** 这首歌的歌词偏移（毫秒，正数=歌词提前）。没有校过就是 0。 */
+    fun lyricOffset(key: String): Long = container.lyricsOffsetStore.offsetOf(key)
+
+    fun shiftLyricOffset(key: String, deltaMs: Long): Long =
+        container.lyricsOffsetStore.shift(key, deltaMs)
+
+    fun resetLyricOffset(key: String): Long = container.lyricsOffsetStore.reset(key)
+
+    // ---------------------------------------------------------------- AB 循环
+
+    val loopRange: StateFlow<LoopRange?> get() = player.loopRange
+
+    val loopDraft: StateFlow<Long?> get() = player.loopDraft
+
+    fun markLoopStart() = player.markLoopStart()
+
+    /** 返回 false 表示 B 点无效（没设 A，或 B 在 A 之前）。 */
+    fun markLoopEnd(): Boolean = player.markLoopEnd()
+
+    fun clearLoop() = player.clearLoop()
+
+    // ---------------------------------------------------------------- 周报
+
+    /** 最近 7 天的听歌汇总。数据全在本机日记里，不需要后端。 */
+    fun weekReport(): WeekReport = container.listenDiaryStore.recentReport()
+
+    /**
+     * 是否有启用中的在线音源填了 Cookie。
+     *
+     * 只用来决定音质弹层的说明文案（未登录时提醒「多数曲目只有标准」），
+     * **不参与权限判断** —— 有没有无损权限由平台在取址响应里给出。
+     */
+    fun hasOnlineCookie(): Boolean {
+        val store = container.sourceConfigStore
+        return store.enabledKeys().any { store.cookieOf(it).isNotBlank() }
+    }
+
+    // ---------------------------------------------------------------- 音源管理
 
     /**
      * 音源配置读**本机**（[SourceConfigStore]），不再依赖 `/app/music/sources`。
      *
      * 后端的配置只用于首次初始化：补齐本机还没有的键，补完就不再往返。
      * 首帧必须有内容 —— 后端离线时音源管理页不能是空白页 + 错误提示。
+     *
+     * 状态本身下沉在 [com.szc.learning.music.data.MusicSession]，音源页改完主界面立刻可见。
      */
-    fun loadSources(force: Boolean = false) {
-        _sources.value = container.sourceConfigStore.infos()
-        _sourceError.value = null
-        _sourcesLoading.value = false
-        seedSourcesIfNeeded()
-    }
+    fun loadSources(force: Boolean = false) = session.loadSources(force)
 
-    private fun seedSourcesIfNeeded() {
-        if (seededFromRemote) return
-        seededFromRemote = true
+    fun setSourceEnabled(key: String, enabled: Boolean) = session.setSourceEnabled(key, enabled)
+
+    fun setSourceCookie(key: String, cookie: String) = session.setSourceCookie(key, cookie)
+
+    /**
+     * 读取登录后的账号资料。
+     *
+     * 只做展示，不参与播放。缓存与节流都在 [OnlineSourceRouter.account] 里：
+     * 同一次会话反复进出账号页不会重复请求，这是避免被平台风控的前提。
+     */
+    fun loadAccount(sourceKey: String, force: Boolean = false) {
+        if (sourceKey.isBlank()) return
+        val current = _accountState.value
+        // 同一平台正在加载就不重复发起，防止连点刷新刷出一串请求
+        if (current.loading && current.sourceKey == sourceKey) return
+        _accountState.value = AccountUiState(
+            sourceKey = sourceKey,
+            account = if (current.sourceKey == sourceKey) current.account else null,
+            loading = true,
+        )
         viewModelScope.launch {
-            // 先探一下，避免后端没起时白等 15 秒 connect timeout
-            if (!container.onlineSourceRouter.probeNow(force = false)) return@launch
-            when (val remote = container.musicRepository.sources()) {
-                is AppResult.Success -> {
-                    if (container.sourceConfigStore.seedFromRemote(remote.data)) {
-                        _sources.value = container.sourceConfigStore.infos()
-                    }
-                }
-
-                // 离线时补不到就用默认值，不值得打扰用户
-                is AppResult.Failure -> Unit
-            }
+            val account = container.onlineSourceRouter.account(sourceKey, force)
+            _accountState.value = AccountUiState(
+                sourceKey = sourceKey,
+                account = account,
+                loading = false,
+                failed = account == null,
+            )
         }
-    }
-
-    fun setSourceEnabled(key: String, enabled: Boolean) {
-        container.sourceConfigStore.setEnabled(key, enabled)
-        loadSources()
-    }
-
-    fun setSourceCookie(key: String, cookie: String) {
-        container.sourceConfigStore.setCookie(key, cookie)
-        loadSources()
     }
 
     /** 上移/下移：交换两项的 priority，语义与原后端 `PUT /sources/{key}` 一致。 */
-    fun moveSource(key: String, offset: Int) {
-        if (container.sourceConfigStore.move(key, offset)) loadSources()
-    }
+    fun moveSource(key: String, offset: Int) = session.moveSource(key, offset)
 
     // ---------------------------------------------------------------- 统计
 
-    /**
-     * 累计听歌时长。
-     *
-     * 进度已经从 [PlayerUiState] 拆出去了，所以这里改成 combine：状态（歌、是否在播）
-     * 与进度（350ms 一次）合起来算增量。暂停时进度不再推进，delta 恒为 0，自然不累计。
-     */
-    private fun observeListeningTime() {
-        viewModelScope.launch {
-            combine(player.state, player.position) { state, position -> state to position }
-                .collect { (state, position) ->
-                    val track = state.track
-                    if (track == null) {
-                        statKey = null
-                        statPosition = 0L
-                        return@collect
-                    }
-                    // 切歌、暂停、拖动进度都只挪游标，不记时长
-                    if (!state.isPlaying || statKey != track.key) {
-                        statKey = track.key
-                        statPosition = position
-                        return@collect
-                    }
-                    val delta = position - statPosition
-                    if (delta in 1..POSITION_GAP_MS) {
-                        statCarryMs += delta
-                        if (statCarryMs >= FLUSH_EVERY_MS) {
-                            val wholeSeconds = statCarryMs / 1000
-                            container.listenStatsStore.addSeconds(wholeSeconds)
-                            _listenMinutes.value = container.listenStatsStore.minutes()
-                            statCarryMs -= wholeSeconds * 1000
-                        }
-                    }
-                    statPosition = position
-                }
-        }
-    }
-
     private companion object {
-        /** 两次位置回调的正常间隔是 350ms；超过这个数说明用户拖了进度条。 */
-        const val POSITION_GAP_MS = 2_000L
-        const val FLUSH_EVERY_MS = 10_000L
-
         /** 评论每页条数。一页够刷两次屏幕，翻页节奏刚好。 */
         const val COMMENT_PAGE_SIZE = 20
         const val COMMENT_OFFLINE = "评论需要连接后端，当前后端未连接"
@@ -1390,6 +1468,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
         /** 推荐结果的有效期：10 分钟内反复切 tab 不重复请求。 */
         const val RECOMMEND_TTL_MS = 10 * 60 * 1000L
+
+        /** 榜单节流 30 秒：和后台的聚合缓存同频，短时间内重复进页面不必再查。 */
+        const val RANK_TTL_MS = 30_000L
 
         /** 「我的」页自动同步的最小间隔。 */
         const val LIBRARY_SYNC_TTL_MS = 5 * 60 * 1000L

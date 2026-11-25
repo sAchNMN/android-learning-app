@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  计数角标底（「听了 105 次」）。
+  比 bg_play_count 的 40% 黑更实一档：这张底压在封面上，而封面什么颜色都有可能，
+  40% 在深色封面上直接看不见字。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#B3000000" />
+    <corners android:radius="10dp" />
+</shape>

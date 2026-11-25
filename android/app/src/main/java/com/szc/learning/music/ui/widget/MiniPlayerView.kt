@@ -57,6 +57,9 @@ class MiniPlayerView @JvmOverloads constructor(
     /** 封面自转。暂停时 pause() 停在当前角度，不归零。 */
     private var spin: ObjectAnimator? = null
 
+    /** 最近一次的播放状态：从不可见恢复时按它决定要不要继续转。 */
+    private var lastPlaying = false
+
     private val taps = GestureDetector(
         context,
         object : GestureDetector.SimpleOnGestureListener() {
@@ -204,10 +207,13 @@ class MiniPlayerView @JvmOverloads constructor(
 
     /** 播放时缓慢自转；暂停停在当前角度（不是归零），看起来才像"唱片停住了"。 */
     private fun updateSpin(playing: Boolean) {
+        lastPlaying = playing
         if (!playing) {
             spin?.takeIf { it.isRunning }?.pause()
             return
         }
+        // 不可见时先不跑：无限动画在隐藏的 tab、其它 Activity 里同样逐帧回调
+        if (!isShown) return
         val animator = spin ?: ObjectAnimator.ofFloat(cover, View.ROTATION, 0f, 360f).apply {
             duration = SPIN_DURATION_MS
             interpolator = LinearInterpolator()
@@ -216,6 +222,15 @@ class MiniPlayerView @JvmOverloads constructor(
             start()
         }.also { spin = it }
         if (animator.isPaused) animator.resume()
+    }
+
+    /**
+     * 聚合可见性变化：迷你条被 GONE 或整个 Activity 退到后台时停掉自转，
+     * 回来时按当前播放状态恢复，角度保持不变。
+     */
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        if (isVisible) updateSpin(lastPlaying) else spin?.takeIf { it.isRunning }?.pause()
     }
 
     /**

@@ -38,7 +38,14 @@ object LrcParser {
     private val offsetTag = Regex("""\[offset:\s*([+-]?\d+)]""", RegexOption.IGNORE_CASE)
     private val metaTag = Regex("""^\[[a-zA-Z]+:.*]$""")
 
-    fun parse(raw: String?): LyricSheet {
+    /**
+     * 解析 LRC。
+     *
+     * [userOffsetMs] 是用户手动校准的偏移，正数=歌词提前。和文件自带的
+     * `[offset:xx]` 叠加：后者是制作者写进文件的修正，前者是「这首在我这台上差半秒」
+     * 的本地补救 —— 两种偏移来源不同，不能互相覆盖。
+     */
+    fun parse(raw: String?, userOffsetMs: Long = 0L): LyricSheet {
         val text = raw
             ?.replace("\r\n", "\n")
             ?.replace('\r', '\n')
@@ -46,7 +53,8 @@ object LrcParser {
             .orEmpty()
         if (text.isEmpty()) return LyricSheet.EMPTY
 
-        val offsetMs = offsetTag.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val fileOffsetMs = offsetTag.find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val offsetMs = fileOffsetMs + userOffsetMs
         val timed = ArrayList<LyricLine>()
         val plain = ArrayList<LyricLine>()
 
