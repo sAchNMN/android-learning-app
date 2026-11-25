@@ -34,8 +34,11 @@ import com.szc.learning.music.ui.common.CoverArt
 import com.szc.learning.music.ui.common.bindArt
 import com.szc.learning.music.ui.common.showListenStats
 import com.szc.learning.music.ui.common.sourceLabel
+import com.szc.learning.music.ui.download.DownloadActivity
 import com.szc.learning.music.ui.glass.GlassDialog
 import com.szc.learning.music.ui.motion.installSpringPress
+import com.szc.learning.music.ui.playlist.LocalPlaylistActivity
+import com.szc.learning.music.ui.report.WeekReportActivity
 import com.szc.learning.music.ui.room.RoomActivity
 import com.szc.learning.music.ui.source.SourceActivity
 import com.szc.learning.music.ui.track.PlaylistRailAdapter
@@ -105,7 +108,7 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
         _binding = FragmentMineBinding.bind(view)
 
         binding.mineEntries.apply {
-            layoutManager = GridLayoutManager(requireContext(), MineEntryAdapter.defaults().size)
+            layoutManager = GridLayoutManager(requireContext(), MineEntryAdapter.GRID_SPAN)
             adapter = entryAdapter
             setHasFixedSize(true)
         }
@@ -341,14 +344,14 @@ class MineFragment : Fragment(R.layout.fragment_mine) {
             MineEntryAdapter.KEY_TOGETHER ->
                 startActivity(android.content.Intent(requireContext(), RoomActivity::class.java))
 
-            MineEntryAdapter.KEY_STATS -> showListenStats(
-                requireContext(),
-                viewModel.listenMinutes.value,
-                viewModel.favorites.value.size,
-                viewModel.recent.value.size,
-            )
+            // 从「弹窗报个总数」升级成周报页：累计值仍在页面顶部，多的是本周曲线和最常听
+            MineEntryAdapter.KEY_STATS -> WeekReportActivity.start(requireContext())
 
             MineEntryAdapter.KEY_SOURCES -> SourceActivity.start(requireContext())
+
+            MineEntryAdapter.KEY_DOWNLOADS -> DownloadActivity.start(requireContext())
+
+            MineEntryAdapter.KEY_PLAYLISTS -> LocalPlaylistActivity.start(requireContext())
 
             MineEntryAdapter.KEY_IMPORT_SHARE -> showImportShareDialog()
 

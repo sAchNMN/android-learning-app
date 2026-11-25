@@ -43,11 +43,15 @@ class MusicRepository(
     /**
      * 换取播放地址。`fallback = true` 时后端会在当前平台不可播时自动换源，
      * 返回的 [OnlinePlayback.switchedFrom] / [OnlinePlayback.switchedTo] 非空即发生了换源。
+     *
+     * [quality] 用 `AudioQuality.key` 那种字符串（standard/high/exhigh/lossless/hires），
+     * 后端把它映射成各平台的码率参数；不传时后端按 exhigh（320k）处理。
      */
     suspend fun playOnline(
         track: MusicTrack,
         fallback: Boolean = true,
         cookies: String? = null,
+        quality: String? = null,
     ): AppResult<OnlinePlayback> =
         callData {
             api.playOnline(
@@ -60,7 +64,7 @@ class MusicRepository(
                 hash = track.hash.takeIf { it.isNotBlank() },
                 albumId = track.albumId.takeIf { it.isNotBlank() },
                 albumAudioId = track.albumAudioId.takeIf { it.isNotBlank() },
-                quality = "exhigh",
+                quality = quality,
                 fallback = fallback,
                 cookies = cookies,
             )
@@ -77,6 +81,8 @@ class MusicRepository(
                     ),
                     switchedFrom = dto.switchedFrom,
                     switchedTo = dto.switchedTo,
+                    qualityLevel = dto.quality?.takeIf { it.isNotBlank() },
+                    trial = dto.trial,
                 )
             } else {
                 OnlinePlayback(

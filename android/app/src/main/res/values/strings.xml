@@ -255,6 +255,7 @@
     <string name="player_fullscreen">沉浸全屏</string>
     <string name="player_sleep_timer">定时关闭</string>
     <string name="player_speed">播放倍速</string>
+    <string name="player_actions">操作</string>
     <string name="sleep_off">关闭</string>
     <string name="sleep_minutes">%1$d 分钟</string>
     <string name="sleep_track_end">播完当前歌曲</string>
@@ -264,6 +265,87 @@
     <string name="sleep_cancelled">已取消定时关闭</string>
     <string name="speed_value">%1$sx</string>
     <string name="speed_applied">倍速 %1$sx</string>
+
+    <!-- 音质。档位名与平台返回的 level 对照见 AudioQuality -->
+    <string name="player_quality">播放音质</string>
+    <string name="quality_standard">标准 128k</string>
+    <string name="quality_high">较高 192k</string>
+    <string name="quality_exhigh">极高 320k</string>
+    <string name="quality_lossless">无损 999k</string>
+    <string name="quality_hires">Hi-Res 1999k</string>
+    <string name="quality_vip_only">需会员</string>
+    <string name="quality_applied">音质设为 %1$s，下一首生效</string>
+    <string name="quality_no_cookie">未登录音源，多数曲目只能到标准音质</string>
+    <string name="quality_caption_guest">播放音质 · 未登录，多数曲目只有标准</string>
+    <string name="quality_fallback">当前账号没有「%1$s」权限，已回退「%2$s」</string>
+    <string name="quality_trial">会员专享曲目，只拿到试听片段</string>
+    <string name="quality_actual">实际 %1$s</string>
+
+    <!-- 离线下载 -->
+    <string name="mine_entry_downloads">离线下载</string>
+    <string name="download_title">离线下载</string>
+    <string name="download_favorites">下载收藏</string>
+    <string name="download_delete">删除</string>
+    <string name="download_empty">还没有离线歌曲\n点右上角把收藏的歌下载下来，没网也能听</string>
+    <string name="download_summary">%1$d 首 · 共 %2$s</string>
+    <string name="download_summary_empty">还没有离线歌曲</string>
+    <string name="download_deleted">已删除</string>
+    <string name="download_queued">已加入下载队列（%1$d 首）</string>
+    <string name="download_nothing">没有可下载的曲目</string>
+    <string name="download_progress">下载中 %1$d%%</string>
+    <string name="download_state_queued">等待下载</string>
+    <string name="download_state_failed">下载失败：%1$s</string>
+    <string name="download_delete_confirm">删除这首离线歌曲？文件会一并删掉。</string>
+
+    <!-- 自建歌单 -->
+    <string name="mine_entry_playlists">我的歌单</string>
+    <string name="local_playlist_title">我的歌单</string>
+    <string name="local_playlist_create">新建</string>
+    <string name="local_playlist_empty">还没有歌单\n点右上角新建一个，把喜欢的歌攒起来</string>
+    <string name="local_playlist_new_hint">给歌单起个名字</string>
+    <string name="local_playlist_rename">重命名</string>
+    <string name="local_playlist_delete">删除歌单</string>
+    <string name="local_playlist_delete_confirm">删除「%1$s」？里面的歌不会从收藏或本地删除。</string>
+    <string name="local_playlist_track_count">%1$d 首</string>
+    <string name="local_playlist_created">已创建「%1$s」</string>
+    <string name="local_playlist_deleted">已删除</string>
+    <string name="local_playlist_added">已加入「%1$s」</string>
+    <string name="local_playlist_exists">歌单里已经有这首了</string>
+    <string name="local_playlist_save_to">保存到歌单</string>
+    <string name="no_track_playing">当前没有在播放的歌曲</string>
+    <string name="lyric_offset_action">歌词偏移</string>
+    <string name="lyric_offset_title">歌词偏移 %1$s</string>
+    <string name="lyric_offset_minus">-0.5 秒（歌词提前）</string>
+    <string name="lyric_offset_plus">+0.5 秒（歌词推迟）</string>
+    <string name="lyric_offset_reset">清零</string>
+    <string name="lyric_offset_applied">歌词偏移 %1$s</string>
+    <string name="loop_action">AB 段循环</string>
+    <string name="loop_title_none">AB 段循环（未设置）</string>
+    <string name="loop_title_draft">A 点 %1$s，再设 B</string>
+    <string name="loop_title_active">循环 %1$s — %2$s</string>
+    <string name="loop_set_a">把当前位置设为 A</string>
+    <string name="loop_set_b">把当前位置设为 B</string>
+    <string name="loop_clear">关闭循环</string>
+    <string name="loop_invalid">B 点要在 A 点之后至少 2 秒</string>
+
+    <!-- 听歌周报 -->
+    <string name="report_title">听歌周报</string>
+    <string name="report_sub">%1$d 天有播放 · 最多的一天 %2$s</string>
+    <string name="report_lifetime">累计听歌 %1$s</string>
+    <string name="report_top_header">本周最常听</string>
+    <string name="report_empty">最近 7 天还没有播放记录，听几首歌再来看看</string>
+    <string name="report_no_play_days">最近 7 天没有播放记录</string>
+    <string name="report_total_zero">0 分钟</string>
+    <string name="report_unknown_track">未知曲目</string>
+    <string name="report_hours">%1$d 小时</string>
+    <string name="report_hours_minutes">%1$d 小时 %2$d 分</string>
+    <string name="report_minutes">%1$d 分钟</string>
+    <string name="report_less_minute">不到 1 分钟</string>
+    <string name="report_zero">0 分钟</string>
+    <string name="local_playlist_new">新建歌单</string>
+    <string name="playlist_more">更多操作</string>
+    <string name="track_remove_from_playlist">从歌单移除</string>
+    <string name="track_remove_done">已移除</string>
 
     <!-- 一起听 -->
     <string name="mine_entry_together">一起听</string>

@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.szc.learning.core.network.music.MusicSourceInfo
 import com.szc.learning.music.data.local.KuwoDirectSource
+import com.szc.learning.music.data.source.AudioQuality
 import com.szc.learning.music.ui.common.sourceLabel
 
 /**
@@ -41,6 +42,19 @@ class SourceConfigStore(context: Context) {
 
     @Synchronized
     fun cookieOf(key: String): String = items.firstOrNull { it.key == key }?.cookie.orEmpty()
+
+    /**
+     * 播放音质。
+     *
+     * 放在音源配置里而不是单独的设置存储：它本身就是一个「向平台请求什么码率」的
+     * 参数，和音源开关同属一类，分两处存会让「重置音源设置」变得不干净。
+     * 默认 [AudioQuality.DEFAULT]（320k），与改动前写死的常量一致。
+     */
+    fun quality(): AudioQuality = AudioQuality.of(prefs.getString(KEY_QUALITY, null))
+
+    fun setQuality(quality: AudioQuality) {
+        prefs.edit().putString(KEY_QUALITY, quality.key).apply()
+    }
 
     /**
      * 把本机登录态打包给后端：只带已启用且有 Cookie 的平台。
@@ -170,6 +184,7 @@ class SourceConfigStore(context: Context) {
     private companion object {
         const val PREFS = "aurora_sources"
         const val KEY_CONFIG = "config_json"
+        const val KEY_QUALITY = "quality"
 
         /** 当前版本支持的音源。其余 key 一律视为历史数据，读配置时剔除。 */
         val SUPPORTED_KEYS = setOf("netease", "kugou")

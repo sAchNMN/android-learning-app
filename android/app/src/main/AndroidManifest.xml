@@ -76,6 +76,21 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- 离线下载：已下载列表 + 容量统计 + 批量下载收藏 -->
+        <activity
+            android:name=".music.ui.download.DownloadActivity"
+            android:exported="false" />
+
+        <!-- 自建歌单：新建 / 重命名 / 删除，曲目详情复用 TrackListActivity -->
+        <activity
+            android:name=".music.ui.playlist.LocalPlaylistActivity"
+            android:exported="false" />
+
+        <!-- 听歌周报：本机日记聚合，无后端依赖 -->
+        <activity
+            android:name=".music.ui.report.WeekReportActivity"
+            android:exported="false" />
+
         <!-- 音乐账号：登录后能读到的平台资料 -->
         <activity
             android:name=".music.ui.account.AccountActivity"
