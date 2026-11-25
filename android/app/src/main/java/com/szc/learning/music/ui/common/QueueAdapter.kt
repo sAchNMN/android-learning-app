@@ -1,14 +1,18 @@
 package com.szc.learning.music.ui.common
 
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.szc.learning.R
 import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.core.common.music.formatDuration
 import com.szc.learning.databinding.ItemQueueTrackBinding
 import com.szc.learning.ui.theme.themeColor
+import java.util.concurrent.Executors
 
 /**
  * 播放队列的行。与 [com.szc.learning.music.ui.track.TrackAdapter] 分开是因为
@@ -43,13 +47,41 @@ class QueueAdapter(
      */
     private var editing = false
 
+    /** 后台算 diff 用；generation 用来丢弃过期的对比结果。 */
+    private val diffExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var diffGeneration = 0
+
     fun submit(list: List<MusicTrack>) {
         if (dragging || editing) return
         if (list.map { it.key } == items.map { it.key }) return
-        items.clear()
-        items.addAll(list)
-        notifyDataSetChanged()
-        onCountChanged(items.size)
+        // 整队对比放到后台：千首队列每次追加都算一遍两两比对会卡住拖动的帧
+        val generation = ++diffGeneration
+        val old = items.toList()
+        diffExecutor.execute {
+            val result = DiffUtil.calculateDiff(
+                object : DiffUtil.Callback() {
+                    override fun getOldListSize(): Int = old.size
+
+                    override fun getNewListSize(): Int = list.size
+
+                    override fun areItemsTheSame(oldPos: Int, newPos: Int): Boolean =
+                        old[oldPos].key == list[newPos].key
+
+                    override fun areContentsTheSame(oldPos: Int, newPos: Int): Boolean =
+                        old[oldPos] == list[newPos]
+                },
+                /* detectMoves = */ false,
+            )
+            mainHandler.post {
+                // 期间又来了新列表 / 开始拖动 / 正在编辑：这次结果作废
+                if (generation != diffGeneration || dragging || editing) return@post
+                items.clear()
+                items.addAll(list)
+                result.dispatchUpdatesTo(this)
+                onCountChanged(items.size)
+            }
+        }
     }
 
     /** 正在播的那首换人了：只刷新两行，不重建整表。 */
@@ -66,6 +98,7 @@ class QueueAdapter(
         if (from !in items.indices || to !in items.indices || from == to) return false
         return withEdit {
             if (!onMove(from, to)) return@withEdit false
+            diffGeneration++ // 作废还在后台算的整表 diff
             items.add(to, items.removeAt(from))
             notifyItemMoved(from, to)
             true
@@ -80,6 +113,7 @@ class QueueAdapter(
                 notifyItemChanged(position)
                 return@withEdit false
             }
+            diffGeneration++ // 同上：本地已经改过，过期的 diff 不能再覆盖
             items.removeAt(position)
             notifyItemRemoved(position)
             onCountChanged(items.size)

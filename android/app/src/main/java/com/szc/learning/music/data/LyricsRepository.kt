@@ -61,11 +61,80 @@ class LyricsRepository(private val context: Context) {
             val size = synchsafe(header, 6)
             if (size <= 0 || size > MAX_TAG_BYTES) return@use null
 
-            var body = ByteArray(size)
-            if (!stream.readFully(body)) return@use null
-            if (flags and 0x80 != 0) body = removeUnsynchronization(body)
-            parseFrames(body, major, flags)
+            // 标签级 unsynchronisation 把所有字节都改写过，只能整块读出来再还原
+            if (flags and 0x80 != 0) {
+                val body = ByteArray(size)
+                if (!stream.readFully(body)) return@use null
+                return@use parseFrames(removeUnsynchronization(body), major, flags)
+            }
+            // 常见情况：逐帧读帧头，非歌词帧（APIC 封面等）直接 skip，
+            // 不再为了一首歌词把整张标签（含几 MB 封面）读进内存
+            parseFramesStreaming(stream, size, major, flags)
         }
+    }
+
+    /**
+     * 逐帧读 ID3v2 标签。只把歌词帧的数据读进内存，其余帧跳过。
+     *
+     * 与 [parseFrames] 的判定逻辑逐项一致，区别只是数据来源从整块数组换成流。
+     */
+    private fun parseFramesStreaming(
+        stream: InputStream,
+        tagSize: Int,
+        major: Int,
+        tagFlags: Int,
+    ): String? {
+        val idLength = if (major == 2) 3 else 4
+        val frameHeader = if (major == 2) 6 else 10
+        var remaining = tagSize
+        var syncedLyrics: String? = null
+
+        // 扩展头不包含歌词；跳过，否则第一个 frame id 会是垃圾
+        if (tagFlags and 0x40 != 0) {
+            val ext = ByteArray(4)
+            if (remaining < 4 || !stream.readFully(ext)) return null
+            remaining -= 4
+            val total = when (major) {
+                3 -> 4 + readInt32(ext, 0)
+                4 -> synchsafe(ext, 0, 4)
+                else -> 0
+            }
+            val extra = (total - 4).coerceIn(0, remaining)
+            if (extra > 0 && !skipFully(stream, extra)) return null
+            remaining -= extra
+        }
+
+        while (remaining >= frameHeader) {
+            val header = ByteArray(frameHeader)
+            if (!stream.readFully(header)) break
+            remaining -= frameHeader
+
+            val id = String(header, 0, idLength, Charsets.ISO_8859_1)
+            if (id[0] == '\u0000') break
+
+            val frameSize = when (major) {
+                2 -> readUInt24(header, 3)
+                3 -> readInt32(header, 4)
+                else -> synchsafe(header, 4, 4)
+            }
+            if (frameSize <= 0 || frameSize > remaining) break
+
+            if (id in LYRIC_FRAME_IDS) {
+                val data = ByteArray(frameSize)
+                if (!stream.readFully(data)) break
+                remaining -= frameSize
+                val prepared = prepareFrameData(data, major, header) ?: continue
+                when (id) {
+                    "USLT", "ULT" -> parseUslt(prepared)?.let { return it }
+                    "SYLT", "SLT" -> syncedLyrics = parseSylt(prepared) ?: syncedLyrics
+                    "TXXX" -> parseTxxx(prepared)?.let { return it }
+                }
+            } else {
+                if (!skipFully(stream, frameSize)) break
+                remaining -= frameSize
+            }
+        }
+        return syncedLyrics
     }
 
     private fun parseFrames(tag: ByteArray, major: Int, tagFlags: Int): String? {
@@ -88,26 +157,11 @@ class LyricsRepository(private val context: Context) {
             val dataStart = offset + frameHeader
             if (frameSize <= 0 || dataStart + frameSize > tag.size) break
 
-            var data = tag.copyOfRange(dataStart, dataStart + frameSize)
-            val formatFlags = if (major == 2) 0 else tag[offset + 9].toInt() and 0xFF
-
-            if (major == 3) {
-                if (formatFlags and 0x80 != 0 || formatFlags and 0x40 != 0) {
-                    offset = dataStart + frameSize
-                    continue
-                }
-                if (formatFlags and 0x20 != 0 && data.isNotEmpty()) {
-                    data = data.copyOfRange(1, data.size)
-                }
-            } else if (major == 4) {
-                if (formatFlags and 0x08 != 0 || formatFlags and 0x04 != 0) {
-                    offset = dataStart + frameSize
-                    continue
-                }
-                if (formatFlags and 0x02 != 0) data = removeUnsynchronization(data)
-                if (formatFlags and 0x01 != 0 && data.size >= 4) {
-                    data = data.copyOfRange(4, data.size)
-                }
+            val raw = tag.copyOfRange(dataStart, dataStart + frameSize)
+            val data = prepareFrameData(raw, major, tag, offset)
+            if (data == null) {
+                offset = dataStart + frameSize
+                continue
             }
 
             when (id) {
@@ -119,6 +173,34 @@ class LyricsRepository(private val context: Context) {
         }
 
         return syncedLyrics
+    }
+
+    /**
+     * 处理帧格式标志（压缩 / 加密 / unsynchronisation / data length indicator）。
+     * 返回 null 表示这一帧不可解析，调用方跳过。
+     */
+    private fun prepareFrameData(
+        data: ByteArray,
+        major: Int,
+        header: ByteArray,
+        headerOffset: Int = 0,
+    ): ByteArray? {
+        if (major == 2) return data
+        val formatFlags = header[headerOffset + 9].toInt() and 0xFF
+        var out = data
+        if (major == 3) {
+            if (formatFlags and 0x80 != 0 || formatFlags and 0x40 != 0) return null
+            if (formatFlags and 0x20 != 0 && out.isNotEmpty()) {
+                out = out.copyOfRange(1, out.size)
+            }
+        } else {
+            if (formatFlags and 0x08 != 0 || formatFlags and 0x04 != 0) return null
+            if (formatFlags and 0x02 != 0) out = removeUnsynchronization(out)
+            if (formatFlags and 0x01 != 0 && out.size >= 4) {
+                out = out.copyOfRange(4, out.size)
+            }
+        }
+        return out
     }
 
     /** 扩展头不包含歌词；跳过，否则第一个 frame id 会是垃圾。 */
@@ -283,9 +365,27 @@ class LyricsRepository(private val context: Context) {
         return true
     }
 
+    /** 跳过 [count] 字节。`skip` 可能返回 0，此时读一个字节推进。 */
+    private fun skipFully(stream: InputStream, count: Int): Boolean {
+        var remaining = count.toLong()
+        while (remaining > 0) {
+            val skipped = stream.skip(remaining)
+            if (skipped > 0) {
+                remaining -= skipped
+            } else {
+                if (stream.read() < 0) return false
+                remaining--
+            }
+        }
+        return true
+    }
+
     private companion object {
         const val ID3_HEADER_SIZE = 10
         const val MAX_TAG_BYTES = 8 * 1024 * 1024
+
+        /** 需要真正读进内存的帧（歌词 / 歌词文本）。其余帧直接 skip。 */
+        val LYRIC_FRAME_IDS = setOf("USLT", "ULT", "SYLT", "SLT", "TXXX")
 
         /** 用一个不可能出现在正常歌词里的哨兵表示"解析过，但没有歌词"。 */
         const val NO_LYRICS = "\u0000"
