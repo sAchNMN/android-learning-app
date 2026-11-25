@@ -207,7 +207,7 @@ class ImmersivePlayerActivity : AppCompatActivity() {
         lyricJob = lifecycleScope.launch {
             val text = viewModel.lyrics(track)
             if (currentTrack?.key != track.key) return@launch
-            val sheet = LrcParser.parse(text)
+            val sheet = LrcParser.parse(text, viewModel.lyricOffset(track.key))
             lyricSheet = sheet
             if (sheet.isEmpty) {
                 binding.immersiveLyric.showPlaceholder("")
@@ -336,6 +336,10 @@ class ImmersivePlayerActivity : AppCompatActivity() {
             },
             onSpeedChanged = { speed ->
                 toastMessage(getString(R.string.speed_applied, formatSpeed(speed)))
+            },
+            onLyricOffsetChanged = {
+                // 偏移变了要重新解析：已渲染的时间轴不会自己跟着变
+                currentTrack?.let { loadLyric(it) }
             },
         ).show()
     }

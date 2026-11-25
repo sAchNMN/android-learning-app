@@ -24,9 +24,6 @@ class MusicRepository(
     private val baseUrl: String,
 ) {
 
-    suspend fun tracks(): AppResult<List<MusicTrack>> =
-        callData { api.tracks() }.map { list -> list.map { it.toTrack() } }
-
     /**
      * 聚合搜索。失败（后端不可达 / 没开音源）返回 [AppResult.Failure]；
      * 单个平台失败只是 `errors` 里的一条，不影响整体成功。
@@ -46,11 +43,15 @@ class MusicRepository(
     /**
      * 换取播放地址。`fallback = true` 时后端会在当前平台不可播时自动换源，
      * 返回的 [OnlinePlayback.switchedFrom] / [OnlinePlayback.switchedTo] 非空即发生了换源。
+     *
+     * [quality] 用 `AudioQuality.key` 那种字符串（standard/high/exhigh/lossless/hires），
+     * 后端把它映射成各平台的码率参数；不传时后端按 exhigh（320k）处理。
      */
     suspend fun playOnline(
         track: MusicTrack,
         fallback: Boolean = true,
         cookies: String? = null,
+        quality: String? = null,
     ): AppResult<OnlinePlayback> =
         callData {
             api.playOnline(
@@ -63,7 +64,7 @@ class MusicRepository(
                 hash = track.hash.takeIf { it.isNotBlank() },
                 albumId = track.albumId.takeIf { it.isNotBlank() },
                 albumAudioId = track.albumAudioId.takeIf { it.isNotBlank() },
-                quality = "exhigh",
+                quality = quality,
                 fallback = fallback,
                 cookies = cookies,
             )
@@ -80,6 +81,8 @@ class MusicRepository(
                     ),
                     switchedFrom = dto.switchedFrom,
                     switchedTo = dto.switchedTo,
+                    qualityLevel = dto.quality?.takeIf { it.isNotBlank() },
+                    trial = dto.trial,
                 )
             } else {
                 OnlinePlayback(
@@ -124,37 +127,6 @@ class MusicRepository(
     ): AppResult<Unit> = callUnit {
         api.updateSource(key, SourceUpdateBody(enabled = enabled, priority = priority, cookie = cookie))
     }
-
-    // ---------------------------------------------------------------- 推荐
-
-    /**
-     * 猜你喜欢。
-     *
-     * 口味歌手由调用方（ViewModel）从收藏 + 最近播放里算，服务端只负责「按歌手找歌 + 补发现流」，
-     * 这样推荐结果的解释权在客户端，后端不必知道用户的一切。
-     */
-    suspend fun recommend(
-        deviceId: String?,
-        artists: List<String>,
-        seed: Long? = null,
-        limit: Int = 20,
-        cookies: String? = null,
-    ): AppResult<RecommendResult> =
-        callData {
-            api.recommend(
-                deviceId = deviceId,
-                artists = artists.takeIf { it.isNotEmpty() }?.joinToString(","),
-                seed = seed,
-                limit = limit,
-                cookies = cookies,
-            )
-        }.map { dto ->
-            RecommendResult(
-                tracks = dto.tracks.mapNotNull { it.toOnlineTrack() },
-                basedOn = dto.basedOn,
-                reason = dto.reason,
-            )
-        }
 
     // ---------------------------------------------------------------- 我喜欢
 
@@ -202,28 +174,34 @@ class MusicRepository(
 
     // ---------------------------------------------------------------- 个人歌单
 
-    suspend fun userPlaylists(cookies: String? = null): AppResult<List<UserPlaylistInfo>> =
-        callData { api.playlists(cookies) }.map { list ->
-            list.map {
-                UserPlaylistInfo(
-                    source = it.source,
-                    id = it.id,
-                    name = it.name.ifBlank { "未命名歌单" },
-                    coverUrl = it.coverUrl,
-                    trackCount = it.trackCount,
-                    own = it.own ?: true,
-                )
-            }
-        }
+    // ---------------------------------------------------------------- 榜单
 
-    suspend fun playlistTracks(
-        source: String,
-        id: String,
-        name: String,
-        cookies: String? = null,
-    ): AppResult<List<MusicTrack>> =
-        callData { api.playlistTracks(source, id, name, cookies = cookies) }
-            .map { dto -> dto.tracks.mapNotNull { it.toOnlineTrack() } }
+    /**
+     * 上报一条播放事件。
+     *
+     * 调用方一律 fire-and-forget：失败只说明后端不在，不该影响播放。
+     * 返回 [AppResult] 而不是 Unit，是为了让调试时能在日志里看到原因。
+     */
+    suspend fun reportListenEvent(body: ListenEventRequest): AppResult<Unit> =
+        callUnit { api.reportListenEvent(body) }
+
+    /**
+     * 榜单。
+     *
+     * 后端把归一化、去重、排序都做完了，客户端拿到的是已经可以播的曲目。
+     * 这里没有本地兜底：榜单是跨用户聚合，单机算出来的东西不叫榜单。
+     */
+    suspend fun rank(type: String, limit: Int = DEFAULT_RANK_LIMIT): AppResult<RankSnapshot> =
+        callData { api.rank(type, limit) }.map { dto ->
+            RankSnapshot(
+                type = dto.type.orEmpty().ifBlank { type },
+                windowStart = dto.windowStart,
+                updatedAt = dto.updatedAt,
+                eventCount = dto.eventCount,
+                tracks = dto.tracks.orEmpty().mapNotNull { it.toRankedTrack() },
+                message = dto.message?.takeIf { it.isNotBlank() },
+            )
+        }
 
     // ---------------------------------------------------------------- 歌单分享码
 
@@ -399,5 +377,8 @@ class MusicRepository(
     private companion object {
         const val STREAM_PATH = "app/music/stream/"
         const val DEFAULT_UNPLAYABLE = "这首歌当前不可播放"
+
+        /** 榜单默认条数。后端上限 100，取 50 刚好够滚动一屏多一点。 */
+        const val DEFAULT_RANK_LIMIT = 50
     }
 }

@@ -31,6 +31,7 @@ class FavoritesRepository(
     private val router: OnlineSourceRouter,
     private val deviceIds: DeviceIdStore,
     private val sources: SourceConfigStore,
+    private val listenEvents: ListenEventReporter,
     private val scope: CoroutineScope,
 ) {
 
@@ -57,6 +58,9 @@ class FavoritesRepository(
      */
     fun toggle(track: MusicTrack): Boolean {
         val nowFavorite = store.toggle(track)
+        // 红心是榜单里最强的一条正向信号，但只在「加上」时报：
+        // 取消收藏多半是整理列表，不该把一首歌踩下去
+        if (nowFavorite) listenEvents.reportLike(track)
         syncLike(track, nowFavorite)
         return nowFavorite
     }

@@ -259,14 +259,19 @@ class ShimmerSkeletonView @JvmOverloads constructor(
 
     // ---------------------------------------------------------------- 动画
 
-    override fun onVisibilityChanged(changedView: View, visibility: Int) {
-        super.onVisibilityChanged(changedView, visibility)
-        if (visibility == VISIBLE) startShimmer() else stopShimmer()
+    /**
+     * 用聚合可见性启停流光：`onVisibilityChanged` 的参数是「发生变化的那一个视图」的可见性，
+     * 祖先变 VISIBLE 时已经 GONE 的骨架会被重新启动，此后每帧空转。
+     * `onVisibilityAggregated` 同时覆盖自身、祖先与窗口可见性（API 24+）。
+     */
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        if (isVisible) startShimmer() else stopShimmer()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (visibility == VISIBLE) startShimmer()
+        if (isShown) startShimmer()
     }
 
     override fun onDetachedFromWindow() {

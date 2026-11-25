@@ -18,12 +18,22 @@ data class OnlineSearchResult(
  *
  * `track == null` 表示当前不可播，`message` 是给用户看的原因
  * （需要登录 / 需要会员 / 版权限制 …）。
+ *
+ * 后三个字段是**音质回执**，全部来自平台响应，不来自本地设置：
+ * - [qualityLevel]：平台实际下发的档位名（standard / higher / exhigh / lossless / hires）；
+ * - [br]：实际码率，酷狗这类不返回档位名的平台只能靠它反推；
+ * - [trial]：true 表示只给了试听片段（网易云 `freeTrialInfo` 非空）。
+ *
+ * 三者都为空/0/false 时表示平台没告诉我们，UI 不做任何音质提示。
  */
 data class OnlinePlayback(
     val track: MusicTrack?,
     val message: String? = null,
     val switchedFrom: String? = null,
     val switchedTo: String? = null,
+    val qualityLevel: String? = null,
+    val br: Int = 0,
+    val trial: Boolean = false,
 )
 
 /** 音源管理项，对应后端 `/app/music/sources`。 */

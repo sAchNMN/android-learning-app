@@ -418,6 +418,14 @@ public class NeteaseSourceProvider implements MusicSourceProvider {
         return level == null || level.isBlank() ? fallback : level;
     }
 
+    /**
+     * 音质 → 网易云 `br` 参数。
+     *
+     * `999000` 是官方说的「无损」档，`1999000` 是 Hi-Res；两者都要求账号有对应
+     * 会员权益且该曲存在该档资源，否则接口会静默降到它能给的档位 ——
+     * 所以下发地址后必须把响应里的 `level` 原样带回去（见 {@link #levelOf}），
+     * 由客户端提示「实际拿到的是什么」，而不是假装请求成功。
+     */
     private static int bitrate(String quality) {
         if (quality == null) {
             return 320000;
@@ -429,6 +437,8 @@ public class NeteaseSourceProvider implements MusicSourceProvider {
                 return 192000;
             case "lossless":
                 return 999000;
+            case "hires":
+                return 1999000;
             case "exhigh":
             default:
                 return 320000;

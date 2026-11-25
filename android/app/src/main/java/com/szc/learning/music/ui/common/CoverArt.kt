@@ -65,13 +65,17 @@ object CoverArt {
         val top = if (dark) 0.56f else 0.93f
         val step = if (dark) 0.045f else 0.06f
         val saturationFactor = if (dark) 0.52f else 0.40f
-        palette = IntArray(offsets.size) { index ->
+        val next = IntArray(offsets.size) { index ->
             // 封面是"大色块"，彩度必须比按钮低得多，否则整页都在喊
             val saturation = (hsv[1] * saturationFactor).coerceIn(0.12f, 0.26f)
             val value = (top - step * (index % 4)).coerceIn(0.30f, 0.93f)
             val hue = ((hsv[0] + offsets[index]) + 360f) % 360f
             Color.HSVToColor(floatArrayOf(hue, saturation, value))
         }
+        // 色板没变就不清缓存：每次打开 Activity 都会走到这里，
+        // 无条件 evictAll 会让所有列表的占位图在主线程重画一遍。
+        if (next.contentEquals(palette)) return
+        palette = next
         cache.evictAll()
     }
 
@@ -84,24 +88,22 @@ object CoverArt {
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        val hash = abs(seed.hashCode())
-        val first = palette[hash % palette.size]
-        val second = palette[(hash / palette.size + 3) % palette.size]
+        val plan = planFor(seed)
+        val second = plan.second
         val s = size.toFloat()
 
         // 底色：两色过渡。方向按哈希翻一次 —— 同一色族里靠"光从哪来"制造区分度，
         // 比换色相高级，也不会把页面拆成好几个配色
-        val flip = (hash / 7) % 2 == 0
-        paint.shader = if (flip) {
-            LinearGradient(0f, 0f, s, s, blend(first, second, 0.88f), second, Shader.TileMode.CLAMP)
+        paint.shader = if (plan.flip) {
+            LinearGradient(0f, 0f, s, s, blend(plan.first, second, 0.88f), second, Shader.TileMode.CLAMP)
         } else {
-            LinearGradient(s, 0f, 0f, s, blend(first, second, 0.88f), second, Shader.TileMode.CLAMP)
+            LinearGradient(s, 0f, 0f, s, blend(plan.first, second, 0.88f), second, Shader.TileMode.CLAMP)
         }
         canvas.drawRect(0f, 0f, s, s, paint)
 
         // 左上高光（方向跟着渐变一起翻，看起来才像同一束光）
         paint.shader = RadialGradient(
-            if (flip) s * 0.22f else s * 0.78f, s * 0.16f, s * 0.85f,
+            if (plan.flip) s * 0.22f else s * 0.78f, s * 0.16f, s * 0.85f,
             withAlpha(Color.WHITE, 0.24f),
             Color.TRANSPARENT,
             Shader.TileMode.CLAMP,
@@ -131,14 +133,31 @@ object CoverArt {
         return bitmap
     }
 
-    private fun blend(from: Int, to: Int, ratio: Float): Int {
+    /**
+     * 按种子决定的两个颜色与渐变方向。
+     *
+     * [CoverArtDrawable] 复用同一份算法：位图版和 GPU 版必须长得一模一样，
+     * 否则列表行和播放页的兜底封面会一眼看出两套。
+     */
+    internal data class ArtPlan(val first: Int, val second: Int, val flip: Boolean)
+
+    internal fun planFor(seed: String): ArtPlan {
+        val hash = abs(seed.hashCode())
+        return ArtPlan(
+            first = palette[hash % palette.size],
+            second = palette[(hash / palette.size + 3) % palette.size],
+            flip = (hash / 7) % 2 == 0,
+        )
+    }
+
+    internal fun blend(from: Int, to: Int, ratio: Float): Int {
         val r = (Color.red(from) * (1 - ratio) + Color.red(to) * ratio).toInt()
         val g = (Color.green(from) * (1 - ratio) + Color.green(to) * ratio).toInt()
         val b = (Color.blue(from) * (1 - ratio) + Color.blue(to) * ratio).toInt()
         return Color.rgb(r, g, b)
     }
 
-    private fun withAlpha(color: Int, alpha: Float): Int =
+    internal fun withAlpha(color: Int, alpha: Float): Int =
         (color and 0x00FFFFFF) or (((alpha * 255f).toInt() and 0xFF) shl 24)
 
     /** 缓存上限，单位 KB（和 [cache] 的 sizeOf 口径一致）。 */

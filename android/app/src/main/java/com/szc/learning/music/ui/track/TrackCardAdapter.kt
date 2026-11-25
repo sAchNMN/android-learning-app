@@ -2,6 +2,7 @@ package com.szc.learning.music.ui.track
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -10,9 +11,11 @@ import com.szc.learning.core.common.music.MusicTrack
 import com.szc.learning.databinding.ItemTrackCardBinding
 import com.szc.learning.music.ui.common.bindArt
 
-/** 横滑的竖版歌曲卡（我的页最近播放）。 */
+/** 横滑的竖版歌曲卡（我的页最近播放 / 账号页常听排行）。 */
 class TrackCardAdapter(
     private val onClick: (MusicTrack) -> Unit,
+    /** 附加在歌手后面的补充信息，比如账号页的「105 次」。返回 null 就不加。 */
+    private val extraOf: ((MusicTrack) -> String?)? = null,
 ) : ListAdapter<MusicTrack, TrackCardAdapter.Holder>(DIFF) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
@@ -30,6 +33,9 @@ class TrackCardAdapter(
             binding.cardArtist.text = track.artist.ifBlank {
                 binding.root.context.getString(R.string.player_unknown_artist)
             }
+            val extra = extraOf?.invoke(track)
+            binding.cardExtra.isVisible = !extra.isNullOrBlank()
+            binding.cardExtra.text = extra
             binding.cardCover.bindArt(track, sizePx = 280)
             binding.root.setOnClickListener { onClick(track) }
         }

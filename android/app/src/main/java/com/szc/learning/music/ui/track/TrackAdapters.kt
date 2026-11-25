@@ -21,9 +21,17 @@ import com.szc.learning.music.ui.common.sourceShortLabel
  *
  * 只做「渲染 + 抛点击位置」，播放决策留给页面 ——
  * 同一个行布局要同时服务"整表播放"和"跳到某一首"两种语义。
+ *
+ * [onLongClick] 默认 null：只有自建歌单详情页这类需要行级操作的场景才传，
+ * 传了才注册长按监听，正常列表不会因为长按没反应而误触反馈。
+ *
+ * 参数顺序不能动：`onClick` 必须排最后 —— 现有调用点大量使用尾随 lambda
+ * `TrackAdapter { index -> ... }`，一旦它后面再挂一个函数参数，
+ * 尾随 lambda 就会绑到那个参数上，编译直接炸。
  */
 class TrackAdapter(
     private val activeKey: String? = null,
+    private val onLongClick: ((MusicTrack) -> Unit)? = null,
     private val onClick: (index: Int) -> Unit,
 ) : ListAdapter<MusicTrack, TrackAdapter.Holder>(DIFF) {
 
@@ -61,6 +69,13 @@ class TrackAdapter(
                 // 列表刷新后旧 position 会点错歌
                 val index = bindingAdapterPosition
                 if (index != RecyclerView.NO_POSITION) onClick(index)
+            }
+            val longPress = onLongClick
+            binding.root.setOnLongClickListener {
+                val index = bindingAdapterPosition
+                if (longPress == null || index == RecyclerView.NO_POSITION) return@setOnLongClickListener false
+                longPress(getItem(index))
+                true
             }
         }
     }

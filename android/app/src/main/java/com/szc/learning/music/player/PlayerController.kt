@@ -15,8 +15,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * 播放器的应用级门面。
@@ -32,13 +35,15 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
 
     private val appContext: Context = context.applicationContext
 
-    private val controllerFuture = MediaController.Builder(
-        appContext,
-        SessionToken(
-            appContext,
-            ComponentName(appContext, PlaybackService::class.java),
-        ),
-    ).buildAsync()
+    /**
+     * 播放器的连接。
+     *
+     * 不在构造时就连：冷启动时播放器本来就是空队列，先让首帧出来再连服务。
+     * 连接完成前的命令先排进 [pendingCommands]，连上后按顺序补发 —— 否则用户
+     * 在首帧那一下点「播放」会被静默丢掉。
+     */
+    private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
+    private val pendingCommands = ArrayDeque<(MediaController) -> Unit>()
 
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
@@ -70,14 +75,47 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
     @Volatile
     private var controller: MediaController? = null
 
+    /** 一起听的纠偏速度正在生效：此时 [publish] 不能把微调值写进 UI 状态。 */
+    @Volatile
+    private var syncSpeedActive = false
+
     private val listener = object : Player.Listener {
-        override fun onEvents(player: Player, events: Player.Events) = publish(player)
+        /**
+         * 只在**离散事件**刷新位置。
+         *
+         * 播放中位置一直在走，以前每次 onEvents 都重读 currentPosition，
+         * 于是只要事件带了 isLoading / tracks / metadata 之类与 UI 无关的变化，
+         * 整份状态就不相等、重新发给迷你条和所有存活页。连续推进交给 ticker。
+         */
+        override fun onEvents(player: Player, events: Player.Events) {
+            val refreshPosition = events.containsAny(
+                Player.EVENT_POSITION_DISCONTINUITY,
+                Player.EVENT_MEDIA_ITEM_TRANSITION,
+                Player.EVENT_IS_PLAYING_CHANGED,
+                Player.EVENT_PLAYBACK_STATE_CHANGED,
+                Player.EVENT_TIMELINE_CHANGED,
+            )
+            publish(player, refreshPosition)
+        }
     }
 
-    init {
-        controllerFuture.addListener(
+    /**
+     * 连接播放服务。由 `LearningApp` 在首个页面启动后调用；[whenConnected] 也会兜底调用。
+     * 重复调用无副作用。
+     */
+    fun connect() {
+        if (controllerFuture != null) return
+        val future = MediaController.Builder(
+            appContext,
+            SessionToken(
+                appContext,
+                ComponentName(appContext, PlaybackService::class.java),
+            ),
+        ).buildAsync()
+        controllerFuture = future
+        future.addListener(
             {
-                val connected = runCatching { controllerFuture.get() }.getOrNull()
+                val connected = runCatching { future.get() }.getOrNull()
                     ?: return@addListener
                 controller = connected
                 // 冷启动默认列表循环：顺序播放播完就停，容易被当成"播放器坏了"
@@ -85,9 +123,24 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
                 connected.addListener(listener)
                 publish(connected)
                 startPositionTicker()
+                // 连接期间积压的命令按原顺序补发
+                while (pendingCommands.isNotEmpty()) {
+                    pendingCommands.removeFirst().invoke(connected)
+                }
             },
             ContextCompat.getMainExecutor(appContext),
         )
+    }
+
+    /** 已连接就立即执行；否则先排队，等 [connect] 完成后再执行。 */
+    private fun whenConnected(command: (MediaController) -> Unit) {
+        val current = controller
+        if (current != null) {
+            command(current)
+            return
+        }
+        connect()
+        pendingCommands.addLast(command)
     }
 
     // ---------------------------------------------------------------- 播放控制
@@ -95,16 +148,16 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
     /** 整队播放：列表页点某一行时，把整个列表作为队列塞进去，而不是只播一首。 */
     fun play(tracks: List<MusicTrack>, startIndex: Int = 0) {
         if (tracks.isEmpty()) return
-        val current = controller ?: return
         _queue.value = tracks
         val index = startIndex.coerceIn(0, tracks.lastIndex)
-        current.setMediaItems(tracks.map { TrackMediaItem.toMediaItem(it) }, index, 0L)
-        current.prepare()
-        current.play()
+        whenConnected { current ->
+            current.setMediaItems(tracks.map { TrackMediaItem.toMediaItem(it) }, index, 0L)
+            current.prepare()
+            current.play()
+        }
     }
 
-    fun toggle() {
-        val current = controller ?: return
+    fun toggle() = whenConnected { current ->
         if (current.isPlaying) {
             current.pause()
         } else {
@@ -131,8 +184,11 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         if (existing.size == tracks.size && existing.indices.all { existing[it].key == tracks[it].key }) {
             return
         }
-        // 队列里有这批之外的曲目：这不是刷歌流的队列，不碰
-        if (existing.any { queued -> tracks.none { it.key == queued.key } }) return
+        // 队列里有这批之外的曲目：这不是刷歌流的队列，不碰。
+        // 用 HashSet 判断成员关系：原来是 tracks.none { ... } 的两两比对，千首队列是 O(n·m)。
+        val incoming = HashSet<String>(tracks.size * 2)
+        for (track in tracks) incoming += track.key
+        if (existing.any { it.key !in incoming }) return
 
         var cursor = 0
         tracks.forEachIndexed { index, track ->
@@ -145,9 +201,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         _queue.value = tracks
     }
 
-    fun next() {
-        controller?.seekToNextMediaItem()
-    }
+    fun next() = whenConnected { it.seekToNextMediaItem() }
 
     /**
      * 从「还没播到」的部分移除命中的曲目。已播过的和正在播的不动 ——
@@ -157,17 +211,85 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         val current = controller ?: return
         val queue = _queue.value
         val playing = current.currentMediaItemIndex
+        // 先算出命中集合，再合并成连续区间从后往前删：
+        // 逐条 removeMediaItem 每条都是一次跨进程命令 + 一次整队快照。
+        val removed = HashSet<Int>()
         var changed = false
-        for (index in queue.indices.reversed()) {
+        for (index in queue.indices) {
             if (index <= playing) continue
             if (shouldRemove(queue[index])) {
-                current.removeMediaItem(index)
+                removed += index
                 changed = true
             }
         }
-        if (changed) {
-            _queue.value = queue.filterIndexed { index, track -> index <= playing || !shouldRemove(track) }
+        if (!changed) return
+        // 合并成连续区间，从后往前删：往前删会让后面的索引整体前移
+        for (range in QueueEdit.ranges(removed).asReversed()) {
+            current.removeMediaItems(range.first, range.last + 1)
         }
+        _queue.value = queue.filterIndexed { index, _ -> index !in removed }
+    }
+
+    /*
+     * ========================================================================
+     * 队列编辑
+     * ========================================================================
+     * 三条限制写在方法里，UI 不用重复判断：
+     * 1) 不动正在播的那一首 —— 移除它会让音乐当场停掉，用户以为是 bug；
+     * 2) 索引以 [_queue] 为准，它和 media3 的时间线是同一份顺序；
+     * 3) 先算再改：media3 的 index 在删除后会整体前移，边删边读会删错歌。
+     *
+     * 命令发给跨进程的 MediaController，回执要等 onEvents；所以这里直接改
+     * [_queue] 并返回新值，不回头读 state（会读到上一帧）。
+     */
+
+    /**
+     * 队列内换位置。长按拖动排序用。
+     *
+     * `moveMediaItem` 的 to 是**移动前**的目标索引，和 UI 列表里"拖到第几行"
+     * 一致；所以本地 [_queue] 用同样的语义重排，两边不会错位。
+     */
+    fun moveItem(from: Int, to: Int): Boolean {
+        val current = controller ?: return false
+        val list = _queue.value
+        if (from !in list.indices || to !in list.indices || from == to) return false
+        current.moveMediaItem(from, to)
+        _queue.value = list.toMutableList().apply { add(to, removeAt(from)) }
+        return true
+    }
+
+    /** 从队列移除一首。正在播的那首拒绝移除，返回 false 让 UI 把行还原。 */
+    fun removeItem(index: Int): Boolean {
+        val current = controller ?: return false
+        val list = _queue.value
+        if (index !in list.indices) return false
+        if (index == current.currentMediaItemIndex) return false
+        current.removeMediaItem(index)
+        _queue.value = list.toMutableList().apply { removeAt(index) }
+        return true
+    }
+
+    /**
+     * 清空队列，只留正在播的那一首。
+     *
+     * 不留空队列、也不附赠"停播"：用户的预期是"把后面的删掉，这首继续放"。
+     * 随机模式下"后面"没有确定含义，所以这里按时间线顺序删，语义统一成"只留当前"。
+     *
+     * 从后往前删：往前删会让当前索引一路前移，得边删边算。
+     * 一次删除一段（`removeMediaItems`），而不是逐条 `removeMediaItem`：
+     * 千首队列逐条删是 2000 次跨进程命令 + 2000 次整队序列化。
+     */
+    fun clearQueue(): Int {
+        val current = controller ?: return 0
+        val count = current.mediaItemCount
+        if (count <= 1) return 0
+        val playing = current.currentMediaItemIndex
+        if (playing !in 0 until count) return 0
+        val kept = _queue.value.getOrNull(playing) ?: return 0
+        if (playing + 1 < count) current.removeMediaItems(playing + 1, count)
+        if (playing > 0) current.removeMediaItems(0, playing)
+        _queue.value = listOf(kept)
+        return count - 1
     }
 
     /**
@@ -176,23 +298,19 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
      * 正常路径下追加发生在最后一首还在播的时候（hasNext 已经为 false），
      * 新歌入队后 ExoPlayer 自然往下走；这个方法只处理"已经停了"的那一帧。
      */
-    fun resumeIfEnded() {
-        val current = controller ?: return
-        if (current.playbackState != Player.STATE_ENDED) return
-        if (current.hasNextMediaItem()) {
-            current.seekToNextMediaItem()
-        } else if (current.mediaItemCount > 0) {
-            current.seekToDefaultPosition(0)
-        } else {
-            return
+    fun resumeIfEnded() = whenConnected { current ->
+        if (current.playbackState != Player.STATE_ENDED) return@whenConnected
+        when {
+            current.hasNextMediaItem() -> current.seekToNextMediaItem()
+            current.mediaItemCount > 0 -> current.seekToDefaultPosition(0)
+            else -> return@whenConnected
         }
         current.prepare()
         current.play()
     }
 
     /** 播放超过 3 秒时，"上一首"按 iOS 习惯回到本曲开头，而不是真的切上一首。 */
-    fun previous() {
-        val current = controller ?: return
+    fun previous() = whenConnected { current ->
         if (current.currentPosition > RESTART_THRESHOLD_MS) {
             current.seekTo(0L)
         } else {
@@ -202,14 +320,112 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
 
     fun seekTo(positionMs: Long) {
         val target = positionMs.coerceAtLeast(0L)
-        controller?.seekTo(target)
+        whenConnected { it.seekTo(target) }
         // 指尖离开进度条那一刻就要看到新位置，不能等下一个 tick
         _position.value = target
     }
 
     /** 音量走播放器而不是 AudioManager：后者会改动系统全局音量，退出去还得还原。 */
     fun setVolume(volume: Float) {
-        controller?.volume = volume.coerceIn(0f, 1f)
+        val target = volume.coerceIn(0f, 1f)
+        whenConnected { it.volume = target }
+    }
+
+    // ---------------------------------------------------------------- 一起听
+
+    /**
+     * 一起听专用：单曲入队并定位到 [positionMs] 准备好，但**不起播**。
+     *
+     * 拆成 prepare / start 两步是为了"预定起播"：远端换歌时各端先各自准备，
+     * 到约定时刻一起响。直接 `play()` 的话，谁先准备好谁先响，
+     * 网络快的那台已经唱了两秒，另一台才刚开始 —— 这就是普通"同步播放"常见的错位。
+     *
+     * 队列被整个替换成单曲：一起听的语义是"大家听同一首"，
+     * 各端维护自己的推荐队列没有意义，反而会在切歌时产生两条不同的时间线。
+     */
+    fun prepareSingle(track: MusicTrack, positionMs: Long) {
+        _queue.value = listOf(track)
+        val start = positionMs.coerceAtLeast(0L)
+        whenConnected { current ->
+            current.setMediaItem(TrackMediaItem.toMediaItem(track), start)
+            current.prepare()
+        }
+        _position.value = start
+    }
+
+    /** 配合 [prepareSingle]：到点统一起播。 */
+    fun startNow() = whenConnected { it.play() }
+
+    /** 远端下达的暂停。与 [toggle] 分开是因为它不该再触发一次"用户操作"回传。 */
+    fun pauseQuiet() = whenConnected { it.pause() }
+
+    /** 真实播放位置。ticker 的 [_position] 有 350ms 粒度，纠偏要看精确值。 */
+    fun positionNow(): Long = controller?.currentPosition?.coerceAtLeast(0L) ?: 0L
+
+    fun isPlayingNow(): Boolean = controller?.isPlaying == true
+
+    /**
+     * 纠正漂移用的速度微调（±4% 量级）。
+     *
+     * 不写进 [_state.speed]：那个字段是给用户看的"倍速"，同步期间应该一直是 1.0x。
+     * 让它显示 1.04x 的话，用户打开倍速菜单会看到一串莫名其妙的小数，
+     * 而且退出一起听后还可能残留。
+     */
+    fun applySyncSpeed(speed: Float) {
+        val current = controller ?: return
+        val target = speed.coerceIn(MIN_SYNC_SPEED, MAX_SYNC_SPEED)
+        if (kotlin.math.abs(current.playbackParameters.speed - target) < 0.001f) return
+        syncSpeedActive = true
+        current.setPlaybackSpeed(target)
+    }
+
+    /** 退出同步时把速度还原成用户设定的倍速。 */
+    fun restoreSpeed() {
+        if (!syncSpeedActive) return
+        syncSpeedActive = false
+        controller?.setPlaybackSpeed(_state.value.speed)
+    }
+
+    // ---------------------------------------------------------------- AB 循环
+
+    /**
+     * AB 段循环。
+     *
+     * 只在 [startPositionTicker] 里判一次「越过 B 点就回 A」，不额外起协程：
+     * ticker 本来就是 350ms 一跳，循环的粒度跟着它走，精度对练琴/听播客足够。
+     *
+     * 循环状态**不进 [_state]**：它不属于播放器状态（Service 不知道这回事），
+     * 只是 UI 侧的一个播放习惯。放进去会和「远端快照」的合并逻辑纠缠。
+     */
+    private val _loopRange = MutableStateFlow<LoopRange?>(null)
+    val loopRange: StateFlow<LoopRange?> = _loopRange.asStateFlow()
+
+    /** 只设了 A 还没设 B 的中间态，用来给 UI 显示「再点一次设 B」。 */
+    private val _loopDraft = MutableStateFlow<Long?>(null)
+    val loopDraft: StateFlow<Long?> = _loopDraft.asStateFlow()
+
+    /** 把当前位置记为 A。重设 A 会作废已有的区间 —— 用户显然想重新圈一段。 */
+    fun markLoopStart(positionMs: Long = positionNow()) {
+        _loopRange.value = null
+        _loopDraft.value = positionMs.coerceAtLeast(0L)
+    }
+
+    /**
+     * 把当前位置记为 B 并开始循环。
+     *
+     * B 必须落在 A 之后才接受；返回 false 表示这次点击没生效（A 还没设，或 B 在 A 之前）。
+     */
+    fun markLoopEnd(positionMs: Long = positionNow()): Boolean {
+        val start = _loopDraft.value ?: return false
+        if (positionMs <= start + MIN_LOOP_MS) return false
+        _loopRange.value = LoopRange(start, positionMs)
+        _loopDraft.value = null
+        return true
+    }
+
+    fun clearLoop() {
+        _loopRange.value = null
+        _loopDraft.value = null
     }
 
     // ---------------------------------------------------------------- 倍速 / 定时
@@ -222,10 +438,12 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
      */
     fun setSpeed(speed: Float) {
         val target = speed.coerceIn(MIN_SPEED, MAX_SPEED)
-        controller?.sendCustomCommand(
-            SessionCommands.setSpeed,
-            Bundle().apply { putFloat(ARG_SPEED, target) },
-        )
+        whenConnected {
+            it.sendCustomCommand(
+                SessionCommands.setSpeed,
+                Bundle().apply { putFloat(ARG_SPEED, target) },
+            )
+        }
         // 乐观写入：等 Service 回调会有 1~2 帧延迟，按钮上的"1.25x"不该慢半拍
         _state.value = _state.value.copy(speed = target)
     }
@@ -238,10 +456,12 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
      * [sleepTimerEndAt] 只是给界面显示剩余时间的镜像，到点后由 [startPositionTicker] 自清。
      */
     fun setSleepTimer(minutes: Int) {
-        controller?.sendCustomCommand(
-            SessionCommands.setSleepTimer,
-            Bundle().apply { putInt(ARG_MINUTES, minutes) },
-        )
+        whenConnected {
+            it.sendCustomCommand(
+                SessionCommands.setSleepTimer,
+                Bundle().apply { putInt(ARG_MINUTES, minutes) },
+            )
+        }
         _sleepTimerEndAt.value = if (minutes > 0) {
             SystemClock.elapsedRealtime() + minutes * MINUTE_MS
         } else {
@@ -264,7 +484,6 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
      * 顺带解决了连点：以前每次点击都基于同一个旧值算 next，连点 5 次只前进一格。
      */
     fun cyclePlayMode(): PlayMode? {
-        val current = controller ?: return null
         val next = state.value.playMode.next()
         val repeat = when (next) {
             PlayMode.SEQUENCE, PlayMode.RECOMMEND -> Player.REPEAT_MODE_OFF
@@ -272,7 +491,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             PlayMode.REPEAT_ONE -> Player.REPEAT_MODE_ONE
         }
         val shuffle = next == PlayMode.SHUFFLE
-        current.applyMode(repeat, shuffle = shuffle)
+        whenConnected { it.applyMode(repeat, shuffle = shuffle) }
         // 乐观写入：让图标和提示在同一帧就对上，后面 publish() 拿到的真值会覆盖它
         _state.value = _state.value.copy(
             shuffle = shuffle,
@@ -290,9 +509,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
     }
 
     /** 点队列里的某一项：直接跳到对应索引继续播。 */
-    fun playAt(index: Int) {
-        controller?.seekToDefaultPosition(index)
-    }
+    fun playAt(index: Int) = whenConnected { it.seekToDefaultPosition(index) }
 
     /**
      * 队列里已有这首就跳过去，返回是否命中。
@@ -302,11 +519,12 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
      * 正在缓冲的那首会被打断。
      */
     fun playAtKeyInQueue(key: String): Boolean {
-        val current = controller ?: return false
         val index = _queue.value.indexOfFirst { it.key == key }
         if (index < 0) return false
-        current.seekToDefaultPosition(index)
-        current.play()
+        whenConnected {
+            it.seekToDefaultPosition(index)
+            it.play()
+        }
         return true
     }
 
@@ -318,14 +536,44 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
                 clearElapsedSleepTimer()
                 val current = controller
                 if (current != null && current.isPlaying) {
+                    // 越过 B 点就回 A。放在取位置之前：seek 之后 currentPosition 已经是 A，
+                    // 下面写进 _position 的就是循环内的位置，进度条不会闪一下 B
+                    _loopRange.value?.let { loop ->
+                        if (current.currentPosition >= loop.endMs) current.seekTo(loop.startMs)
+                    }
                     _position.value = current.currentPosition.coerceAtLeast(0L)
                     delay(POSITION_INTERVAL_PLAYING_MS)
                 } else {
-                    // 暂停时不再写任何东西：进度条停在最后一帧就是对的，
-                    // 继续每 800ms 更新一次纯属让整页白刷
-                    delay(POSITION_INTERVAL_IDLE_MS)
+                    // 暂停时不再每 800ms 唤醒一次主线程：挂起，等「开始播放」或「定时到点」
+                    awaitResumeOrSleepTimerEnd()
+                    clearElapsedSleepTimer()
                 }
             }
+        }
+    }
+
+    /**
+     * 暂停期间的等待。
+     *
+     * 定时结束时刻可能在等待途中被改（重设 / 取消），所以每轮都重新读一次；
+     * 播放开始或到点，任一发生就返回。
+     */
+    private suspend fun awaitResumeOrSleepTimerEnd() {
+        while (true) {
+            val end = _sleepTimerEndAt.value
+            if (end == null) {
+                state.first { it.isPlaying }
+                return
+            }
+            val wait = end - SystemClock.elapsedRealtime()
+            if (wait <= 0L) return
+            val changed = withTimeoutOrNull(wait) {
+                combine(state, _sleepTimerEndAt) { uiState, sleepEnd ->
+                    uiState.isPlaying || sleepEnd != end
+                }.first { it }
+            }
+            if (changed == null) return
+            if (state.value.isPlaying) return
         }
     }
 
@@ -352,7 +600,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
         }
     }
 
-    private fun publish(player: Player) {
+    private fun publish(player: Player, refreshPosition: Boolean = true) {
         val item = player.currentMediaItem
         val reportedDuration = player.duration
         val duration = when {
@@ -361,9 +609,13 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             else -> 0L
         }
         // 离散事件（切歌 / seek / 暂停 / 恢复）时把进度对齐一次：
-        // ticker 只管「播放中」的连续推进，这些关键时刻的跳变必须立刻反映出来
-        val position = player.currentPosition.coerceAtLeast(0L)
-        _position.value = position
+        // ticker 只管「播放中」的连续推进，这些关键时刻的跳变必须立刻反映出来。
+        // 其它事件沿用旧值，让 StateFlow 按相等性去重，避免整份状态无意义重发。
+        val position = if (refreshPosition) {
+            player.currentPosition.coerceAtLeast(0L).also { _position.value = it }
+        } else {
+            _state.value.positionMs
+        }
         hydrateQueueIfNeeded(player)
         _state.value = PlayerUiState(
             track = item?.let(TrackMediaItem::toTrack),
@@ -378,7 +630,7 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
             recommendMode = _state.value.recommendMode,
             queueSize = player.mediaItemCount,
             // 倍速不需要从旧 state 带：ExoPlayer 自己就记着，回调里读回来即可
-            speed = player.playbackParameters.speed,
+            speed = if (syncSpeedActive) _state.value.speed else player.playbackParameters.speed,
         )
     }
 
@@ -386,11 +638,23 @@ class PlayerController(context: Context, private val scope: CoroutineScope) {
 
         const val RESTART_THRESHOLD_MS = 3_000L
         const val POSITION_INTERVAL_PLAYING_MS = 350L
-        const val POSITION_INTERVAL_IDLE_MS = 800L
+
+        /** AB 区间最短 2 秒：比 ticker 的 350ms 粒度大一个量级，否则一设完就立刻触发回跳。 */
+        const val MIN_LOOP_MS = 2_000L
 
         /** 倍速的可用区间。超过 2x 人声已经听不清，低于 0.5x 只剩轰鸣。 */
         const val MIN_SPEED = 0.5f
         const val MAX_SPEED = 3.0f
+
+        /**
+         * 一起听纠偏的速度范围。
+         *
+         * ±4% 是听感分界线：再大就能听出音调在爬（ExoPlayer 虽然保持音高，
+         * 但变速本身会让人声有轻微的"赶"感）；再小则追不上音乐本身的漂移，
+         * 白白来回切速度反而更明显。
+         */
+        const val MIN_SYNC_SPEED = 0.96f
+        const val MAX_SYNC_SPEED = 1.04f
         const val MINUTE_MS = 60_000L
     }
 }

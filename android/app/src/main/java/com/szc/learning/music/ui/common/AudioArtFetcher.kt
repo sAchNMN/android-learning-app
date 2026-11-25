@@ -15,6 +15,7 @@ import coil.fetch.DrawableResult
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.request.Options
+import coil.size.Dimension
 
 /**
  * 本地音频的封面取图器。
@@ -38,10 +39,13 @@ class AudioArtFetcher(
         Log.d(TAG, "封面命中 $uri → ${bitmap.width}x${bitmap.height}")
         return DrawableResult(
             drawable = BitmapDrawable(options.context.resources, bitmap),
-            isSampled = false,
+            isSampled = sampled,
             dataSource = DataSource.DISK,
         )
     }
+
+    /** 内嵌封面是否做过降采样（只影响 Coil 的缓存策略标记）。 */
+    private var sampled = false
 
     /** 两条路都试：系统缩略图（快、有缓存）优先，失败再直接解 ID3。 */
     private fun loadThumbnail(): Bitmap? {
@@ -60,7 +64,7 @@ class AudioArtFetcher(
             resolver.openFileDescriptor(uri, "r")?.use { descriptor ->
                 retriever.setDataSource(descriptor.fileDescriptor)
                 val bytes = retriever.embeddedPicture ?: return null
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                decodeSampled(bytes)
             }
         } catch (error: Throwable) {
             Log.d(TAG, "解 ID3 封面失败 $uri: ${error.message}")
@@ -68,6 +72,24 @@ class AudioArtFetcher(
         } finally {
             runCatching { retriever.release() }
         }
+    }
+
+    /**
+     * 按请求尺寸降采样解码。
+     *
+     * 内嵌封面常是 1000~3000px 的原图，全尺寸解一张就是十几 MB。
+     * 先只读边界算 `inSampleSize`，再解真正要用的那一档。
+     */
+    private fun decodeSampled(bytes: ByteArray): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val target = (options.size.width as? Dimension.Pixels)?.px ?: THUMB_SIZE
+        val longest = maxOf(bounds.outWidth, bounds.outHeight)
+        var sample = 1
+        while (longest / (sample * 2) >= target) sample *= 2
+        sampled = sample > 1
+        val decode = BitmapFactory.Options().apply { inSampleSize = sample }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decode)
     }
 
     class Factory(private val resolver: ContentResolver) : Fetcher.Factory<Uri> {

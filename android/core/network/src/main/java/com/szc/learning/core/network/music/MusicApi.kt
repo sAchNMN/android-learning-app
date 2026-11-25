@@ -17,10 +17,6 @@ import retrofit2.http.Query
  */
 interface MusicApi {
 
-    /** 全部云端曲目，按上传时间倒序。 */
-    @GET("app/music/tracks")
-    suspend fun tracks(): AjaxResult<List<MusicTrackDto>>
-
     /**
      * 聚合搜索。
      *
@@ -78,23 +74,6 @@ interface MusicApi {
         @Body body: SourceUpdateBody,
     ): AjaxResult<Void>
 
-    // ---------------------------------------------------------------- 推荐
-
-    /**
-     * 猜你喜欢。
-     *
-     * @param artists 口味歌手，逗号分隔；后端还会去 own 的喜欢记录里补
-     * @param seed    洗牌种子，null 表示按天固定（同一天结果一致）
-     */
-    @GET("app/music/recommend")
-    suspend fun recommend(
-        @Query("deviceId") deviceId: String? = null,
-        @Query("artists") artists: String? = null,
-        @Query("seed") seed: Long? = null,
-        @Query("limit") limit: Int = 20,
-        @Query("cookies") cookies: String? = null,
-    ): AjaxResult<RecommendDto>
-
     // ---------------------------------------------------------------- 我喜欢
 
     @POST("app/music/like")
@@ -108,20 +87,6 @@ interface MusicApi {
         @Query("deviceId") deviceId: String,
         @Query("limit") limit: Int = 200,
     ): AjaxResult<List<UserLikeDto>>
-
-    // ---------------------------------------------------------------- 个人歌单
-
-    @GET("app/music/playlists")
-    suspend fun playlists(@Query("cookies") cookies: String? = null): AjaxResult<List<UserPlaylistDto>>
-
-    @GET("app/music/playlist")
-    suspend fun playlistTracks(
-        @Query("source") source: String,
-        @Query("id") id: String,
-        @Query("name") name: String? = null,
-        @Query("limit") limit: Int = 200,
-        @Query("cookies") cookies: String? = null,
-    ): AjaxResult<PlaylistDetailDto>
 
     // ---------------------------------------------------------------- 歌单分享码
 
@@ -137,6 +102,28 @@ interface MusicApi {
     /** 按码取歌单。码不存在或已过期，后端返回非 200 的业务码。 */
     @GET("app/music/share/{code}")
     suspend fun resolveShare(@Path("code") code: String): AjaxResult<ShareResultDto>
+
+    // ---------------------------------------------------------------- 榜单
+
+    /**
+     * 上报一条播放事件。
+     *
+     * 返回值不看：埋点失败不该弹窗打断听歌。但接口仍然返回 `accepted`
+     * 与原因，方便在日志里回答"榜单为什么是空的"。
+     */
+    @POST("app/music/rank/event")
+    suspend fun reportListenEvent(@Body body: ListenEventRequest): AjaxResult<Any>
+
+    /**
+     * 榜单。
+     *
+     * @param type hot（热歌榜，默认）/ rising（飙升榜）
+     */
+    @GET("app/music/rank")
+    suspend fun rank(
+        @Query("type") type: String,
+        @Query("limit") limit: Int = 50,
+    ): AjaxResult<RankSnapshotDto>
 
     // ---------------------------------------------------------------- 歌曲评论
 

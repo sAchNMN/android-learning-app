@@ -57,7 +57,20 @@ class PlayerAdapter(
      * 换成增量通知后，位置会变（插入/删除），键就不可靠了，只认 holder 自己记的位置。
      */
     private val holders = mutableSetOf<Holder>()
-    private val lyrics = mutableMapOf<String, LyricSheet>()
+
+    /**
+     * 歌词解析结果。
+     *
+     * 按访问顺序的 LRU：播放页上下滑几十首后，每首的解析结果都留着只增不减。
+     * 只影响缓存命中，重新解析的结果完全一样。
+     */
+    private val lyrics: MutableMap<String, LyricSheet> =
+        object : LinkedHashMap<String, LyricSheet>(16, 0.75f, true) {
+            override fun removeEldestEntry(
+                eldest: MutableMap.MutableEntry<String, LyricSheet>?,
+            ): Boolean = size > LYRICS_CACHE_MAX
+        }
+
     private var activePosition = 0
     private var state: PlayerUiState? = null
     private var topInsetPx = 0
@@ -140,8 +153,9 @@ class PlayerAdapter(
         holders.forEach { holder -> holder.renderFavorite(holder.track?.key in keys) }
     }
 
-    fun setLyrics(key: String, text: String?) {
-        lyrics[key] = LrcParser.parse(text)
+    /** [offsetMs] 是用户手动校准的偏移，解析时叠加到文件自带的时间轴上。 */
+    fun setLyrics(key: String, text: String?, offsetMs: Long = 0L) {
+        lyrics[key] = LrcParser.parse(text, offsetMs)
         holders
             .filter { it.track?.key == key }
             .forEach { it.renderLyrics() }
@@ -359,5 +373,10 @@ class PlayerAdapter(
             binding.playerPosition.text = formatDuration(positionMs)
             binding.playerDuration.text = formatDuration(durationMs)
         }
+    }
+
+    private companion object {
+        /** 歌词缓存最多留多少首。 */
+        const val LYRICS_CACHE_MAX = 24
     }
 }

@@ -57,3 +57,6 @@ frames/
 *.jks
 *.keystore
 android/keystore/
+
+# ---------- WorkBuddy ----------
+.workbuddy/

@@ -68,13 +68,161 @@
 
         </LinearLayout>
 
+        <!--
+            音乐账号：取音源顺序里**第一个已登录且启用的平台**。
+            顺序由音源管理页的上下移决定，这里不另设偏好。
+            没有已登录音源时整块不出现，不留空壳。
+        -->
+        <LinearLayout
+            android:id="@+id/mineAccountCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/bg_mine_card"
+            android:clickable="true"
+            android:focusable="true"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.szc.learning.music.ui.widget.CoverImageView
+                    android:id="@+id/mineAccountAvatar"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:contentDescription="@null"
+                    android:scaleType="centerCrop"
+                    app:coverRadius="@dimen/radius_md" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/mineAccountName"
+                            style="@style/Text.RowTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/mineAccountVip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/bg_source_badge"
+                            android:paddingStart="7dp"
+                            android:paddingTop="1dp"
+                            android:paddingEnd="7dp"
+                            android:paddingBottom="1dp"
+                            android:textColor="?attr/auAccentDeep"
+                            android:textSize="10sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/mineAccountSub"
+                        style="@style/Text.Caption"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:ellipsize="end"
+                        android:maxLines="1" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="?attr/auInkTertiary" />
+            </LinearLayout>
+
+            <!-- 一行汇总；平台没给统计（酷狗）时换成一句说明，不摆 0 -->
+            <TextView
+                android:id="@+id/mineAccountStats"
+                style="@style/Text.Caption"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!--
+            账号歌单：只有平台给得到歌单时才有（网易云有，酷狗没有）。
+            横滑展示全部，卡片点进详情页才拉曲目。
+            听歌排行不在这里重复，留在「音乐账号」页 —— 那是「我的」点进去的详情。
+        -->
+        <LinearLayout
+            android:id="@+id/minePlaylistHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_ripple_row"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="20dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone">
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/account_playlists" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_chevron_right"
+                app:tint="?attr/auInkTertiary" />
+        </LinearLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/minePlaylists"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:clipToPadding="false"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never"
+            android:paddingStart="20dp"
+            android:paddingEnd="8dp"
+            android:scrollbars="none"
+            android:visibility="gone" />
+
         <!-- 我喜欢 -->
         <LinearLayout
             android:id="@+id/mineFavoritesCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="12dp"
             android:layout_marginEnd="20dp"
             android:background="@drawable/bg_mine_card"
             android:clickable="true"

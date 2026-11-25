@@ -146,8 +146,9 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.playerState.collect { state ->
-                    adapter.setState(state)
+                    // 隐藏的 tab 不渲染：切回来时 onHiddenChanged(false) 会补一次 setState
                     if (isHidden) return@collect
+                    adapter.setState(state)
                     val key = state.track?.key ?: return@collect
                     if (key == activeTrackKey) return@collect
                     val index = tracks.indexOfFirst { it.key == key }
@@ -165,7 +166,10 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         // 进度单独一条流：只推当前页的进度条与歌词高亮
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.position.collect { position -> adapter.setPosition(position) }
+                viewModel.position.collect { position ->
+                    if (isHidden) return@collect
+                    adapter.setPosition(position)
+                }
             }
         }
 
@@ -272,14 +276,18 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
     private fun loadLyrics(track: MusicTrack) {
         lyricsJob?.cancel()
         lyricsJob = viewLifecycleOwner.lifecycleScope.launch {
-            adapter.setLyrics(track.key, viewModel.lyrics(track))
+            adapter.setLyrics(track.key, viewModel.lyrics(track), viewModel.lyricOffset(track.key))
             val index = tracks.indexOfFirst { it.key == track.key }
             if (index < 0) return@launch
             listOf(index - 1, index + 1)
                 .filter { it in tracks.indices }
                 .forEach { neighborIndex ->
                     val neighbor = tracks[neighborIndex]
-                    adapter.setLyrics(neighbor.key, viewModel.lyrics(neighbor))
+                    adapter.setLyrics(
+                        neighbor.key,
+                        viewModel.lyrics(neighbor),
+                        viewModel.lyricOffset(neighbor.key),
+                    )
                 }
         }
     }
@@ -302,6 +310,10 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
             },
             onSpeedChanged = { speed ->
                 toastMessage(getString(R.string.speed_applied, formatSpeed(speed)))
+            },
+            onLyricOffsetChanged = {
+                // 偏移变了要重新解析：已渲染的时间轴不会自己跟着变
+                viewModel.playerState.value.track?.let { loadLyrics(it) }
             },
         ).show()
     }
@@ -335,6 +347,8 @@ class PlayerFragment : Fragment(R.layout.fragment_player) {
         super.onHiddenChanged(hidden)
         if (hidden) return
         adapter.setState(viewModel.playerState.value)
+        // 隐藏期间进度流被跳过，补一次当前位置
+        adapter.setPosition(viewModel.position.value)
         val key = viewModel.playerState.value.track?.key
         val index = tracks.indexOfFirst { it.key == key }
         if (index >= 0 && binding.playerPager.currentItem != index) {

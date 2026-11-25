@@ -11,7 +11,6 @@
     <!-- ================= 歌单 ================= -->
     <string name="playlist_tracks">%1$d 首</string>
     <string name="playlist_favorite_title">我喜欢的音乐</string>
-    <string name="playlist_cloud_title">云端热歌</string>
     <string name="playlist_local_title">本地珍藏</string>
     <string name="playlist_recent_title">最近播放</string>
     <string name="playlist_artist_title">%1$s精选</string>
@@ -64,7 +63,6 @@
     <string name="mine_stats_title">听歌统计</string>
     <string name="mine_stats_body">累计听歌 %1$d 分钟\n收藏 %2$d 首 · 最近播放 %3$d 首</string>
     <string name="mine_ok">知道了</string>
-    <string name="mine_entry_cloud">云端热歌</string>
     <string name="mine_entry_stats">听歌统计</string>
     <string name="mine_favorites_card">我喜欢的音乐</string>
     <string name="mine_recent_card">最近播放</string>
@@ -102,6 +100,10 @@
     <string name="player_feed_loading">正在为你选歌…</string>
     <string name="player_feed_ended">暂时拿不到新歌，看看网络或音源设置</string>
     <string name="queue_title">播放队列</string>
+    <string name="queue_count">%1$d 首</string>
+    <string name="queue_clear">清空</string>
+    <string name="queue_drag">拖动排序</string>
+    <string name="queue_clear_confirm">清空队列？正在播放的这首会保留</string>
 
     <!-- ================= 歌曲评论 ================= -->
     <string name="comment_title">评论</string>
@@ -116,6 +118,7 @@
     <string name="comment_delete_confirm">删除这条评论？</string>
     <string name="comment_no_track">还没有正在播放的歌</string>
     <string name="action_close">关闭</string>
+    <string name="action_cancel">取消</string>
 
     <!-- ================= 列表页 ================= -->
     <string name="track_list_play_all">播放全部</string>
@@ -204,6 +207,39 @@
     <string name="action_save">保存</string>
     <string name="source_empty">还没有可用的音源</string>
 
+    <!-- 音乐账号页：登录后能读到的平台资料 -->
+    <string name="mine_account_sub">%1$s · ID %2$s</string>
+    <string name="mine_account_no_stats">这个平台只提供昵称和头像</string>
+    <string name="account_title">音乐账号</string>
+    <string name="account_refresh">刷新账号</string>
+    <string name="account_action_view">查看账号</string>
+    <string name="account_failed">读不到账号信息，登录态可能已失效，重新登录一次</string>
+    <string name="account_user_id">ID %1$s</string>
+    <string name="account_vip_black">黑胶 VIP</string>
+    <string name="account_vip_package">音乐包</string>
+    <string name="account_vip_none">普通用户</string>
+    <string name="account_stat_level">等级</string>
+    <string name="account_stat_listen">累计听歌</string>
+    <string name="account_stat_follows">关注</string>
+    <string name="account_stat_fans">粉丝</string>
+    <string name="account_fact_vip">会员类型</string>
+    <string name="account_fact_playlists">歌单数量</string>
+    <string name="account_fact_subscribed">收藏歌单</string>
+    <string name="account_fact_created">注册时间</string>
+    <string name="account_fact_last_login">最近登录</string>
+    <string name="account_fact_gender">性别</string>
+    <string name="account_fact_birthday">生日</string>
+    <string name="account_gender_male">男</string>
+    <string name="account_gender_female">女</string>
+    <string name="account_play_count">%1$s 次</string>
+    <string name="account_playlists">我的歌单</string>
+    <string name="account_recent">最近常听</string>
+    <string name="account_recent_all">常听排行（全部时间）</string>
+    <string name="account_empty_playlists">这个账号还没有歌单</string>
+    <string name="account_no_profile">这个平台没有公开的账号资料接口，这里只能读到登录标识。登录它的作用是提高会员曲目的取址成功率。</string>
+    <string name="account_partial_profile">昵称和头像来自登录 Cookie，本地解析，不发请求。平台没有公开的听歌数据接口，等级和歌单读不到。登录的作用是提高会员曲目的取址成功率。</string>
+    <string name="account_cached_at">数据更新于 %1$s</string>
+
     <string name="search_section_online">在线</string>
     <string name="search_section_online_loading">在线 …</string>
     <string name="search_section_mine">我的音乐</string>
@@ -219,6 +255,7 @@
     <string name="player_fullscreen">沉浸全屏</string>
     <string name="player_sleep_timer">定时关闭</string>
     <string name="player_speed">播放倍速</string>
+    <string name="player_actions">操作</string>
     <string name="sleep_off">关闭</string>
     <string name="sleep_minutes">%1$d 分钟</string>
     <string name="sleep_track_end">播完当前歌曲</string>
@@ -228,4 +265,122 @@
     <string name="sleep_cancelled">已取消定时关闭</string>
     <string name="speed_value">%1$sx</string>
     <string name="speed_applied">倍速 %1$sx</string>
+
+    <!-- 音质。档位名与平台返回的 level 对照见 AudioQuality -->
+    <string name="player_quality">播放音质</string>
+    <string name="quality_standard">标准 128k</string>
+    <string name="quality_high">较高 192k</string>
+    <string name="quality_exhigh">极高 320k</string>
+    <string name="quality_lossless">无损 999k</string>
+    <string name="quality_hires">Hi-Res 1999k</string>
+    <string name="quality_vip_only">需会员</string>
+    <string name="quality_applied">音质设为 %1$s，下一首生效</string>
+    <string name="quality_no_cookie">未登录音源，多数曲目只能到标准音质</string>
+    <string name="quality_caption_guest">播放音质 · 未登录，多数曲目只有标准</string>
+    <string name="quality_fallback">当前账号没有「%1$s」权限，已回退「%2$s」</string>
+    <string name="quality_trial">会员专享曲目，只拿到试听片段</string>
+    <string name="quality_actual">实际 %1$s</string>
+
+    <!-- 离线下载 -->
+    <string name="mine_entry_downloads">离线下载</string>
+    <string name="download_title">离线下载</string>
+    <string name="download_favorites">下载收藏</string>
+    <string name="download_delete">删除</string>
+    <string name="download_empty">还没有离线歌曲\n点右上角把收藏的歌下载下来，没网也能听</string>
+    <string name="download_summary">%1$d 首 · 共 %2$s</string>
+    <string name="download_summary_empty">还没有离线歌曲</string>
+    <string name="download_deleted">已删除</string>
+    <string name="download_queued">已加入下载队列（%1$d 首）</string>
+    <string name="download_nothing">没有可下载的曲目</string>
+    <string name="download_progress">下载中 %1$d%%</string>
+    <string name="download_state_queued">等待下载</string>
+    <string name="download_state_failed">下载失败：%1$s</string>
+    <string name="download_delete_confirm">删除这首离线歌曲？文件会一并删掉。</string>
+
+    <!-- 自建歌单 -->
+    <string name="mine_entry_playlists">我的歌单</string>
+    <string name="local_playlist_title">我的歌单</string>
+    <string name="local_playlist_create">新建</string>
+    <string name="local_playlist_empty">还没有歌单\n点右上角新建一个，把喜欢的歌攒起来</string>
+    <string name="local_playlist_new_hint">给歌单起个名字</string>
+    <string name="local_playlist_rename">重命名</string>
+    <string name="local_playlist_delete">删除歌单</string>
+    <string name="local_playlist_delete_confirm">删除「%1$s」？里面的歌不会从收藏或本地删除。</string>
+    <string name="local_playlist_track_count">%1$d 首</string>
+    <string name="local_playlist_created">已创建「%1$s」</string>
+    <string name="local_playlist_deleted">已删除</string>
+    <string name="local_playlist_added">已加入「%1$s」</string>
+    <string name="local_playlist_exists">歌单里已经有这首了</string>
+    <string name="local_playlist_save_to">保存到歌单</string>
+    <string name="no_track_playing">当前没有在播放的歌曲</string>
+    <string name="lyric_offset_action">歌词偏移</string>
+    <string name="lyric_offset_title">歌词偏移 %1$s</string>
+    <string name="lyric_offset_minus">-0.5 秒（歌词提前）</string>
+    <string name="lyric_offset_plus">+0.5 秒（歌词推迟）</string>
+    <string name="lyric_offset_reset">清零</string>
+    <string name="lyric_offset_applied">歌词偏移 %1$s</string>
+    <string name="loop_action">AB 段循环</string>
+    <string name="loop_title_none">AB 段循环（未设置）</string>
+    <string name="loop_title_draft">A 点 %1$s，再设 B</string>
+    <string name="loop_title_active">循环 %1$s — %2$s</string>
+    <string name="loop_set_a">把当前位置设为 A</string>
+    <string name="loop_set_b">把当前位置设为 B</string>
+    <string name="loop_clear">关闭循环</string>
+    <string name="loop_invalid">B 点要在 A 点之后至少 2 秒</string>
+
+    <!-- 听歌周报 -->
+    <string name="report_title">听歌周报</string>
+    <string name="report_sub">%1$d 天有播放 · 最多的一天 %2$s</string>
+    <string name="report_lifetime">累计听歌 %1$s</string>
+    <string name="report_top_header">本周最常听</string>
+    <string name="report_empty">最近 7 天还没有播放记录，听几首歌再来看看</string>
+    <string name="report_no_play_days">最近 7 天没有播放记录</string>
+    <string name="report_total_zero">0 分钟</string>
+    <string name="report_unknown_track">未知曲目</string>
+    <string name="report_hours">%1$d 小时</string>
+    <string name="report_hours_minutes">%1$d 小时 %2$d 分</string>
+    <string name="report_minutes">%1$d 分钟</string>
+    <string name="report_less_minute">不到 1 分钟</string>
+    <string name="report_zero">0 分钟</string>
+    <string name="local_playlist_new">新建歌单</string>
+    <string name="playlist_more">更多操作</string>
+    <string name="track_remove_from_playlist">从歌单移除</string>
+    <string name="track_remove_done">已移除</string>
+
+    <!-- 一起听 -->
+    <string name="mine_entry_together">一起听</string>
+    <string name="room_title">一起听</string>
+    <string name="room_subtitle">同屋的人一起听同一首歌</string>
+    <string name="room_create">创建房间</string>
+    <string name="room_join">加入</string>
+    <string name="room_code_hint">输入 6 位房间码</string>
+    <string name="room_code_tip">把下面的房间码告诉朋友</string>
+    <string name="room_member_count">%1$d 人在听</string>
+    <string name="room_mode_lan">局域网直连</string>
+    <string name="room_mode_wan">公网中转</string>
+    <string name="room_latency">单程延迟约 %1$d ms</string>
+    <string name="room_latency_measuring">正在测量延迟…</string>
+    <string name="room_leave">退出房间</string>
+    <string name="room_copy_code">复制房间码</string>
+    <string name="room_code_copied">房间码已复制</string>
+    <string name="room_host_badge">房主</string>
+    <string name="room_me_badge">我</string>
+    <string name="room_busy">正在连接…</string>
+
+    <!-- 排行榜 -->
+    <string name="rank_title">排行榜</string>
+    <string name="rank_tab_hot">热歌榜</string>
+    <string name="rank_tab_rising">飙升榜</string>
+    <string name="rank_refresh">刷新榜单</string>
+    <string name="rank_entry">排行榜</string>
+    <string name="rank_subtitle">近 24 小时 · %1$d 次播放 · %2$s 更新</string>
+    <string name="rank_subtitle_empty">近 24 小时 · 还没有播放记录</string>
+    <string name="rank_subtitle_rising">近 24 小时与前一个 24 小时的差值</string>
+    <string name="rank_empty_title">榜单还是空的</string>
+    <string name="rank_empty_hint">播几首歌，这里就有排名了。\n同一首歌曲听完算 3 分、红心 5 分、跳过 −2 分。</string>
+    <string name="rank_unavailable">榜单暂时查不了</string>
+    <string name="rank_score">热度 %1$d</string>
+    <!-- 用正负号而不是箭头：12sp 下 ↑ / ↓ 和数字 1 太像，飙升榜会读成「14」 -->
+    <string name="rank_delta_up">+%1$d</string>
+    <string name="rank_delta_down">-%1$d</string>
 </resources>

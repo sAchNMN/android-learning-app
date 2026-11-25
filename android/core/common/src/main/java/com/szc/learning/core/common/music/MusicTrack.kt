@@ -47,12 +47,24 @@ data class MusicTrack(
      *
      * 在线曲目必须把平台拼进去：网易云和酷狗的 id 可能撞车，
      * 只写 `ONLINE:123` 会让两首歌的收藏/最近播放互相覆盖。
+     *
+     * 结果缓存在字段里：DiffUtil、队列比对、封面种子这些循环里会反复访问同一个对象，
+     * 每次拼字符串纯属浪费。**不能**用 `by lazy` 或属性初始化器 —— Gson 反序列化
+     * 不走构造器，会拿到 null；这里用可空字段 + 首次访问填充。
      */
+    @Transient
+    private var cachedKey: String? = null
+
     val key: String
-        get() = if (source == TrackSource.ONLINE) {
-            "ONLINE:$sourceKey:$id"
-        } else {
-            "${source.name}:$id"
+        get() {
+            cachedKey?.let { return it }
+            val value = if (source == TrackSource.ONLINE) {
+                "ONLINE:$sourceKey:$id"
+            } else {
+                "${source.name}:$id"
+            }
+            cachedKey = value
+            return value
         }
 }
 

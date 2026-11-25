@@ -1,6 +1,7 @@
 package com.szc.learning.music.ui.now
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -33,7 +34,6 @@ class ImmersiveStageView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : View(context, attrs) {
 
-    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val motePaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private var topColor = CoverPalette.Fallback.top
@@ -41,6 +41,14 @@ class ImmersiveStageView @JvmOverloads constructor(
     private var topShader: Shader? = null
     private var bottomShader: Shader? = null
     private var centerShader: Shader? = null
+
+    /**
+     * 三张静态径向渐变合成的缓存位图。
+     *
+     * 渐变只在换色/改尺寸时变；每帧都重画三遍全屏径向渐变纯属浪费 GPU。
+     * 合成一张后每帧只剩一次位图绘制，变化的只有光点。
+     */
+    private var glowBitmap: Bitmap? = null
 
     private val random = Random(0x5EED)
     private val motes = List(MOTE_COUNT) {
@@ -76,6 +84,7 @@ class ImmersiveStageView @JvmOverloads constructor(
     init {
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         isClickable = false
+        motePaint.style = Paint.Style.FILL
     }
 
     fun setColors(colors: CoverColors) {
@@ -125,25 +134,35 @@ class ImmersiveStageView @JvmOverloads constructor(
             Color.TRANSPARENT,
             Shader.TileMode.CLAMP,
         )
+        rebuildGlowLayer()
+    }
+
+    /** 把三张渐变合成进一张全屏位图。只在换色 / 改尺寸时执行。 */
+    private fun rebuildGlowLayer() {
+        val w = width
+        val h = height
+        if (w <= 0 || h <= 0) return
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.style = Paint.Style.FILL
+        for (shader in arrayOf(topShader, centerShader, bottomShader)) {
+            if (shader == null) continue
+            paint.shader = shader
+            canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
+        }
+        // 不 recycle 旧图：绘制指令在 RenderThread 上执行，回收可能撞上正在用它的帧
+        glowBitmap = bitmap
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (width <= 0 || height <= 0) return
-        glowPaint.style = Paint.Style.FILL
-        listOf(topShader, centerShader, bottomShader).forEach { shader ->
-            if (shader == null) return@forEach
-            glowPaint.shader = shader
-            canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), glowPaint)
-        }
-        glowPaint.shader = null
+        glowBitmap?.let { canvas.drawBitmap(it, 0f, 0f, null) }
 
-        motePaint.style = Paint.Style.FILL
-        val w = width.toFloat()
-        val h = height.toFloat()
         motes.forEach { mote ->
             motePaint.color = Color.argb((mote.alpha * 255).toInt(), 255, 255, 255)
-            canvas.drawCircle(mote.x * w, mote.y * h, mote.radius, motePaint)
+            canvas.drawCircle(mote.x * width, mote.y * height, mote.radius, motePaint)
         }
     }
 
@@ -154,6 +173,8 @@ class ImmersiveStageView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         stop()
+        // 页面销毁时释放这张全屏位图，别跟着 Activity 一起常驻
+        glowBitmap = null
         super.onDetachedFromWindow()
     }
 

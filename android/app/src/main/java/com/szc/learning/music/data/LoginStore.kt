@@ -20,7 +20,7 @@ class LoginStore(context: Context) {
     val isComplete: Boolean
         get() = prefs.getBoolean(KEY_COMPLETE, false)
 
-    /** 用户选择进入的入口：三个在线平台之一，或 [MODE_LOCAL]。 */
+    /** 用户选择进入的入口：两个在线平台之一，或 [MODE_LOCAL]。 */
     val mode: String
         get() = prefs.getString(KEY_MODE, MODE_LOCAL).orEmpty()
 
@@ -34,7 +34,6 @@ class LoginStore(context: Context) {
     companion object {
         const val MODE_NETEASE = "netease"
         const val MODE_KUGOU = "kugou"
-        const val MODE_QQ = "qq"
         const val MODE_LOCAL = "local"
 
         private const val PREFS = "aurora.login"

@@ -1,0 +1,6 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- 领奖台：三根粗细一致的柱子，高度递减到两侧，一眼是「排名」而不是「统计」 -->
+    <path android:fillColor="#FF000000" android:pathData="M4 14h4v6H4zM10 8h4v12h-4zM16 4h4v16h-4z" />
+</vector>
